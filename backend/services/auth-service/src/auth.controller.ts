@@ -1,6 +1,6 @@
 import { Controller, Post, Body, UseGuards, Get, Request, Param, Patch } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto, AuthResponseDto } from './dto/auth.dto';
+import { LoginDto, RegisterDto, AuthResponseDto, DriverRegisterDto, UploadDocumentDto, ReviewDocumentDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
@@ -37,9 +37,43 @@ export class AuthController {
         return this.authService.updateUser(id, updateData);
     }
 
-    @UseGuards(JwtAuthGuard)
     @Get('validate')
     async validate(@Request() req) {
         return { valid: true, user: req.user };
+    }
+
+    @Post('register-driver')
+    async registerDriver(@Body() dto: DriverRegisterDto) {
+        return this.authService.registerDriver(dto);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('documents')
+    async uploadDocument(@Request() req, @Body() dto: UploadDocumentDto) {
+        return this.authService.uploadDocument(req.user.id, dto);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('documents')
+    async getMyDocuments(@Request() req) {
+        return this.authService.getDriverDocuments(req.user.id);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('drivers/:id/documents')
+    async getDriverDocuments(@Param('id') id: string) {
+        return this.authService.getDriverDocuments(id);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Patch('documents/:id/review')
+    async reviewDocument(@Param('id') id: string, @Body() dto: ReviewDocumentDto) {
+        return this.authService.reviewDocument(id, dto);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('drivers/:id/approve')
+    async approveDriver(@Param('id') id: string) {
+        return this.authService.approveDriver(id);
     }
 }

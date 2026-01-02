@@ -14,8 +14,10 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
-import { LocalTaxi, Person } from '@mui/icons-material';
+import { LocalTaxi, Person, VerifiedUser, CheckCircle, Error, Pending, Description } from '@mui/icons-material';
 import api from '../lib/api';
+import { authApi, DriverDocument } from '../api/auth';
+import { Chip, List, ListItem, ListItemText, ListItemIcon, IconButton, TextField } from '@mui/material';
 
 interface Driver {
     id: string;
@@ -23,7 +25,7 @@ interface Driver {
     lastName: string;
     email: string;
     defaultVehicleId: string | null;
-    status: 'active' | 'inactive';
+    isActive: boolean;
 }
 
 interface Vehicle {
@@ -40,6 +42,9 @@ export const DriversPage = () => {
     const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
+    const [isReviewOpen, setIsReviewOpen] = useState(false);
+    const [driverDocuments, setDriverDocuments] = useState<DriverDocument[]>([]);
+    const [reviewNotes, setReviewNotes] = useState('');
 
     useEffect(() => {
         loadData();
@@ -63,6 +68,41 @@ export const DriversPage = () => {
         setSelectedDriver(driver);
         setSelectedVehicleId(driver.defaultVehicleId || '');
         setIsDialogOpen(true);
+    };
+
+    const handleReviewCompliance = async (driver: Driver) => {
+        setSelectedDriver(driver);
+        try {
+            const docs = await authApi.getDriverDocuments(driver.id);
+            setDriverDocuments(docs);
+            setIsReviewOpen(true);
+        } catch (error) {
+            console.error('Error fetching driver documents:', error);
+        }
+    };
+
+    const handleReviewDocument = async (docId: string, status: 'APPROVED' | 'REJECTED') => {
+        try {
+            await authApi.reviewDocument(docId, { status, notes: reviewNotes });
+            if (selectedDriver) {
+                const docs = await authApi.getDriverDocuments(selectedDriver.id);
+                setDriverDocuments(docs);
+            }
+            setReviewNotes('');
+        } catch (error) {
+            console.error('Error reviewing document:', error);
+        }
+    };
+
+    const handleApproveDriver = async () => {
+        if (!selectedDriver) return;
+        try {
+            await authApi.approveDriver(selectedDriver.id);
+            await loadData();
+            setIsReviewOpen(false);
+        } catch (error) {
+            console.error('Error approving driver:', error);
+        }
     };
 
     const handleSave = async () => {
@@ -112,9 +152,18 @@ export const DriversPage = () => {
                                         )}
                                     </Box>
 
-                                    <Box mt={2} display="flex" justifyContent="flex-end">
+                                    <Box mt={2} display="flex" justifyContent="flex-end" gap={1}>
                                         <Button size="small" variant="outlined" onClick={() => handleEditVehicle(driver)}>
                                             Assign Vehicle
+                                        </Button>
+                                        <Button
+                                            size="small"
+                                            variant="contained"
+                                            color={driver.isActive ? "primary" : "warning"}
+                                            startIcon={<VerifiedUser />}
+                                            onClick={() => handleReviewCompliance(driver)}
+                                        >
+                                            {driver.isActive ? "Compliance" : "Review Docs"}
                                         </Button>
                                     </Box>
                                 </CardContent>
@@ -155,6 +204,65 @@ export const DriversPage = () => {
                 <DialogActions>
                     <Button onClick={() => setIsDialogOpen(false)}>Cancel</Button>
                     <Button onClick={handleSave} variant="contained">Save</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Compliance Review Dialog */}
+            <Dialog open={isReviewOpen} onClose={() => setIsReviewOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Compliance Review - {selectedDriver?.firstName} {selectedDriver?.lastName}</DialogTitle>
+                <DialogContent>
+                    <Typography variant="subtitle2" gutterBottom>Documents</Typography>
+                    <List>
+                        {driverDocuments.length === 0 && <Typography color="textSecondary">No documents uploaded yet.</Typography>}
+                        {driverDocuments.map(doc => (
+                            <ListItem key={doc.id} divider>
+                                <ListItemIcon><Description /></ListItemIcon>
+                                <ListItemText
+                                    primary={doc.documentType}
+                                    secondary={`Expiry: ${doc.expiryDate ? new Date(doc.expiryDate).toLocaleDateString() : 'N/A'}`}
+                                />
+                                <Box display="flex" alignItems="center" gap={1}>
+                                    <Chip
+                                        label={doc.status}
+                                        size="small"
+                                        color={doc.status === 'APPROVED' ? 'success' : doc.status === 'REJECTED' ? 'error' : 'warning'}
+                                        icon={doc.status === 'PENDING' ? <Pending fontSize="small" /> : undefined}
+                                    />
+                                    <IconButton size="small" onClick={() => handleReviewDocument(doc.id, 'APPROVED')} color="success">
+                                        <CheckCircle fontSize="small" />
+                                    </IconButton>
+                                    <IconButton size="small" onClick={() => handleReviewDocument(doc.id, 'REJECTED')} color="error">
+                                        <Error fontSize="small" />
+                                    </IconButton>
+                                </Box>
+                            </ListItem>
+                        ))}
+                    </List>
+
+                    <Box mt={3}>
+                        <TextField
+                            fullWidth
+                            label="Review Notes"
+                            multiline
+                            rows={2}
+                            value={reviewNotes}
+                            onChange={(e) => setReviewNotes(e.target.value)}
+                            placeholder="Add reason for rejection or approval notes..."
+                        />
+                    </Box>
+                </DialogContent>
+                <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
+                    <Button onClick={() => setIsReviewOpen(false)}>Close</Button>
+                    {!selectedDriver?.isActive && (
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            disabled={!driverDocuments.some(d => d.status === 'APPROVED')}
+                            onClick={handleApproveDriver}
+                        >
+                            Approve Driver Account
+                        </Button>
+                    )}
                 </DialogActions>
             </Dialog>
         </Box>

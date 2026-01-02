@@ -35,6 +35,46 @@ export class RegisterDto {
     phone?: string;
 }
 
+export class DriverRegisterDto {
+    @IsEmail()
+    email: string;
+
+    @IsString()
+    @MinLength(6)
+    password: string;
+
+    @IsString()
+    firstName: string;
+
+    @IsString()
+    lastName: string;
+
+    @IsString()
+    @IsOptional()
+    phone?: string;
+}
+
+export class UploadDocumentDto {
+    @IsEnum(['LICENSE', 'INSURANCE', 'BACKGROUND_CHECK'])
+    documentType: string;
+
+    @IsString()
+    fileUrl: string;
+
+    @IsString()
+    @IsOptional()
+    expiryDate?: string;
+}
+
+export class ReviewDocumentDto {
+    @IsEnum(['APPROVED', 'REJECTED'])
+    status: string;
+
+    @IsString()
+    @IsOptional()
+    notes?: string;
+}
+
 export class AuthResponseDto {
     accessToken: string;
     user: {

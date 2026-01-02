@@ -7,6 +7,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { User } from './entities/user.entity';
 import { Organization } from './entities/organization.entity';
+import { DriverDocument } from './entities/driver-document.entity';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
 @Module({
@@ -23,13 +24,13 @@ import { JwtStrategy } from './strategies/jwt.strategy';
                 username: configService.get('DB_USERNAME'),
                 password: configService.get('DB_PASSWORD'),
                 database: configService.get('DB_DATABASE'),
-                entities: [User, Organization],
+                entities: [User, Organization, DriverDocument],
                 synchronize: false, // Use migrations in production
                 logging: configService.get('NODE_ENV') === 'development',
             }),
             inject: [ConfigService],
         }),
-        TypeOrmModule.forFeature([User, Organization]),
+        TypeOrmModule.forFeature([User, Organization, DriverDocument]),
         PassportModule,
         JwtModule.registerAsync({
             imports: [ConfigModule],

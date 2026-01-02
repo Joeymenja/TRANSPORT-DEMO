@@ -1,5 +1,5 @@
 import { Box, AppBar, Toolbar, Typography, IconButton, Menu, MenuItem, BottomNavigation, BottomNavigationAction } from '@mui/material';
-import { DirectionsCar, Person, Home, Logout } from '@mui/icons-material';
+import { DirectionsCar, Person, Home, Logout, VerifiedUser } from '@mui/icons-material';
 import React, { useState } from 'react';
 import { useAuthStore } from '../store/auth';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -24,13 +24,20 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
         navigate('/login');
     };
 
+    const getNavValue = () => {
+        if (location.pathname === '/driver/trips') return 'trips';
+        if (location.pathname === '/driver/compliance') return 'compliance';
+        return 'home';
+    };
+
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: '#f5f5f5' }}>
             {/* Simple Mobile Header */}
             <AppBar position="static" elevation={0} sx={{ bgcolor: '#0096D6' }}>
                 <Toolbar>
                     <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 600 }}>
-                        My Trips
+                        {location.pathname.includes('trips') ? 'My Trips' :
+                            location.pathname.includes('compliance') ? 'Compliance' : 'Dashboard'}
                     </Typography>
                     <IconButton
                         size="large"
@@ -59,17 +66,18 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
 
             {/* Bottom Navigation */}
             <BottomNavigation
-                value={location.pathname === '/driver' ? 'home' : 'trips'}
+                value={getNavValue()}
                 onChange={(_, newValue) => {
                     if (newValue === 'home') navigate('/driver');
                     if (newValue === 'trips') navigate('/driver/trips');
+                    if (newValue === 'compliance') navigate('/driver/compliance');
                 }}
                 showLabels
                 sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, borderTop: '1px solid #e0e0e0' }}
             >
                 <BottomNavigationAction label="Home" value="home" icon={<Home />} />
                 <BottomNavigationAction label="My Trips" value="trips" icon={<DirectionsCar />} />
-                <BottomNavigationAction label="Profile" value="profile" icon={<Person />} />
+                <BottomNavigationAction label="Compliance" value="compliance" icon={<VerifiedUser />} />
             </BottomNavigation>
         </Box>
     );

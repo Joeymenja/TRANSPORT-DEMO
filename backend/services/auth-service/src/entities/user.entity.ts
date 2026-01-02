@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, CreateDateColumn, UpdateDateColumn, JoinColumn } from 'typeorm';
 import { Organization } from './organization.entity';
+import { DriverDocument } from './driver-document.entity';
 
 export enum UserRole {
     SUPER_ADMIN = 'SUPER_ADMIN',
@@ -46,6 +47,9 @@ export class User {
 
     @Column({ name: 'is_active', default: true })
     isActive: boolean;
+
+    @OneToMany(() => DriverDocument, (doc) => doc.user)
+    driverDocuments: DriverDocument[];
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;

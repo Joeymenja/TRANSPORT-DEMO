@@ -3,14 +3,20 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { User } from './entities/user.entity';
-import { LoginDto, RegisterDto, AuthResponseDto } from './dto/auth.dto';
+import { User, UserRole } from './entities/user.entity';
+import { Organization } from './entities/organization.entity';
+import { DriverDocument, DocumentType, DocumentStatus } from './entities/driver-document.entity';
+import { LoginDto, RegisterDto, AuthResponseDto, DriverRegisterDto, UploadDocumentDto, ReviewDocumentDto } from './dto/auth.dto';
 
 @Injectable()
 export class AuthService {
     constructor(
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
+        @InjectRepository(Organization)
+        private readonly organizationRepository: Repository<Organization>,
+        @InjectRepository(DriverDocument)
+        private readonly documentRepository: Repository<DriverDocument>,
         private readonly jwtService: JwtService,
     ) { }
 
@@ -90,6 +96,88 @@ export class AuthService {
         });
 
         return this.generateAuthResponse(userWithOrg);
+    }
+
+    async registerDriver(dto: DriverRegisterDto): Promise<User> {
+        const existingUser = await this.userRepository.findOne({
+            where: { email: dto.email },
+        });
+
+        if (existingUser) {
+            throw new UnauthorizedException('User already exists');
+        }
+
+        // For demo, find the first active organization
+        const organization = await this.organizationRepository.findOne({
+            where: { isActive: true },
+        });
+
+        if (!organization) {
+            throw new Error('No active organization found to register driver');
+        }
+
+        const hashedPassword = await bcrypt.hash(dto.password, 10);
+
+        const user = this.userRepository.create({
+            email: dto.email,
+            passwordHash: hashedPassword,
+            firstName: dto.firstName,
+            lastName: dto.lastName,
+            role: UserRole.DRIVER,
+            organizationId: organization.id,
+            phone: dto.phone,
+            isActive: false, // Pending Approval
+        });
+
+        return this.userRepository.save(user);
+    }
+
+    async uploadDocument(userId: string, dto: UploadDocumentDto): Promise<DriverDocument> {
+        const doc = this.documentRepository.create({
+            userId,
+            documentType: dto.documentType as DocumentType,
+            fileUrl: dto.fileUrl,
+            status: DocumentStatus.PENDING,
+            expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : null,
+        });
+
+        return this.documentRepository.save(doc);
+    }
+
+    async getDriverDocuments(userId: string): Promise<DriverDocument[]> {
+        return this.documentRepository.find({
+            where: { userId },
+            order: { createdAt: 'DESC' },
+        });
+    }
+
+    async reviewDocument(docId: string, dto: ReviewDocumentDto): Promise<DriverDocument> {
+        const doc = await this.documentRepository.findOne({
+            where: { id: docId },
+            relations: ['user'],
+        });
+
+        if (!doc) {
+            throw new Error('Document not found');
+        }
+
+        doc.status = dto.status as DocumentStatus;
+        doc.notes = dto.notes;
+
+        const updatedDoc = await this.documentRepository.save(doc);
+
+        // If all essential documents are approved, we could auto-approve the driver
+        // For now, let's just keep them separate or add a manual approve step
+
+        return updatedDoc;
+    }
+
+    async approveDriver(userId: string): Promise<User> {
+        const user = await this.userRepository.findOne({ where: { id: userId } });
+        if (!user) throw new Error('User not found');
+
+        user.isActive = true;
+        return this.userRepository.save(user);
     }
 
     async validateUser(userId: string): Promise<User> {

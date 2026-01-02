@@ -12,6 +12,8 @@ import DriverLayout from './components/DriverLayout';
 import DriverTripsPage from './pages/driver/DriverTripsPage';
 import TripExecutionPage from './pages/driver/TripExecutionPage';
 import ClientTripPage from './pages/ClientTripPage';
+import DriverRegistrationPage from './pages/driver/DriverRegistrationPage';
+import CompliancePage from './pages/driver/CompliancePage';
 import AppLayout from './components/AppLayout';
 
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -85,6 +87,7 @@ function App() {
                 <BrowserRouter>
                     <Routes>
                         <Route path="/login" element={<LoginPage />} />
+                        <Route path="/register-driver" element={<DriverRegistrationPage />} />
                         <Route path="/client/:memberId" element={<ClientTripPage />} />
                         <Route
                             path="/driver/*"
@@ -95,6 +98,7 @@ function App() {
                                             <Route path="/" element={<Navigate to="trips" />} />
                                             <Route path="trips" element={<DriverTripsPage />} />
                                             <Route path="trips/:tripId" element={<TripExecutionPage />} />
+                                            <Route path="compliance" element={<CompliancePage />} />
                                         </Routes>
                                     </DriverLayout>
                                 </PrivateRoute>
