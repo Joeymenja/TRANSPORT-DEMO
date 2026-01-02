@@ -28,6 +28,8 @@ export interface Member {
     updatedAt: string;
 }
 
+export type CreateMemberData = Omit<Member, 'id' | 'organizationId' | 'isActive' | 'createdAt' | 'updatedAt'>;
+
 export const memberApi = {
     getMembers: async (): Promise<Member[]> => {
         const { data } = await api.get('/members');

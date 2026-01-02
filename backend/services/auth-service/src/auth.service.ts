@@ -16,29 +16,46 @@ export class AuthService {
 
     async login(loginDto: LoginDto): Promise<AuthResponseDto> {
         console.log(`[DEBUG] Login attempt for email: "${loginDto.email}"`);
-        const user = await this.userRepository.findOne({
-            where: { email: loginDto.email, isActive: true },
-            relations: ['organization'],
-        });
+        try {
+            const user = await this.userRepository.findOne({
+                where: { email: loginDto.email, isActive: true },
+                relations: ['organization'],
+            });
 
-        if (!user) {
-            console.log(`[DEBUG] User not found for email: "${loginDto.email}"`);
-            throw new UnauthorizedException('Invalid credentials');
+            if (!user) {
+                console.log(`[DEBUG] User not found for email: "${loginDto.email}"`);
+                throw new UnauthorizedException('Invalid credentials');
+            }
+
+            // Defensive check for password hash
+            if (!user.passwordHash) {
+                console.error(`[ERROR] User ${user.id} has no password hash`);
+                throw new UnauthorizedException('Invalid credentials (system error)');
+            }
+
+            console.log(`[DEBUG] User found. Verifying password...`);
+            const isPasswordValid = await bcrypt.compare(loginDto.password, user.passwordHash);
+
+            if (!isPasswordValid) {
+                console.log(`[DEBUG] Password invalid for user ${user.email}`);
+                throw new UnauthorizedException('Invalid credentials');
+            }
+
+            // Defensive check for organization
+            if (!user.organization) {
+                console.error(`[CRITICAL] User ${user.email} (ID: ${user.id}) has no linked organization! relations=['organization'] was requested.`);
+                throw new Error('User organization data missing');
+            }
+
+            if (!user.organization.isActive) {
+                throw new UnauthorizedException('Organization is inactive');
+            }
+
+            return this.generateAuthResponse(user);
+        } catch (error) {
+            console.error('[LOGIN ERROR]', error);
+            throw error;
         }
-
-        console.log(`[DEBUG] User found. Stored hash: ${user.passwordHash}`);
-        const isPasswordValid = await bcrypt.compare(loginDto.password, user.passwordHash);
-        console.log(`[DEBUG] Password check for "${loginDto.password}": ${isPasswordValid}`);
-
-        if (!isPasswordValid) {
-            throw new UnauthorizedException('Invalid credentials');
-        }
-
-        if (!user.organization.isActive) {
-            throw new UnauthorizedException('Organization is inactive');
-        }
-
-        return this.generateAuthResponse(user);
     }
 
     async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
@@ -86,6 +103,23 @@ export class AuthService {
         }
 
         return user;
+    }
+
+    async getUsers(organizationId: string, role?: string): Promise<User[]> {
+        const query: any = { organizationId, isActive: true };
+        if (role) {
+            query.role = role;
+        }
+        return this.userRepository.find({ where: query });
+    }
+
+    async updateUser(id: string, updateData: Partial<User>): Promise<User> {
+        const user = await this.userRepository.findOne({ where: { id } });
+        if (!user) {
+            throw new UnauthorizedException('User not found');
+        }
+        Object.assign(user, updateData);
+        return this.userRepository.save(user);
     }
 
     private generateAuthResponse(user: User): AuthResponseDto {

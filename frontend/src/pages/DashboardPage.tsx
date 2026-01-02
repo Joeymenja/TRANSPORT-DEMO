@@ -1,55 +1,136 @@
-import { Box, Container, Grid, Card, CardContent, Typography, Button, Chip, Collapse, IconButton, Dialog, DialogTitle, DialogContent, Divider, List, ListItem, ListItemText, ListItemIcon } from '@mui/material';
+import { Box, Container, Grid, Card, CardContent, Typography, Button, Chip, Collapse, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Divider, List, ListItem, ListItemText, ListItemIcon, Checkbox, FormControlLabel } from '@mui/material';
 import {
     DirectionsCar,
     Schedule,
     CheckCircle,
-    EventAvailable,
     ExpandMore,
     ExpandLess,
     GpsFixed,
-    History,
+    History as HistoryIcon,
     Visibility,
     VerifiedUser,
-    ErrorOutline
+    ErrorOutline,
+    Add
 } from '@mui/icons-material';
-import { useQuery } from '@tanstack/react-query';
-import { tripApi } from '../api/trips';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { tripApi, CreateTripData } from '../api/trips';
+import { memberApi } from '../api/members';
 import { format } from 'date-fns';
-import { useState } from 'react';
+import { useState, ReactNode } from 'react';
 
 export default function DashboardPage() {
+    const queryClient = useQueryClient();
     const today = format(new Date(), 'yyyy-MM-dd');
     const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
     const [previewSignature, setPreviewSignature] = useState<{ name: string, data: string } | null>(null);
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
+    // Create Trip Form State
+    const [tripForm, setTripForm] = useState<{
+        date: string;
+        time: string;
+        memberId: string;
+        pickupAddress: string;
+        dropoffAddress: string;
+        isRoundTrip: boolean;
+        returnTime: string;
+    }>({
+        date: today,
+        time: '09:00',
+        memberId: '',
+        pickupAddress: '',
+        dropoffAddress: '',
+        isRoundTrip: false,
+        returnTime: '12:00'
+    });
 
     const { data: trips = [], isLoading } = useQuery({
         queryKey: ['trips', today],
         queryFn: () => tripApi.getTrips({ date: today }),
     });
 
-    const stats = {
-        active: trips.filter(t => t.status === 'IN_PROGRESS').length,
-        scheduled: trips.filter(t => t.status === 'SCHEDULED').length,
-        completed: trips.filter(t => t.status === 'COMPLETED' || t.status === 'FINALIZED').length,
+    const { data: members = [] } = useQuery({
+        queryKey: ['members'],
+        queryFn: () => memberApi.getMembers(),
+    });
+
+    const createTripMutation = useMutation({
+        mutationFn: async (data: CreateTripData | CreateTripData[]) => {
+            if (Array.isArray(data)) {
+                return Promise.all(data.map(d => tripApi.createTrip(d)));
+            }
+            return tripApi.createTrip(data);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['trips'] });
+            setIsCreateDialogOpen(false);
+            setTripForm({ ...tripForm, memberId: '', pickupAddress: '', dropoffAddress: '', isRoundTrip: false });
+        }
+    });
+
+    const approveTripMutation = useMutation({
+        mutationFn: (tripId: string) => tripApi.updateTrip(tripId, { status: 'SCHEDULED' as any }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['trips'] });
+        }
+    });
+
+    const handleCreateTrip = () => {
+        const tripDate = new Date(`${tripForm.date}T${tripForm.time}`);
+
+        // Outbound Trip
+        const outboundTrip: CreateTripData = {
+            tripDate,
+            members: [{ memberId: tripForm.memberId }],
+            stops: [
+                {
+                    stopType: 'PICKUP',
+                    stopOrder: 1,
+                    address: tripForm.pickupAddress,
+                    scheduledTime: tripDate
+                },
+                {
+                    stopType: 'DROPOFF',
+                    stopOrder: 2,
+                    address: tripForm.dropoffAddress,
+                    scheduledTime: new Date(tripDate.getTime() + 60 * 60 * 1000) // Assumed 1 hour later
+                }
+            ]
+        };
+
+        if (tripForm.isRoundTrip) {
+            const returnTripDate = new Date(`${tripForm.date}T${tripForm.returnTime}`);
+            const returnTrip: CreateTripData = {
+                tripDate: returnTripDate, // Can be different if needed, but using same day for now
+                members: [{ memberId: tripForm.memberId }],
+                stops: [
+                    {
+                        stopType: 'PICKUP',
+                        stopOrder: 1,
+                        address: tripForm.dropoffAddress, // Pickup at Destination
+                        scheduledTime: returnTripDate
+                    },
+                    {
+                        stopType: 'DROPOFF',
+                        stopOrder: 2,
+                        address: tripForm.pickupAddress, // Dropoff at Home
+                        scheduledTime: new Date(returnTripDate.getTime() + 60 * 60 * 1000)
+                    }
+                ]
+            };
+            createTripMutation.mutate([outboundTrip, returnTrip]);
+        } else {
+            createTripMutation.mutate(outboundTrip);
+        }
     };
 
-    const StatCard = ({ title, value, icon, color }: any) => (
-        <Card sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-            <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Box sx={{ color, mr: 1 }}>
-                        {icon}
-                    </Box>
-                    <Typography variant="body2" color="text.secondary">
-                        {title}
-                    </Typography>
-                </Box>
-                <Typography variant="h3" sx={{ fontWeight: 600, color: '#212121' }}>
-                    {value}
-                </Typography>
-            </CardContent>
-        </Card>
-    );
+    const stats = {
+        active: (trips || []).filter(t => t?.status === 'IN_PROGRESS').length,
+        scheduled: (trips || []).filter(t => t?.status === 'SCHEDULED').length,
+        pending: (trips || []).filter(t => t?.status === 'PENDING_APPROVAL').length,
+        completed: (trips || []).filter(t => t?.status === 'COMPLETED' || t?.status === 'FINALIZED').length,
+    };
+
 
     return (
         <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -74,6 +155,14 @@ export default function DashboardPage() {
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
                     <StatCard
+                        title="Pending Approval"
+                        value={stats.pending}
+                        icon={<CheckCircle />}
+                        color="#F44336" // Red/Alert color for pending
+                    />
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                    <StatCard
                         title="Scheduled"
                         value={stats.scheduled}
                         icon={<Schedule />}
@@ -88,14 +177,6 @@ export default function DashboardPage() {
                         color="#00C853"
                     />
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                    <StatCard
-                        title="Total Today"
-                        value={trips.length}
-                        icon={<EventAvailable />}
-                        color="#757575"
-                    />
-                </Grid>
             </Grid>
 
             {/* Upcoming Trips */}
@@ -107,6 +188,8 @@ export default function DashboardPage() {
                         </Typography>
                         <Button
                             variant="contained"
+                            startIcon={<Add />}
+                            onClick={() => setIsCreateDialogOpen(true)}
                             sx={{
                                 bgcolor: '#0096D6',
                                 textTransform: 'none',
@@ -130,7 +213,7 @@ export default function DashboardPage() {
                         </Box>
                     ) : (
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            {trips.map((trip) => (
+                            {(trips || []).map((trip) => (
                                 <Card
                                     key={trip.id}
                                     variant="outlined"
@@ -139,6 +222,8 @@ export default function DashboardPage() {
                                         '&:hover': {
                                             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                                         },
+                                        borderColor: trip.status === 'PENDING_APPROVAL' ? '#ef5350' : undefined,
+                                        borderWidth: trip.status === 'PENDING_APPROVAL' ? 2 : 1
                                     }}
                                 >
                                     <CardContent>
@@ -155,9 +240,17 @@ export default function DashboardPage() {
                                                             sx={{ bgcolor: '#E3F2FD', color: '#0096D6' }}
                                                         />
                                                     )}
+                                                    {trip.status === 'PENDING_APPROVAL' && (
+                                                        <Chip
+                                                            label="PENDING APPROVAL"
+                                                            color="error"
+                                                            size="small"
+                                                            icon={<ErrorOutline />}
+                                                        />
+                                                    )}
                                                 </Box>
                                                 <Typography variant="body2" color="text.secondary">
-                                                    {trip.tripType.replace('_', ' ')} • {trip.stops.length} stops
+                                                    {(trip.tripType || 'DROP_OFF').replace('_', ' ')} • {trip.stops?.length || 0} stops
                                                 </Typography>
                                             </Box>
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -168,11 +261,25 @@ export default function DashboardPage() {
                                                         color={
                                                             trip.status === 'IN_PROGRESS' ? 'warning' :
                                                                 trip.status === 'SCHEDULED' ? 'info' :
-                                                                    'success'
+                                                                    trip.status === 'PENDING_APPROVAL' ? 'error' :
+                                                                        'success'
                                                         }
                                                         sx={{ mb: 1 }}
                                                     />
                                                 </Box>
+
+                                                {trip.status === 'PENDING_APPROVAL' && (
+                                                    <Button
+                                                        variant="contained"
+                                                        size="small"
+                                                        color="success"
+                                                        startIcon={<CheckCircle />}
+                                                        onClick={() => approveTripMutation.mutate(trip.id)}
+                                                    >
+                                                        Approve
+                                                    </Button>
+                                                )}
+
                                                 <Button
                                                     size="small"
                                                     variant="outlined"
@@ -199,8 +306,8 @@ export default function DashboardPage() {
                                                             <VerifiedUser fontSize="small" /> Member Compliance (Signatures)
                                                         </Typography>
                                                         <List disablePadding>
-                                                            {trip.members.map((tm: any) => (
-                                                                <ListItem key={tm.id} disableGutters sx={{ py: 0.5 }}>
+                                                            {(trip.members || []).map((tm: any) => (
+                                                                <ListItem key={tm.id || Math.random()} disableGutters sx={{ py: 0.5 }}>
                                                                     <ListItemIcon sx={{ minWidth: 32 }}>
                                                                         {tm.memberSignatureBase64 ?
                                                                             <CheckCircle fontSize="small" sx={{ color: '#00C853' }} /> :
@@ -208,12 +315,12 @@ export default function DashboardPage() {
                                                                         }
                                                                     </ListItemIcon>
                                                                     <ListItemText
-                                                                        primary={`${tm.member.firstName} ${tm.member.lastName}`}
+                                                                        primary={tm.member ? `${tm.member.firstName} ${tm.member.lastName}` : 'Unknown Member'}
                                                                         secondary={tm.memberSignatureBase64 ? 'Signature Captured' : 'Awaiting Signature'}
                                                                         primaryTypographyProps={{ variant: 'body2' }}
                                                                         secondaryTypographyProps={{ variant: 'caption' }}
                                                                     />
-                                                                    {tm.memberSignatureBase64 && (
+                                                                    {tm.memberSignatureBase64 && tm.member && (
                                                                         <IconButton
                                                                             size="small"
                                                                             onClick={() => setPreviewSignature({
@@ -233,13 +340,13 @@ export default function DashboardPage() {
                                                             <GpsFixed fontSize="small" /> Stop Audit Log (GPS)
                                                         </Typography>
                                                         <List disablePadding>
-                                                            {trip.stops.map((stop: any, idx: number) => (
-                                                                <ListItem key={stop.id} disableGutters sx={{ py: 0.5 }}>
+                                                            {(trip.stops || []).map((stop: any, idx: number) => (
+                                                                <ListItem key={stop.id || idx} disableGutters sx={{ py: 0.5 }}>
                                                                     <ListItemIcon sx={{ minWidth: 32 }}>
-                                                                        <History fontSize="small" />
+                                                                        <HistoryIcon fontSize="small" />
                                                                     </ListItemIcon>
                                                                     <ListItemText
-                                                                        primary={`${idx + 1}. ${stop.stopType}: ${stop.address.split(',')[0]}`}
+                                                                        primary={`${idx + 1}. ${(stop.stopType || 'STOP')}: ${(stop.address || '').split(',')[0]}`}
                                                                         secondary={
                                                                             stop.actualArrivalTime ?
                                                                                 `Arrived: ${new Date(stop.actualArrivalTime).toLocaleTimeString()} ${stop.gpsLatitude ? `@ ${stop.gpsLatitude.toFixed(4)}, ${stop.gpsLongitude.toFixed(4)}` : '(No GPS)'}` :
@@ -273,6 +380,124 @@ export default function DashboardPage() {
                     />
                 </DialogContent>
             </Dialog>
+
+            <Dialog open={isCreateDialogOpen} onClose={() => setIsCreateDialogOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Create New Trip</DialogTitle>
+                <DialogContent dividers>
+                    <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                label="Date"
+                                type="date"
+                                fullWidth
+                                InputLabelProps={{ shrink: true }}
+                                value={tripForm.date}
+                                onChange={(e) => setTripForm({ ...tripForm, date: e.target.value })}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                label="Time"
+                                type="time"
+                                fullWidth
+                                InputLabelProps={{ shrink: true }}
+                                value={tripForm.time}
+                                onChange={(e) => setTripForm({ ...tripForm, time: e.target.value })}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={tripForm.isRoundTrip}
+                                        onChange={(e) => setTripForm({ ...tripForm, isRoundTrip: e.target.checked })}
+                                    />
+                                }
+                                label="Round Trip"
+                            />
+                        </Grid>
+                        {tripForm.isRoundTrip && (
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    label="Return Pickup Time"
+                                    type="time"
+                                    fullWidth
+                                    InputLabelProps={{ shrink: true }}
+                                    value={tripForm.returnTime}
+                                    onChange={(e) => setTripForm({ ...tripForm, returnTime: e.target.value })}
+                                />
+                            </Grid>
+                        )}
+                        <Grid item xs={12}>
+                            <TextField
+                                select
+                                label="Select Member"
+                                fullWidth
+                                value={tripForm.memberId}
+                                onChange={(e) => setTripForm({ ...tripForm, memberId: e.target.value })}
+                            >
+                                {(members || []).map((member) => (
+                                    <MenuItem key={member?.id || Math.random()} value={member?.id}>
+                                        {member?.lastName}, {member?.firstName} ({member?.memberId || 'N/A'})
+                                    </MenuItem>
+                                ))}
+                            </TextField>
+                        </Grid>
+                        <Grid item xs={12}>
+                            <TextField
+                                label="Pickup Address"
+                                fullWidth
+                                value={tripForm.pickupAddress}
+                                onChange={(e) => setTripForm({ ...tripForm, pickupAddress: e.target.value })}
+                            />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <TextField
+                                label="Dropoff Address"
+                                fullWidth
+                                value={tripForm.dropoffAddress}
+                                onChange={(e) => setTripForm({ ...tripForm, dropoffAddress: e.target.value })}
+                            />
+                        </Grid>
+                    </Grid>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setIsCreateDialogOpen(false)}>Cancel</Button>
+                    <Button
+                        variant="contained"
+                        onClick={handleCreateTrip}
+                        disabled={!tripForm.memberId || createTripMutation.isPending}
+                    >
+                        {createTripMutation.isPending ? 'Booking...' : (tripForm.isRoundTrip ? 'Book 2 Trips' : 'Book Trip')}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Container>
+    );
+}
+
+function StatCard({ title, value, icon, color }: { title: string, value: number, icon: ReactNode, color: string }) {
+    return (
+        <Card sx={{ height: '100%', borderRadius: 2 }}>
+            <CardContent>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography color="text.secondary" variant="subtitle2" fontWeight={500}>
+                        {title}
+                    </Typography>
+                    <Box sx={{
+                        color,
+                        bgcolor: `${color}1A`, // 10% opacity
+                        p: 1,
+                        borderRadius: 1,
+                        display: 'flex'
+                    }}>
+                        {icon}
+                    </Box>
+                </Box>
+                <Typography variant="h4" fontWeight={600}>
+                    {value}
+                </Typography>
+            </CardContent>
+        </Card>
     );
 }

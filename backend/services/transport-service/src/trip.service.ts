@@ -21,52 +21,57 @@ export class TripService {
     ) { }
 
     async createTrip(createTripDto: CreateTripDto, organizationId: string, userId: string): Promise<TripResponseDto> {
-        // Create trip
-        // Auto-assign vehicle if driver is assigned but vehicle is not
-        let assignedVehicleId = createTripDto.assignedVehicleId;
-        if (createTripDto.assignedDriverId && !assignedVehicleId) {
-            const driver = await this.userRepository.findOne({ where: { id: createTripDto.assignedDriverId } });
-            if (driver && driver.defaultVehicleId) {
-                assignedVehicleId = driver.defaultVehicleId;
+        try {
+            // Create trip
+            // Auto-assign vehicle if driver is assigned but vehicle is not
+            let assignedVehicleId = createTripDto.assignedVehicleId;
+            if (createTripDto.assignedDriverId && !assignedVehicleId) {
+                const driver = await this.userRepository.findOne({ where: { id: createTripDto.assignedDriverId } });
+                if (driver && driver.defaultVehicleId) {
+                    assignedVehicleId = driver.defaultVehicleId;
+                }
             }
+
+            const trip = this.tripRepository.create({
+                organizationId,
+                tripDate: createTripDto.tripDate,
+                assignedDriverId: createTripDto.assignedDriverId,
+                assignedVehicleId: assignedVehicleId,
+                tripType: createTripDto.tripType || TripType.DROP_OFF,
+                isCarpool: createTripDto.members.length > 1,
+                status: TripStatus.PENDING_APPROVAL,
+                createdById: userId,
+            });
+
+            const savedTrip = await this.tripRepository.save(trip);
+
+            // Create trip stops
+            const stops = createTripDto.stops.map((stopDto, index) =>
+                this.tripStopRepository.create({
+                    ...stopDto,
+                    tripId: savedTrip.id,
+                    organizationId,
+                    stopOrder: stopDto.stopOrder || index + 1,
+                })
+            );
+            await this.tripStopRepository.save(stops);
+
+            // Create trip members
+            const members = createTripDto.members.map(memberDto =>
+                this.tripMemberRepository.create({
+                    ...memberDto,
+                    tripId: savedTrip.id,
+                    organizationId,
+                    memberStatus: MemberStatus.SCHEDULED,
+                })
+            );
+            await this.tripMemberRepository.save(members);
+
+            return this.getTripById(savedTrip.id, organizationId);
+        } catch (error) {
+            console.error('[CREATE TRIP ERROR]', error);
+            throw new BadRequestException(`Failed to create trip: ${error.message}`);
         }
-
-        const trip = this.tripRepository.create({
-            organizationId,
-            tripDate: createTripDto.tripDate,
-            assignedDriverId: createTripDto.assignedDriverId,
-            assignedVehicleId: assignedVehicleId,
-            tripType: createTripDto.tripType || TripType.DROP_OFF,
-            isCarpool: createTripDto.members.length > 1,
-            status: TripStatus.SCHEDULED,
-            createdById: userId,
-        });
-
-        const savedTrip = await this.tripRepository.save(trip);
-
-        // Create trip stops
-        const stops = createTripDto.stops.map((stopDto, index) =>
-            this.tripStopRepository.create({
-                ...stopDto,
-                tripId: savedTrip.id,
-                organizationId,
-                stopOrder: stopDto.stopOrder || index + 1,
-            })
-        );
-        await this.tripStopRepository.save(stops);
-
-        // Create trip members
-        const members = createTripDto.members.map(memberDto =>
-            this.tripMemberRepository.create({
-                ...memberDto,
-                tripId: savedTrip.id,
-                organizationId,
-                memberStatus: MemberStatus.SCHEDULED,
-            })
-        );
-        await this.tripMemberRepository.save(members);
-
-        return this.getTripById(savedTrip.id, organizationId);
     }
 
     async findOne(id: string): Promise<Trip> {
@@ -284,6 +289,7 @@ export class TripService {
 
     private validateStatusTransition(currentStatus: TripStatus, newStatus: TripStatus): void {
         const validTransitions = {
+            [TripStatus.PENDING_APPROVAL]: [TripStatus.SCHEDULED, TripStatus.CANCELLED],
             [TripStatus.SCHEDULED]: [TripStatus.IN_PROGRESS, TripStatus.CANCELLED],
             [TripStatus.IN_PROGRESS]: [TripStatus.WAITING_FOR_CLIENTS, TripStatus.COMPLETED, TripStatus.CANCELLED],
             [TripStatus.WAITING_FOR_CLIENTS]: [TripStatus.IN_PROGRESS, TripStatus.COMPLETED],

@@ -1,144 +1,122 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { Box, Button, Typography } from '@mui/material';
-import { Delete, Check } from '@mui/icons-material';
+import { useRef, useState, useEffect } from 'react';
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle } from '@mui/material';
 
 interface SignaturePadProps {
-    onSave: (base64: string) => void;
-    onCancel: () => void;
+    open: boolean;
+    onClose: () => void;
+    onSave: (signatureBase64: string) => void;
+    title?: string;
 }
 
-export default function SignaturePad({ onSave, onCancel }: SignaturePadProps) {
+export default function SignaturePad({ open, onClose, onSave, title = 'Sign Below' }: SignaturePadProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
+    const [hasSignature, setHasSignature] = useState(false);
 
     useEffect(() => {
+        if (open && canvasRef.current) {
+            const canvas = canvasRef.current;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#000';
+                ctx.lineCap = 'round';
+            }
+            setHasSignature(false);
+        }
+    }, [open]);
+
+    const startDrawing = (e: any) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.lineCap = 'round';
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX ?? e.touches?.[0]?.clientX) - rect.left;
+        const y = (e.clientY ?? e.touches?.[0]?.clientY) - rect.top;
 
-        // Handle window resize or initial size
-        const parent = canvas.parentElement;
-        if (parent) {
-            canvas.width = parent.clientWidth;
-            canvas.height = 200;
-        }
-    }, []);
-
-    const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
+        ctx.beginPath();
+        ctx.moveTo(x, y);
         setIsDrawing(true);
-        draw(e);
+    };
+
+    const draw = (e: any) => {
+        if (!isDrawing) return;
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX ?? e.touches?.[0]?.clientX) - rect.left;
+        const y = (e.clientY ?? e.touches?.[0]?.clientY) - rect.top;
+
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        setHasSignature(true);
     };
 
     const stopDrawing = () => {
         setIsDrawing(false);
+    };
+
+    const handleClear = () => {
         const canvas = canvasRef.current;
         if (canvas) {
             const ctx = canvas.getContext('2d');
-            ctx?.beginPath();
-        }
-    };
-
-    const draw = (e: React.MouseEvent | React.TouchEvent) => {
-        if (!isDrawing) return;
-        const canvas = canvasRef.current;
-        const ctx = canvas?.getContext('2d');
-        if (!canvas || !ctx) return;
-
-        const rect = canvas.getBoundingClientRect();
-        let x, y;
-
-        if ('touches' in e) {
-            x = e.touches[0].clientX - rect.left;
-            y = e.touches[0].clientY - rect.top;
-        } else {
-            x = e.clientX - rect.left;
-            y = e.clientY - rect.top;
-        }
-
-        ctx.lineTo(x, y);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-    };
-
-    const clear = () => {
-        const canvas = canvasRef.current;
-        const ctx = canvas?.getContext('2d');
-        if (canvas && ctx) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (ctx) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+            setHasSignature(false);
         }
     };
 
     const handleSave = () => {
-        const canvas = canvasRef.current;
-        if (canvas) {
-            // Check if canvas is blank (simplified)
-            const blank = document.createElement('canvas');
-            blank.width = canvas.width;
-            blank.height = canvas.height;
-            if (canvas.toDataURL() === blank.toDataURL()) {
-                alert('Please provide a signature.');
-                return;
-            }
-            onSave(canvas.toDataURL());
+        if (canvasRef.current) {
+            onSave(canvasRef.current.toDataURL());
+            onClose();
         }
     };
 
     return (
-        <Box sx={{ width: '100%' }}>
-            <Typography variant="caption" color="textSecondary" sx={{ mb: 1, display: 'block' }}>
-                Sign here (Touch/Mouse)
-            </Typography>
-            <Box
-                sx={{
-                    border: '2px dashed #0096D6',
-                    borderRadius: 2,
-                    bgcolor: '#fff',
-                    touchAction: 'none',
-                    mb: 2
-                }}
-            >
-                <canvas
-                    ref={canvasRef}
-                    onMouseDown={startDrawing}
-                    onMouseMove={draw}
-                    onMouseUp={stopDrawing}
-                    onMouseOut={stopDrawing}
-                    onTouchStart={startDrawing}
-                    onTouchMove={draw}
-                    onTouchEnd={stopDrawing}
-                    style={{ display: 'block', cursor: 'crosshair' }}
-                />
-            </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
-                <Button
-                    startIcon={<Delete />}
-                    variant="outlined"
-                    color="inherit"
-                    onClick={clear}
-                    size="small"
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogContent>
+                <Box
+                    sx={{
+                        border: '1px solid #ccc',
+                        borderRadius: 1,
+                        bgcolor: '#f5f5f5',
+                        touchAction: 'none', // Prevent scrolling while signing
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                    }}
                 >
-                    Clear
-                </Button>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button onClick={onCancel} color="inherit" size="small">Cancel</Button>
-                    <Button
-                        startIcon={<Check />}
-                        variant="contained"
-                        color="primary"
-                        onClick={handleSave}
-                        size="small"
-                    >
-                        Save Signature
-                    </Button>
+                    <canvas
+                        ref={canvasRef}
+                        width={500}
+                        height={200}
+                        onMouseDown={startDrawing}
+                        onMouseMove={draw}
+                        onMouseUp={stopDrawing}
+                        onMouseLeave={stopDrawing}
+                        onTouchStart={startDrawing}
+                        onTouchMove={draw}
+                        onTouchEnd={stopDrawing}
+                        style={{ maxWidth: '100%', height: 'auto', cursor: 'crosshair' }}
+                    />
                 </Box>
-            </Box>
-        </Box>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={handleClear}>Clear</Button>
+                <Button onClick={onClose}>Cancel</Button>
+                <Button onClick={handleSave} variant="contained" disabled={!hasSignature}>
+                    Save Signature
+                </Button>
+            </DialogActions>
+        </Dialog>
     );
 }

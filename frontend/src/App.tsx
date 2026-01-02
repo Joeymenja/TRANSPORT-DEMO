@@ -1,3 +1,4 @@
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
@@ -6,8 +7,14 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ArchivePage from './pages/ArchivePage';
 import MembersPage from './pages/MembersPage';
-import DriverPage from './pages/DriverPage';
+import { DriversPage } from './pages/DriversPage';
+import DriverLayout from './components/DriverLayout';
+import DriverTripsPage from './pages/driver/DriverTripsPage';
+import TripExecutionPage from './pages/driver/TripExecutionPage';
+import ClientTripPage from './pages/ClientTripPage';
 import AppLayout from './components/AppLayout';
+
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const queryClient = new QueryClient();
 
@@ -78,16 +85,37 @@ function App() {
                 <BrowserRouter>
                     <Routes>
                         <Route path="/login" element={<LoginPage />} />
+                        <Route path="/client/:memberId" element={<ClientTripPage />} />
+                        <Route
+                            path="/driver/*"
+                            element={
+                                <PrivateRoute>
+                                    <DriverLayout>
+                                        <Routes>
+                                            <Route path="/" element={<Navigate to="trips" />} />
+                                            <Route path="trips" element={<DriverTripsPage />} />
+                                            <Route path="trips/:tripId" element={<TripExecutionPage />} />
+                                        </Routes>
+                                    </DriverLayout>
+                                </PrivateRoute>
+                            }
+                        />
+
+                        {/* Admin/Dispatcher Layout */}
                         <Route
                             path="/*"
                             element={
                                 <PrivateRoute>
                                     <AppLayout>
                                         <Routes>
-                                            <Route path="/dashboard" element={<DashboardPage />} />
+                                            <Route path="/dashboard" element={
+                                                <ErrorBoundary>
+                                                    <DashboardPage />
+                                                </ErrorBoundary>
+                                            } />
                                             <Route path="/archives" element={<ArchivePage />} />
                                             <Route path="/members" element={<MembersPage />} />
-                                            <Route path="/driver" element={<DriverPage />} />
+                                            <Route path="/drivers" element={<DriversPage />} />
                                             <Route path="/" element={<Navigate to="/dashboard" />} />
                                         </Routes>
                                     </AppLayout>

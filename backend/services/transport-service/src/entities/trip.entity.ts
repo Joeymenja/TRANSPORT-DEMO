@@ -10,6 +10,7 @@ export enum TripType {
 }
 
 export enum TripStatus {
+    PENDING_APPROVAL = 'PENDING_APPROVAL',
     SCHEDULED = 'SCHEDULED',
     IN_PROGRESS = 'IN_PROGRESS',
     WAITING_FOR_CLIENTS = 'WAITING_FOR_CLIENTS',

@@ -1,6 +1,6 @@
 import { Box, AppBar, Toolbar, Typography, IconButton, Menu, MenuItem, Avatar, Button } from '@mui/material';
 import { Logout } from '@mui/icons-material';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useAuthStore } from '../store/auth';
 import { useNavigate } from 'react-router-dom';
 
@@ -60,6 +60,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
                         <Button color="inherit" onClick={() => navigate('/members')} sx={{ color: '#212121' }}>
                             Members
                         </Button>
+                        {user?.role !== 'DRIVER' && (
+                            <Button color="inherit" onClick={() => navigate('/drivers')} sx={{ color: '#212121' }}>
+                                Drivers
+                            </Button>
+                        )}
                         <Button color="inherit" onClick={() => navigate('/driver')} sx={{ color: '#212121' }}>
                             Driver
                         </Button>
@@ -71,13 +76,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
                                 {user?.firstName} {user?.lastName}
                             </Typography>
                             <Typography variant="caption" sx={{ color: '#757575' }}>
-                                {user?.role.replace('_', ' ')}
+                                {user?.role?.replace('_', ' ') || ''}
                             </Typography>
                         </Box>
 
                         <IconButton onClick={handleMenu} size="large">
                             <Avatar sx={{ bgcolor: '#0096D6', width: 36, height: 36 }}>
-                                {user?.firstName[0]}
+                                {user?.firstName?.[0] || '?'}
                             </Avatar>
                         </IconButton>
 

@@ -23,7 +23,7 @@ export interface Trip {
     };
     tripType: 'DROP_OFF' | 'PICK_UP' | 'ROUND_TRIP';
     isCarpool: boolean;
-    status: 'SCHEDULED' | 'IN_PROGRESS' | 'WAITING_FOR_CLIENTS' | 'COMPLETED' | 'FINALIZED' | 'CANCELLED';
+    status: 'PENDING_APPROVAL' | 'SCHEDULED' | 'IN_PROGRESS' | 'WAITING_FOR_CLIENTS' | 'COMPLETED' | 'FINALIZED' | 'CANCELLED';
     memberCount: number;
     stops: any[];
     members: any[];
@@ -120,4 +120,19 @@ export const tripApi = {
         const { data } = await api.post(`/trips/${tripId}/stops/${stopId}/complete`, { odometerReading });
         return data;
     },
+
+    markMemberReady: async (tripId: string, memberId: string): Promise<any> => {
+        const { data } = await api.post(`/trips/${tripId}/members/${memberId}/ready`);
+        return data;
+    },
+
+    updateTrip: async (id: string, updates: Partial<Trip>): Promise<Trip> => {
+        const { data } = await api.put(`/trips/${id}`, updates);
+        return data;
+    },
+
+    getDriverTrips: async (driverId: string): Promise<Trip[]> => {
+        const { data } = await api.get(`/trips/driver/${driverId}`);
+        return data;
+    }
 };

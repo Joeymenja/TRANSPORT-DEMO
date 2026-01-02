@@ -1,12 +1,46 @@
-import { Box, Container, Typography, Card, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton } from '@mui/material';
-import { Add, Edit, Delete, Groups } from '@mui/icons-material';
-import { useQuery } from '@tanstack/react-query';
-import { memberApi, MobilityRequirement } from '../api/members';
+import { useState } from 'react';
+import { Box, Container, Typography, Card, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Grid } from '@mui/material';
+import { Add, Edit, Delete, Groups, AutoFixHigh } from '@mui/icons-material';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'; // Import useMutation and useQueryClient
+import { memberApi, MobilityRequirement, CreateMemberData } from '../api/members';
 
 export default function MembersPage() {
+    const queryClient = useQueryClient();
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [formData, setFormData] = useState<CreateMemberData>({
+        firstName: '',
+        lastName: '',
+        dateOfBirth: new Date().toISOString().split('T')[0],
+        memberId: '',
+        mobilityRequirement: MobilityRequirement.AMBULATORY,
+        insuranceProvider: '',
+        insuranceId: '',
+        phone: '',
+        address: ''
+    });
+
     const { data: members, isLoading } = useQuery({
         queryKey: ['members'],
         queryFn: () => memberApi.getMembers(),
+    });
+
+    const createMutation = useMutation({
+        mutationFn: (newMember: CreateMemberData) => memberApi.createMember(newMember),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['members'] });
+            setIsDialogOpen(false);
+            setFormData({
+                firstName: '',
+                lastName: '',
+                dateOfBirth: new Date().toISOString().split('T')[0],
+                memberId: '',
+                mobilityRequirement: MobilityRequirement.AMBULATORY,
+                insuranceProvider: '',
+                insuranceId: '',
+                phone: '',
+                address: ''
+            });
+        },
     });
 
     const getMobilityColor = (req: MobilityRequirement) => {
@@ -19,6 +53,25 @@ export default function MembersPage() {
         }
     };
 
+    const handleFillPseudoData = () => {
+        const randomId = Math.floor(Math.random() * 10000);
+        setFormData({
+            firstName: ['John', 'Jane', 'Michael', 'Sarah'][randomId % 4],
+            lastName: ['Smith', 'Johnson', 'Williams', 'Brown'][randomId % 4],
+            dateOfBirth: new Date(1950 + (randomId % 50), 0, 1).toISOString().split('T')[0],
+            memberId: `AHCCCS-${randomId}`,
+            mobilityRequirement: [MobilityRequirement.AMBULATORY, MobilityRequirement.WHEELCHAIR][randomId % 2],
+            insuranceProvider: 'Health Choice',
+            insuranceId: `INS-${randomId * 2}`,
+            phone: '555-0123',
+            address: '123 Fake St, Phoenix, AZ'
+        });
+    };
+
+    const handleSubmit = () => {
+        createMutation.mutate(formData);
+    };
+
     return (
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
@@ -29,13 +82,14 @@ export default function MembersPage() {
                 <Button
                     variant="contained"
                     startIcon={<Add />}
-                    onClick={() => { /* TODO: Open add dialog */ }}
+                    onClick={() => setIsDialogOpen(true)}
+                    sx={{ bgcolor: '#0096D6' }}
                 >
                     Add Member
                 </Button>
             </Box>
 
-            <Card>
+            <Card sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
                 <TableContainer component={Paper} elevation={0}>
                     <Table>
                         <TableHead sx={{ bgcolor: '#f5f5f5' }}>
@@ -51,11 +105,11 @@ export default function MembersPage() {
                         <TableBody>
                             {isLoading ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} align="center">Loading members...</TableCell>
+                                    <TableCell colSpan={6} align="center" sx={{ py: 4 }}>Loading members...</TableCell>
                                 </TableRow>
                             ) : members?.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} align="center">No members found.</TableCell>
+                                    <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>No members found.</TableCell>
                                 </TableRow>
                             ) : (
                                 members?.map((member) => (
@@ -96,6 +150,113 @@ export default function MembersPage() {
                     </Table>
                 </TableContainer>
             </Card>
+
+            <Dialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)} maxWidth="md" fullWidth>
+                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    Add New Member
+                    <Button
+                        startIcon={<AutoFixHigh />}
+                        size="small"
+                        color="secondary"
+                        onClick={handleFillPseudoData}
+                    >
+                        Fill Pseudo Data
+                    </Button>
+                </DialogTitle>
+                <DialogContent dividers>
+                    <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                label="First Name"
+                                fullWidth
+                                value={formData.firstName}
+                                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                label="Last Name"
+                                fullWidth
+                                value={formData.lastName}
+                                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                label="Date of Birth"
+                                type="date"
+                                fullWidth
+                                InputLabelProps={{ shrink: true }}
+                                value={formData.dateOfBirth}
+                                onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                label="Member ID (AHCCCS)"
+                                fullWidth
+                                value={formData.memberId}
+                                onChange={(e) => setFormData({ ...formData, memberId: e.target.value })}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                select
+                                label="Mobility Requirement"
+                                fullWidth
+                                value={formData.mobilityRequirement}
+                                onChange={(e) => setFormData({ ...formData, mobilityRequirement: e.target.value as MobilityRequirement })}
+                            >
+                                {Object.values(MobilityRequirement).map((option) => (
+                                    <MenuItem key={option} value={option}>
+                                        {option}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                label="Phone"
+                                fullWidth
+                                value={formData.phone}
+                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                label="Insurance Provider"
+                                fullWidth
+                                value={formData.insuranceProvider}
+                                onChange={(e) => setFormData({ ...formData, insuranceProvider: e.target.value })}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                label="Insurance ID"
+                                fullWidth
+                                value={formData.insuranceId}
+                                onChange={(e) => setFormData({ ...formData, insuranceId: e.target.value })}
+                            />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <TextField
+                                label="Address"
+                                fullWidth
+                                multiline
+                                rows={2}
+                                value={formData.address}
+                                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                            />
+                        </Grid>
+                    </Grid>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSubmit} variant="contained" disabled={createMutation.isPending}>
+                        {createMutation.isPending ? 'Saving...' : 'Save Member'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Container>
     );
 }
