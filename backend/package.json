@@ -1,0 +1,19 @@
+{
+  "name": "gvbh-transport-backend",
+  "version": "1.0.0",
+  "description": "GVBH Transportation Platform - Backend Services",
+  "private": true,
+  "workspaces": [
+    "services/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint"
+  },
+  "devDependencies": {
+    "turbo": "^1.11.2",
+    "typescript": "^5.3.3"
+  }
+}
