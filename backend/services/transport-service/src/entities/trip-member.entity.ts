@@ -55,6 +55,18 @@ export class TripMember {
     @Column({ name: 'member_signature_base64', type: 'text', nullable: true })
     memberSignatureBase64: string;
 
+    @Column({ name: 'is_proxy_signature', default: false })
+    isProxySignature: boolean;
+
+    @Column({ name: 'proxy_signer_name', nullable: true })
+    proxySignerName: string;
+
+    @Column({ name: 'proxy_relationship', nullable: true })
+    proxyRelationship: string;
+
+    @Column({ name: 'proxy_reason', nullable: true })
+    proxyReason: string;
+
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
 }

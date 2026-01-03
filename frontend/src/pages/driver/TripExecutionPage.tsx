@@ -35,7 +35,8 @@ export default function TripExecutionPage() {
     });
 
     const signatureMutation = useMutation({
-        mutationFn: ({ memberId, data }: { memberId: string, data: string }) => tripApi.saveSignature(tripId!, memberId, data),
+        mutationFn: ({ memberId, data, proxyData }: { memberId: string, data: string, proxyData?: any }) =>
+            tripApi.saveSignature(tripId!, memberId, data, proxyData),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trip', tripId] })
     });
 
@@ -52,9 +53,18 @@ export default function TripExecutionPage() {
     // If all completed, activeStep is -1 (from findIndex).
     const currentStepIndex = activeStep === -1 ? trip.stops.length : activeStep;
 
-    const handleSignatureSave = (base64: string) => {
+    const handleSignatureSave = (data: { signatureBase64: string; isProxy?: boolean; proxySignerName?: string; proxyRelationship?: string; proxyReason?: string }) => {
         if (signingMemberId) {
-            signatureMutation.mutate({ memberId: signingMemberId, data: base64 });
+            signatureMutation.mutate({
+                memberId: signingMemberId,
+                data: data.signatureBase64,
+                proxyData: data.isProxy ? {
+                    isProxy: data.isProxy,
+                    proxySignerName: data.proxySignerName,
+                    proxyRelationship: data.proxyRelationship,
+                    proxyReason: data.proxyReason
+                } : undefined
+            });
         }
     };
 

@@ -25,9 +25,10 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
     };
 
     const getNavValue = () => {
-        if (location.pathname === '/driver/trips') return 'trips';
-        if (location.pathname === '/driver/compliance') return 'compliance';
-        return 'home';
+        if (location.pathname.startsWith('/driver/trips')) return 'trips';
+        if (location.pathname.startsWith('/driver/compliance')) return 'compliance';
+        if (location.pathname === '/driver' || location.pathname === '/driver/') return 'home';
+        return 'trips'; // Default to trips for nested routes
     };
 
     return (
@@ -35,6 +36,16 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
             {/* Simple Mobile Header */}
             <AppBar position="static" elevation={0} sx={{ bgcolor: '#0096D6' }}>
                 <Toolbar>
+                    {location.pathname.includes('/trips/') && (
+                        <IconButton
+                            edge="start"
+                            color="inherit"
+                            onClick={() => navigate('/driver/trips')}
+                            sx={{ mr: 2 }}
+                        >
+                            <Home />
+                        </IconButton>
+                    )}
                     <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 600 }}>
                         {location.pathname.includes('trips') ? 'My Trips' :
                             location.pathname.includes('compliance') ? 'Compliance' : 'Dashboard'}

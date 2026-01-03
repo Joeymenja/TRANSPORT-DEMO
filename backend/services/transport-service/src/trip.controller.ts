@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Body, Param, Query, Request, UseGuards, Res } from '@nestjs/common';
 import { TripService } from './trip.service';
 import { PdfService } from './pdf.service';
-import { CreateTripDto, UpdateTripDto, TripResponseDto, UpdateStopDto, MemberSignatureDto } from './dto/trip.dto';
+import { CreateTripDto, UpdateTripDto, TripResponseDto, UpdateStopDto, MemberSignatureDto, CancelTripDto, MarkNoShowDto } from './dto/trip.dto';
 import { Response } from 'express';
 
 // Simple auth guard that extracts user from header (will be replaced with real JWT guard)
@@ -132,7 +132,7 @@ export class TripController {
         @Request() req,
     ) {
         const organizationId = req.headers['x-organization-id'];
-        await this.tripService.saveMemberSignature(tripId, memberId, organizationId, signatureDto.signatureBase64);
+        await this.tripService.saveMemberSignature(tripId, memberId, organizationId, signatureDto);
         return { message: 'Signature saved successfully' };
     }
 
@@ -145,5 +145,27 @@ export class TripController {
     ) {
         const organizationId = req.headers['x-organization-id'];
         return this.tripService.completeStop(tripId, stopId, organizationId, updateStopDto.odometerReading);
+    }
+
+    @Post(':id/cancel')
+    async cancelTrip(
+        @Param('id') id: string,
+        @Body() cancelDto: CancelTripDto,
+        @Request() req
+    ): Promise<TripResponseDto> {
+        const organizationId = req.headers['x-organization-id'];
+        const userId = req.headers['x-user-id'];
+        return this.tripService.cancelTrip(id, organizationId, userId, cancelDto);
+    }
+
+    @Post(':id/no-show')
+    async markNoShow(
+        @Param('id') id: string,
+        @Body() noShowDto: MarkNoShowDto,
+        @Request() req
+    ): Promise<TripResponseDto> {
+        const organizationId = req.headers['x-organization-id'];
+        const userId = req.headers['x-user-id'];
+        return this.tripService.markNoShow(id, organizationId, userId, noShowDto);
     }
 }

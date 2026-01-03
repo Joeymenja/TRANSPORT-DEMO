@@ -17,6 +17,14 @@ export enum TripStatus {
     COMPLETED = 'COMPLETED',
     FINALIZED = 'FINALIZED',
     CANCELLED = 'CANCELLED',
+    NO_SHOW = 'NO_SHOW',
+}
+
+export enum MobilityRequirement {
+    AMBULATORY = 'AMBULATORY',
+    WHEELCHAIR = 'WHEELCHAIR',
+    STRETCHER = 'STRETCHER',
+    CAR_SEAT = 'CAR_SEAT',
 }
 
 @Entity('trips')
@@ -56,6 +64,26 @@ export class Trip {
         default: TripStatus.SCHEDULED,
     })
     status: TripStatus;
+
+    @Column({
+        name: 'mobility_requirement',
+        type: 'enum',
+        enum: MobilityRequirement,
+        default: MobilityRequirement.AMBULATORY,
+    })
+    mobilityRequirement: MobilityRequirement;
+
+    @Column({ name: 'cancellation_reason', type: 'varchar', nullable: true })
+    cancellationReason: string;
+
+    @Column({ name: 'cancelled_by', type: 'uuid', nullable: true })
+    cancelledBy: string;
+
+    @Column({ name: 'cancelled_at', type: 'timestamp', nullable: true })
+    cancelledAt: Date;
+
+    @Column({ name: 'no_show_notes', type: 'text', nullable: true })
+    noShowNotes: string;
 
     @Column({ name: 'started_at', nullable: true })
     startedAt: Date;

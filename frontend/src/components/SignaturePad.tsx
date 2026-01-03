@@ -1,10 +1,10 @@
 import { useRef, useState, useEffect } from 'react';
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle } from '@mui/material';
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Checkbox, TextField, Grid, Typography } from '@mui/material';
 
 interface SignaturePadProps {
     open: boolean;
     onClose: () => void;
-    onSave: (signatureBase64: string) => void;
+    onSave: (data: { signatureBase64: string; isProxy?: boolean; proxySignerName?: string; proxyRelationship?: string; proxyReason?: string }) => void;
     title?: string;
 }
 
@@ -12,6 +12,12 @@ export default function SignaturePad({ open, onClose, onSave, title = 'Sign Belo
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [hasSignature, setHasSignature] = useState(false);
+
+    // Proxy Signature State
+    const [isProxy, setIsProxy] = useState(false);
+    const [proxyName, setProxyName] = useState('');
+    const [proxyRelationship, setProxyRelationship] = useState('');
+    const [proxyReason, setProxyReason] = useState('');
 
     useEffect(() => {
         if (open && canvasRef.current) {
@@ -24,6 +30,11 @@ export default function SignaturePad({ open, onClose, onSave, title = 'Sign Belo
                 ctx.lineCap = 'round';
             }
             setHasSignature(false);
+            // Reset proxy state when opening
+            setIsProxy(false);
+            setProxyName('');
+            setProxyRelationship('');
+            setProxyReason('');
         }
     }, [open]);
 
@@ -75,24 +86,79 @@ export default function SignaturePad({ open, onClose, onSave, title = 'Sign Belo
 
     const handleSave = () => {
         if (canvasRef.current) {
-            onSave(canvasRef.current.toDataURL());
+            onSave({
+                signatureBase64: canvasRef.current.toDataURL(),
+                isProxy,
+                proxySignerName: isProxy ? proxyName : undefined,
+                proxyRelationship: isProxy ? proxyRelationship : undefined,
+                proxyReason: isProxy ? proxyReason : undefined
+            });
             onClose();
         }
     };
+
+    const isSaveDisabled = !hasSignature || (isProxy && (!proxyName || !proxyRelationship || !proxyReason));
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
             <DialogTitle>{title}</DialogTitle>
             <DialogContent>
+                <Box sx={{ mb: 2 }}>
+                    <FormControlLabel
+                        control={<Checkbox checked={isProxy} onChange={(e) => setIsProxy(e.target.checked)} />}
+                        label="Client unable to sign (Proxy Signature)"
+                    />
+                </Box>
+
+                {isProxy && (
+                    <Grid container spacing={2} sx={{ mb: 2 }}>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                fullWidth
+                                label="Signer Name"
+                                size="small"
+                                value={proxyName}
+                                onChange={(e) => setProxyName(e.target.value)}
+                                required
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                fullWidth
+                                label="Relationship"
+                                size="small"
+                                value={proxyRelationship}
+                                onChange={(e) => setProxyRelationship(e.target.value)}
+                                placeholder="e.g. Caregiver, Staff"
+                                required
+                            />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <TextField
+                                fullWidth
+                                label="Reason Client Unable to Sign"
+                                size="small"
+                                value={proxyReason}
+                                onChange={(e) => setProxyReason(e.target.value)}
+                                placeholder="e.g. Physical condition, Not present"
+                                multiline
+                                rows={2}
+                                required
+                            />
+                        </Grid>
+                    </Grid>
+                )}
+
                 <Box
                     sx={{
                         border: '1px solid #ccc',
                         borderRadius: 1,
                         bgcolor: '#f5f5f5',
-                        touchAction: 'none', // Prevent scrolling while signing
+                        touchAction: 'none',
                         display: 'flex',
                         justifyContent: 'center',
-                        alignItems: 'center'
+                        alignItems: 'center',
+                        mb: 1
                     }}
                 >
                     <canvas
@@ -109,11 +175,14 @@ export default function SignaturePad({ open, onClose, onSave, title = 'Sign Belo
                         style={{ maxWidth: '100%', height: 'auto', cursor: 'crosshair' }}
                     />
                 </Box>
+                <Typography variant="caption" color="text.secondary">
+                    {isProxy ? "The responsible person must sign above on behalf of the client." : "The passenger must sign above."}
+                </Typography>
             </DialogContent>
             <DialogActions>
                 <Button onClick={handleClear}>Clear</Button>
                 <Button onClick={onClose}>Cancel</Button>
-                <Button onClick={handleSave} variant="contained" disabled={!hasSignature}>
+                <Button onClick={handleSave} variant="contained" disabled={isSaveDisabled}>
                     Save Signature
                 </Button>
             </DialogActions>

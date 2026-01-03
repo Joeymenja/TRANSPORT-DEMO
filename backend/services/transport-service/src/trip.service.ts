@@ -1,11 +1,11 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
-import { Trip, TripStatus, TripType } from './entities/trip.entity';
+import { Trip, TripStatus, TripType, MobilityRequirement } from './entities/trip.entity';
 import { TripMember, MemberStatus } from './entities/trip-member.entity';
 import { TripStop } from './entities/trip-stop.entity';
 import { User } from './entities/user.entity';
-import { CreateTripDto, UpdateTripDto, TripResponseDto } from './dto/trip.dto';
+import { CreateTripDto, UpdateTripDto, TripResponseDto, MemberSignatureDto, CancelTripDto, MarkNoShowDto } from './dto/trip.dto';
 
 @Injectable()
 export class TripService {
@@ -27,8 +27,14 @@ export class TripService {
             let assignedVehicleId = createTripDto.assignedVehicleId;
             if (createTripDto.assignedDriverId && !assignedVehicleId) {
                 const driver = await this.userRepository.findOne({ where: { id: createTripDto.assignedDriverId } });
-                if (driver && driver.defaultVehicleId) {
-                    assignedVehicleId = driver.defaultVehicleId;
+                if (driver) {
+                    // Compliance Guard
+                    if (!driver.isActive) {
+                        throw new BadRequestException('Cannot assign a non-active or non-compliant driver');
+                    }
+                    if (driver.defaultVehicleId) {
+                        assignedVehicleId = driver.defaultVehicleId;
+                    }
                 }
             }
 
@@ -40,6 +46,7 @@ export class TripService {
                 tripType: createTripDto.tripType || TripType.DROP_OFF,
                 isCarpool: createTripDto.members.length > 1,
                 status: TripStatus.PENDING_APPROVAL,
+                mobilityRequirement: createTripDto.mobilityRequirement || MobilityRequirement.AMBULATORY,
                 createdById: userId,
             });
 
@@ -107,6 +114,7 @@ export class TripService {
             memberCount: trip.tripMembers?.length || 0,
             stops: trip.tripStops || [],
             members: trip.tripMembers || [],
+            mobilityRequirement: trip.mobilityRequirement,
             createdAt: trip.createdAt,
         };
     }
@@ -150,6 +158,7 @@ export class TripService {
             memberCount: trip.tripMembers?.length || 0,
             stops: trip.tripStops || [],
             members: trip.tripMembers || [],
+            mobilityRequirement: trip.mobilityRequirement,
             createdAt: trip.createdAt,
         }));
     }
@@ -180,6 +189,7 @@ export class TripService {
             memberCount: trip.tripMembers?.length || 0,
             stops: trip.tripStops || [],
             members: trip.tripMembers || [],
+            mobilityRequirement: trip.mobilityRequirement,
             createdAt: trip.createdAt,
         }));
     }
@@ -191,6 +201,23 @@ export class TripService {
 
         if (!trip) {
             throw new NotFoundException('Trip not found');
+        }
+
+        // Trip Locking: Prevent any updates to COMPLETED or FINALIZED trips
+        // unless it's a status transition to FINALIZED (allowed for COMPLETED)
+        if (trip.status === TripStatus.COMPLETED || trip.status === TripStatus.FINALIZED) {
+            const isTransitionToFinalized = trip.status === TripStatus.COMPLETED && updateTripDto.status === TripStatus.FINALIZED;
+            if (!isTransitionToFinalized) {
+                throw new ForbiddenException('Trip is locked and cannot be modified');
+            }
+        }
+
+        // Compliance Guard: Verify driver is active if being assigned
+        if (updateTripDto.assignedDriverId) {
+            const driver = await this.userRepository.findOne({ where: { id: updateTripDto.assignedDriverId } });
+            if (!driver || !driver.isActive) {
+                throw new BadRequestException('Driver must be active and approved to be assigned to a trip');
+            }
         }
 
         // Validate status transitions
@@ -258,7 +285,7 @@ export class TripService {
         return this.tripStopRepository.save(stop);
     }
 
-    async saveMemberSignature(tripId: string, memberId: string, organizationId: string, signatureBase64: string): Promise<void> {
+    async saveMemberSignature(tripId: string, memberId: string, organizationId: string, signatureDto: MemberSignatureDto): Promise<void> {
         const tripMember = await this.tripMemberRepository.findOne({
             where: { tripId, memberId, organizationId },
         });
@@ -267,7 +294,12 @@ export class TripService {
             throw new NotFoundException('Trip member not found');
         }
 
-        tripMember.memberSignatureBase64 = signatureBase64;
+        tripMember.memberSignatureBase64 = signatureDto.signatureBase64;
+        tripMember.isProxySignature = signatureDto.isProxySignature || false;
+        tripMember.proxySignerName = signatureDto.proxySignerName;
+        tripMember.proxyRelationship = signatureDto.proxyRelationship;
+        tripMember.proxyReason = signatureDto.proxyReason;
+
         await this.tripMemberRepository.save(tripMember);
     }
 
@@ -301,5 +333,85 @@ export class TripService {
         if (!validTransitions[currentStatus]?.includes(newStatus)) {
             throw new BadRequestException(`Cannot transition from ${currentStatus} to ${newStatus}`);
         }
+    }
+
+    async cancelTrip(tripId: string, organizationId: string, userId: string, cancelDto: CancelTripDto): Promise<TripResponseDto> {
+        const trip = await this.tripRepository.findOne({
+            where: { id: tripId, organizationId },
+            relations: ['tripMembers', 'tripStops'],
+        });
+
+        if (!trip) {
+            throw new NotFoundException('Trip not found');
+        }
+
+        // Prevent cancellation of completed or finalized trips
+        if (trip.status === TripStatus.COMPLETED || trip.status === TripStatus.FINALIZED) {
+            throw new BadRequestException('Cannot cancel a completed or finalized trip');
+        }
+
+        trip.status = TripStatus.CANCELLED;
+        trip.cancellationReason = cancelDto.reason;
+        trip.cancelledBy = userId;
+        trip.cancelledAt = new Date();
+        trip.noShowNotes = cancelDto.notes;
+
+        const savedTrip = await this.tripRepository.save(trip);
+
+        return {
+            id: savedTrip.id,
+            organizationId: savedTrip.organizationId,
+            tripDate: savedTrip.tripDate,
+            assignedDriverId: savedTrip.assignedDriverId,
+            assignedVehicleId: savedTrip.assignedVehicleId,
+            tripType: savedTrip.tripType,
+            isCarpool: savedTrip.isCarpool,
+            status: savedTrip.status,
+            memberCount: savedTrip.tripMembers?.length || 0,
+            stops: savedTrip.tripStops || [],
+            members: savedTrip.tripMembers || [],
+            mobilityRequirement: savedTrip.mobilityRequirement,
+            createdAt: savedTrip.createdAt,
+        };
+    }
+
+    async markNoShow(tripId: string, organizationId: string, userId: string, noShowDto: MarkNoShowDto): Promise<TripResponseDto> {
+        const trip = await this.tripRepository.findOne({
+            where: { id: tripId, organizationId },
+            relations: ['tripMembers', 'tripStops'],
+        });
+
+        if (!trip) {
+            throw new NotFoundException('Trip not found');
+        }
+
+        // Can only mark no-show for trips that are in progress or scheduled
+        if (trip.status !== TripStatus.IN_PROGRESS && trip.status !== TripStatus.SCHEDULED) {
+            throw new BadRequestException('Can only mark no-show for scheduled or in-progress trips');
+        }
+
+        trip.status = TripStatus.NO_SHOW;
+        trip.cancellationReason = 'NO_SHOW';
+        trip.cancelledBy = userId;
+        trip.cancelledAt = new Date();
+        trip.noShowNotes = `Attempted contact: ${noShowDto.attemptedContact ? 'Yes' : 'No'}. ${noShowDto.notes}`;
+
+        const savedTrip = await this.tripRepository.save(trip);
+
+        return {
+            id: savedTrip.id,
+            organizationId: savedTrip.organizationId,
+            tripDate: savedTrip.tripDate,
+            assignedDriverId: savedTrip.assignedDriverId,
+            assignedVehicleId: savedTrip.assignedVehicleId,
+            tripType: savedTrip.tripType,
+            isCarpool: savedTrip.isCarpool,
+            status: savedTrip.status,
+            memberCount: savedTrip.tripMembers?.length || 0,
+            stops: savedTrip.tripStops || [],
+            members: savedTrip.tripMembers || [],
+            mobilityRequirement: savedTrip.mobilityRequirement,
+            createdAt: savedTrip.createdAt,
+        };
     }
 }
