@@ -2,10 +2,13 @@ import { Injectable, NotFoundException, BadRequestException, ForbiddenException 
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { Trip, TripStatus, TripType, ReportStatus, MobilityRequirement } from './entities/trip.entity';
+import { TripReport, TripReportStatus } from './entities/trip-report.entity';
 import { TripMember, MemberStatus } from './entities/trip-member.entity';
-import { TripStop } from './entities/trip-stop.entity';
+import { TripStop, StopType } from './entities/trip-stop.entity';
 import { User } from './entities/user.entity';
 import { CreateTripDto, UpdateTripDto, TripResponseDto, MemberSignatureDto, CancelTripDto, MarkNoShowDto } from './dto/trip.dto';
+import { ActivityLogService } from './activity-log.service';
+import { ActivityType } from './entities/activity-log.entity';
 
 @Injectable()
 export class TripService {
@@ -16,8 +19,11 @@ export class TripService {
         private readonly tripMemberRepository: Repository<TripMember>,
         @InjectRepository(TripStop)
         private readonly tripStopRepository: Repository<TripStop>,
+        @InjectRepository(TripReport)
+        private readonly tripReportRepository: Repository<TripReport>,
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
+        private readonly activityLogService: ActivityLogService,
     ) { }
 
     async createTrip(createTripDto: CreateTripDto, organizationId: string, userId: string): Promise<TripResponseDto> {
@@ -43,7 +49,7 @@ export class TripService {
                 tripDate: createTripDto.tripDate,
                 assignedDriverId: createTripDto.assignedDriverId,
                 assignedVehicleId: assignedVehicleId,
-                tripType: createTripDto.tripType || TripType.DROP_OFF,
+                tripType: (createTripDto.tripType as TripType) || TripType.DROP_OFF,
                 isCarpool: createTripDto.isCarpool !== undefined ? createTripDto.isCarpool : (createTripDto.members.length > 1),
                 status: TripStatus.PENDING_APPROVAL,
                 reasonForVisit: createTripDto.reasonForVisit,
@@ -63,6 +69,7 @@ export class TripService {
                     tripId: savedTrip.id,
                     organizationId,
                     stopOrder: stopDto.stopOrder || index + 1,
+                    stopType: stopDto.stopType as StopType,
                 })
             );
             await this.tripStopRepository.save(stops);
@@ -77,6 +84,24 @@ export class TripService {
                 })
             );
             await this.tripMemberRepository.save(members);
+
+            // Create trip reports (one per member)
+            const reports = createTripDto.members.map(memberDto =>
+                this.tripReportRepository.create({
+                    tripId: savedTrip.id,
+                    organizationId,
+                    memberId: memberDto.memberId,
+                    driverId: savedTrip.assignedDriverId, // Initial assignment
+                    status: TripReportStatus.DRAFT,
+                })
+            );
+            await this.tripReportRepository.save(reports);
+
+            await this.activityLogService.log(
+                ActivityType.TRIP_CREATED,
+                `New trip #${savedTrip.id.slice(0, 8)} created`,
+                { tripId: savedTrip.id, createdBy: userId }
+            );
 
             return this.getTripById(savedTrip.id, organizationId);
         } catch (error) {
@@ -96,7 +121,7 @@ export class TripService {
     async findOne(id: string): Promise<Trip> {
         const trip = await this.tripRepository.findOne({
             where: { id },
-            relations: ['tripStops', 'tripMembers', 'tripMembers.member', 'assignedVehicle'],
+            relations: ['tripStops', 'tripMembers', 'tripMembers.member', 'assignedVehicle', 'tripReports'],
         });
         if (!trip) {
             throw new NotFoundException(`Trip with ID ${id} not found`);
@@ -107,7 +132,7 @@ export class TripService {
     async getTripById(tripId: string, organizationId: string): Promise<TripResponseDto> {
         const trip = await this.tripRepository.findOne({
             where: { id: tripId, organizationId },
-            relations: ['tripMembers', 'tripStops'],
+            relations: ['tripMembers', 'tripStops', 'tripReports'],
         });
 
         if (!trip) {
@@ -134,6 +159,7 @@ export class TripService {
             memberCount: trip.tripMembers?.length || 0,
             stops: trip.tripStops || [],
             members: trip.tripMembers || [],
+            reports: trip.tripReports || [],
             mobilityRequirement: trip.mobilityRequirement,
             createdAt: trip.createdAt,
         };
@@ -192,6 +218,7 @@ export class TripService {
             memberCount: trip.tripMembers?.length || 0,
             stops: trip.tripStops || [],
             members: trip.tripMembers || [],
+            reports: trip.tripReports || [],
             mobilityRequirement: trip.mobilityRequirement,
             createdAt: trip.createdAt,
         }));
@@ -231,6 +258,7 @@ export class TripService {
             memberCount: trip.tripMembers?.length || 0,
             stops: trip.tripStops || [],
             members: trip.tripMembers || [],
+            reports: trip.tripReports || [],
             mobilityRequirement: trip.mobilityRequirement,
             createdAt: trip.createdAt,
         }));
@@ -262,6 +290,15 @@ export class TripService {
             }
         }
 
+        if (updateTripDto.assignedDriverId && updateTripDto.assignedDriverId !== trip.assignedDriverId) {
+            const driver = await this.userRepository.findOne({ where: { id: updateTripDto.assignedDriverId } });
+            await this.activityLogService.log(
+                ActivityType.SYSTEM,
+                `Trip #${trip.id.slice(0, 8)} assigned to ${driver?.firstName} ${driver?.lastName}`,
+                { tripId: trip.id, driverId: updateTripDto.assignedDriverId }
+            );
+        }
+
         // Validate status transitions
         if (updateTripDto.status) {
             this.validateStatusTransition(trip.status, updateTripDto.status);
@@ -288,10 +325,18 @@ export class TripService {
             throw new BadRequestException('Trip must be in progress or waiting for clients');
         }
 
-        return this.updateTrip(tripId, {
+        const result = await this.updateTrip(tripId, {
             status: TripStatus.COMPLETED,
             completedAt: new Date(),
         }, organizationId);
+
+        await this.activityLogService.log(
+            ActivityType.TRIP_COMPLETED,
+            `Trip #${tripId.slice(0, 8)} completed`,
+            { tripId }
+        );
+
+        return result;
     }
 
     async markMemberReady(tripId: string, memberId: string, organizationId: string): Promise<void> {
@@ -443,6 +488,7 @@ export class TripService {
             memberCount: savedTrip.tripMembers?.length || 0,
             stops: savedTrip.tripStops || [],
             members: savedTrip.tripMembers || [],
+            reports: savedTrip.tripReports || [],
             mobilityRequirement: savedTrip.mobilityRequirement,
             createdAt: savedTrip.createdAt,
         };
@@ -491,6 +537,7 @@ export class TripService {
             memberCount: savedTrip.tripMembers?.length || 0,
             stops: savedTrip.tripStops || [],
             members: savedTrip.tripMembers || [],
+            reports: savedTrip.tripReports || [],
             mobilityRequirement: savedTrip.mobilityRequirement,
             createdAt: savedTrip.createdAt,
         };

@@ -6,6 +6,12 @@ import { TransportModule } from './transport.module';
 async function bootstrap() {
     const app = await NestFactory.create(TransportModule);
     const configService = app.get(ConfigService);
+    console.log('----------------------------------------');
+    console.log('ACTIVE DB CONFIG (Transport):');
+    console.log('HOST:', configService.get('DB_HOST'));
+    console.log('DATABASE:', configService.get('DB_DATABASE'));
+    console.log('USERNAME:', configService.get('DB_USERNAME'));
+    console.log('----------------------------------------');
 
     // Enable CORS
     app.enableCors({

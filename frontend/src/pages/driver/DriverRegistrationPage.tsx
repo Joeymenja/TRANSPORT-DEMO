@@ -1,4 +1,5 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import {
     Box,
     Card,
@@ -48,7 +49,24 @@ export default function DriverRegistrationPage() {
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
     const [serverError, setServerError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [countdown, setCountdown] = useState(5);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (activeStep === 1) {
+            const timer = setInterval(() => {
+                setCountdown((prev) => {
+                    if (prev <= 1) {
+                        clearInterval(timer);
+                        navigate('/login');
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+            return () => clearInterval(timer);
+        }
+    }, [activeStep, navigate]);
 
     const validateForm = () => {
         const newErrors: { [key: string]: string } = {};
@@ -328,23 +346,32 @@ export default function DriverRegistrationPage() {
                 )}
 
                 {activeStep === 1 && (
-                    <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
-                        <Typography variant="h6" gutterBottom>Registration Received!</Typography>
-                        <Typography color="text.secondary" sx={{ mb: 4 }}>
-                            Your account has been successfully created.
-                            To complete your application, please log in to upload your Driver's License and Insurance documents.
+                    <Paper sx={{ p: 6, textAlign: 'center', borderRadius: 3 }}>
+                        <CheckCircleIcon sx={{ fontSize: 64, color: 'success.main', mb: 2 }} />
+                        <Typography variant="h5" fontWeight={600} gutterBottom>
+                            Registration Successful!
                         </Typography>
-                        <Alert severity="info" sx={{ mb: 3, textAlign: 'left' }}>
-                            Please check your email for a verification link (Implementation Pending).
-                            Your account is currently in <strong>Pending Approval</strong> status.
+                        <Typography color="text.secondary" sx={{ mb: 4 }}>
+                            Your account has been created. You will be redirected to the login page to complete your onboarding by uploading your documents.
+                        </Typography>
+
+                        <Alert severity="success" sx={{ mb: 4, textAlign: 'left' }}>
+                            <Typography variant="subtitle2" fontWeight={600}>Account Status: Pending Approval</Typography>
+                            Your registration has been submitted for review.
                         </Alert>
+
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            Redirecting in {countdown} seconds...
+                        </Typography>
+
                         <Button
                             variant="contained"
                             fullWidth
+                            size="large"
                             onClick={() => navigate('/login')}
                             sx={{ py: 1.5 }}
                         >
-                            Log In to Upload Documents
+                            Login Now
                         </Button>
                     </Paper>
                 )}

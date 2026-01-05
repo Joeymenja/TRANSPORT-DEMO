@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, CreateDat
 import { TripMember } from './trip-member.entity';
 import { TripStop } from './trip-stop.entity';
 import { Vehicle } from './vehicle.entity';
+import { TripReport } from './trip-report.entity';
 
 export enum TripType {
     DROP_OFF = 'DROP_OFF',
@@ -145,6 +146,9 @@ export class Trip {
 
     @OneToMany(() => TripStop, tripStop => tripStop.trip)
     tripStops: TripStop[];
+
+    @OneToMany(() => TripReport, tripReport => tripReport.trip)
+    tripReports: TripReport[];
 
     @ManyToOne(() => Vehicle)
     @JoinColumn({ name: 'assigned_vehicle_id' })

@@ -131,18 +131,9 @@ export class AuthService {
         const savedUser = await this.userRepository.save(user);
 
         // Create Driver Profile
-        const driver = new DriverDocument(); // This is just for type checking, we use raw query
-        const driverId = uuidv4(); // We need uuid imported or similar, but let's assume it's available or use what we have.
-        // Wait, import v4 from uuid is missing in this file block if not present.
-        // Actually, let's use the DB's uuid generation if possible or rely on the fact we might need to import it.
-        // Checking imports... 'uuid' is not imported. I need to add it or use a random string gen.
-        // Let's rely on TypeORM saving instead of raw query if possible, but the original code used raw query because 'Driver' entity might not be in this service's scope?
-        // Wait, 'Driver' entity is NOT in this service. It's in 'transport-service'.
-        // BUT 'seed-03-drivers.js' uses raw SQL to both tables. I should do the same here using existing connection.
-        // However, I need to generate a UUID. I can use 'crypto' module which is built-in.
-
+        // Use crypto for UUID generation as we don't have uuid package imported
         const crypto = require('crypto');
-        const dId = crypto.randomUUID();
+        const driverId = crypto.randomUUID();
 
         // 2. Create Driver Profile in 'drivers' table (which might be in same DB)
         // Note: This relies on the table existing in the same DB the 'auth-service' connects to.
@@ -156,7 +147,7 @@ export class AuthService {
             ) 
             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())`,
             [
-                dId,
+                driverId,
                 organization.id,
                 savedUser.id,
                 dto.licenseNumber,
@@ -164,6 +155,17 @@ export class AuthService {
                 'CONTRACTOR',
                 false
             ]
+        );
+
+        // [Activity Log Fix] Manually insert log since we bypass TransportService
+        const logId = crypto.randomUUID();
+        const logMessage = `New driver registered: ${user.firstName} ${user.lastName}`;
+        const logMeta = JSON.stringify({ driverId, userId: savedUser.id });
+
+        await this.userRepository.manager.query(
+            `INSERT INTO activity_logs (id, type, message, metadata, created_at, is_read)
+             VALUES ($1, 'DRIVER_REGISTERED', $2, $3, NOW(), false)`,
+            [logId, logMessage, logMeta]
         );
 
         return savedUser;
@@ -317,4 +319,3 @@ export class AuthService {
         return user;
     }
 }
-```

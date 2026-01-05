@@ -8,6 +8,9 @@ export class User {
     @Column()
     email: string;
 
+    @Column({ name: 'password_hash', select: false })
+    passwordHash: string;
+
     @Column({ name: 'first_name' })
     firstName: string;
 
@@ -21,7 +24,7 @@ export class User {
     })
     role: string;
 
-    @Column({ name: 'organization_id' })
+    @Column({ name: 'organization_id', type: 'uuid' })
     organizationId: string;
 
     @Column({ name: 'default_vehicle_id', nullable: true })
@@ -35,4 +38,43 @@ export class User {
 
     @Column({ name: 'signature_url', type: 'text', nullable: true })
     signatureUrl: string;
+
+    @Column({ nullable: true })
+    phone: string;
+
+    @Column({ name: 'profile_photo_url', nullable: true })
+    profilePhotoUrl: string;
+
+    @Column({ type: 'date', nullable: true })
+    dob: Date;
+
+    @Column({ name: 'address_street', nullable: true })
+    addressStreet: string;
+
+    @Column({ name: 'address_unit', nullable: true })
+    addressUnit: string;
+
+    @Column({ name: 'address_city', nullable: true })
+    addressCity: string;
+
+    @Column({ name: 'address_state', nullable: true })
+    addressState: string;
+
+    @Column({ name: 'address_zip', nullable: true })
+    addressZip: string;
+
+    @Column({ name: 'emergency_contact_name', nullable: true })
+    emergencyContactName: string;
+
+    @Column({ name: 'emergency_contact_phone', nullable: true })
+    emergencyContactPhone: string;
+
+    @Column({ name: 'emergency_contact_relationship', nullable: true })
+    emergencyContactRelationship: string;
+
+    @CreateDateColumn({ name: 'created_at' })
+    createdAt: Date;
+
+    @UpdateDateColumn({ name: 'updated_at' })
+    updatedAt: Date;
 }

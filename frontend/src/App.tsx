@@ -40,9 +40,7 @@ import DriverSettingsPage from './pages/driver/DriverSettingsPage';
 import AppLayout from './components/AppLayout';
 import { KeyboardNavigation } from './components/KeyboardNavigation';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { KeyboardNavigation } from './components/KeyboardNavigation';
 
-import { ErrorBoundary } from './components/ErrorBoundary';
 
 const queryClient = new QueryClient();
 

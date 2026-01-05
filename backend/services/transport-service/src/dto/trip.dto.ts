@@ -130,6 +130,19 @@ export class UpdateTripDto {
 
 }
 
+export class TripReportDto {
+    id: string;
+    tripId: string;
+    memberId: string;
+    driverId: string;
+    status: string;
+    passengerSignature?: string;
+    driverAttestation: boolean;
+    startOdometer?: number;
+    endOdometer?: number;
+    submittedAt?: Date;
+}
+
 export class TripResponseDto {
     id: string;
     organizationId: string;
@@ -150,6 +163,7 @@ export class TripResponseDto {
     memberCount: number;
     stops: any[];
     members: any[];
+    reports?: TripReportDto[];
     mobilityRequirement: MobilityRequirement;
     createdAt: Date;
 }

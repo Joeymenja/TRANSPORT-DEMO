@@ -19,6 +19,11 @@ export class DriverController {
         return this.driverService.findAll(organizationId);
     }
 
+    @Get('pending')
+    findPending(@Headers('x-organization-id') organizationId: string) {
+        return this.driverService.findPending(organizationId);
+    }
+
     @Get(':id')
     findOne(@Param('id') id: string) {
         return this.driverService.findOne(id);

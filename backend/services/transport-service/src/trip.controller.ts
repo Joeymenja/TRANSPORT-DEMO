@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Put, Body, Param, Query, Request, UseGuards, Res } from '@nestjs/common';
 import { TripService } from './trip.service';
 import { PdfService } from './pdf.service';
+import { ReportService } from './report.service';
 import { CreateTripDto, UpdateTripDto, TripResponseDto, UpdateStopDto, MemberSignatureDto, CancelTripDto, MarkNoShowDto } from './dto/trip.dto';
 import { Response } from 'express';
 
@@ -9,7 +10,8 @@ import { Response } from 'express';
 export class TripController {
     constructor(
         private readonly tripService: TripService,
-        private readonly pdfService: PdfService
+        private readonly pdfService: PdfService,
+        private readonly reportService: ReportService
     ) { }
 
     @Post()
@@ -92,7 +94,7 @@ export class TripController {
     @Get(':id/report')
     async getReport(@Param('id') id: string, @Res() res: Response) {
         const trip = await this.tripService.findOne(id);
-        const buffer = await this.pdfService.generateTripReport(trip);
+        const buffer = await this.pdfService.generateTripReportPdf(trip, await this.reportService.getReportByTripId(id));
 
         res.set({
             'Content-Type': 'application/pdf',

@@ -1,43 +1,28 @@
 import { Card, CardContent, Typography, List, ListItem, ListItemText, ListItemIcon, Box, Chip } from '@mui/material';
-import { DirectionsCar, CheckCircle, Schedule, ErrorOutline, LocalTaxi } from '@mui/icons-material';
-import { Trip } from '../../api/trips';
+import { DirectionsCar, CheckCircle, Schedule, ErrorOutline, LocalTaxi, AssignmentInd, ContactMail } from '@mui/icons-material';
+import { useQuery } from '@tanstack/react-query';
+import { activityApi, ActivityLog } from '../../api/activity';
+import { formatDistanceToNow } from 'date-fns';
 
 interface ActivityFeedProps {
-    trips: Trip[];
+    trips?: any[]; // Legacy prop kept for compatibility, but unused
 }
 
-export default function ActivityFeed({ trips }: ActivityFeedProps) {
-    // Sort trips by "activeness": In Progress > Pending > Scheduled > Completed
-    // In a real app, we'd use 'updatedAt'
-    const recentActivity = [...trips].sort((a, b) => {
-        const score = (status: string) => {
-            if (status === 'IN_PROGRESS') return 4;
-            if (status === 'PENDING_APPROVAL') return 3;
-            if (status === 'SCHEDULED') return 2;
-            return 1;
-        };
-        return score(b.status) - score(a.status);
-    }).slice(0, 5); // Show top 5
+export default function ActivityFeed({ }: ActivityFeedProps) {
 
-    const getIcon = (status: string) => {
-        switch (status) {
-            case 'IN_PROGRESS': return <DirectionsCar color="warning" />;
-            case 'PENDING_APPROVAL': return <ErrorOutline color="error" />;
-            case 'COMPLETED': return <CheckCircle color="success" />;
-            case 'SCHEDULED': return <Schedule color="info" />;
+    const { data: logs = [], isLoading } = useQuery({
+        queryKey: ['activity-logs'],
+        queryFn: () => activityApi.getLogs(20),
+        refetchInterval: 10000 // Poll every 10s for new activity
+    });
+
+    const getIcon = (type: string) => {
+        switch (type) {
+            case 'TRIP_CREATED': return <Schedule color="info" />;
+            case 'TRIP_COMPLETED': return <CheckCircle color="success" />;
+            case 'DRIVER_REGISTERED': return <ContactMail color="warning" />;
+            case 'REPORT_SUBMITTED': return <AssignmentInd color="primary" />;
             default: return <LocalTaxi />;
-        }
-    };
-
-    const getMessage = (trip: Trip) => {
-        const id = `#${trip.id.slice(0, 5)}`;
-        switch (trip.status) {
-            case 'IN_PROGRESS': return `Trip ${id} is en route`;
-            case 'PENDING_APPROVAL': return `Trip ${id} finished (Pending Review)`;
-            case 'COMPLETED': return `Trip ${id} completed`;
-            case 'SCHEDULED':
-                return trip.assignedDriverId ? `Trip ${id} assigned to driver` : `Trip ${id} scheduled`;
-            default: return `Trip ${id} updated`;
         }
     };
 
@@ -48,25 +33,28 @@ export default function ActivityFeed({ trips }: ActivityFeedProps) {
                     <Typography variant="h6" fontWeight={600}>Fleet Activity</Typography>
                 </Box>
                 <List sx={{ flexGrow: 1, overflowY: 'auto' }}>
-                    {recentActivity.length === 0 ? (
+                    {isLoading ? (
+                        <Box p={3} textAlign="center"><Typography color="text.secondary">Loading activity...</Typography></Box>
+                    ) : logs.length === 0 ? (
                         <Box p={3} textAlign="center"><Typography color="text.secondary">No recent activity</Typography></Box>
                     ) : (
-                        recentActivity.map((trip) => (
-                            <ListItem key={trip.id} divider>
+                        logs.map((log) => (
+                            <ListItem key={log.id} divider>
                                 <ListItemIcon>
-                                    {getIcon(trip.status)}
+                                    {getIcon(log.type)}
                                 </ListItemIcon>
                                 <ListItemText
-                                    primary={getMessage(trip)}
-                                    secondary={trip.assignedVehicle ? `Vehicle ${trip.assignedVehicle.vehicleNumber}` : 'Unassigned'}
+                                    primary={log.message}
+                                    secondary={formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}
                                     primaryTypographyProps={{ variant: 'body2', fontWeight: 500 }}
+                                    secondaryTypographyProps={{ variant: 'caption' }}
                                 />
-                                <Chip
-                                    label={trip.status.replace('_', ' ')}
+                                {/* <Chip
+                                    label={log.type.split('_')[0]}
                                     size="small"
                                     variant="outlined"
                                     sx={{ fontSize: '0.65rem', height: 20 }}
-                                />
+                                /> */}
                             </ListItem>
                         ))
                     )}

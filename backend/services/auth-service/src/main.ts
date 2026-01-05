@@ -6,6 +6,12 @@ import { AuthModule } from './auth.module';
 async function bootstrap() {
     const app = await NestFactory.create(AuthModule);
     const configService = app.get(ConfigService);
+    console.log('----------------------------------------');
+    console.log('ACTIVE DB CONFIG:');
+    console.log('HOST:', configService.get('DB_HOST'));
+    console.log('DATABASE:', configService.get('DB_DATABASE'));
+    console.log('USERNAME:', configService.get('DB_USERNAME'));
+    console.log('----------------------------------------');
 
     // Enable CORS
     app.enableCors({

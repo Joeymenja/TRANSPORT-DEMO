@@ -4,7 +4,7 @@ const client = new Client({
     user: 'postgres',
     host: 'localhost',
     database: 'gvbh_transport',
-    password: 'POSTGRES',
+    password: 'postgres',
     port: 5432,
 });
 

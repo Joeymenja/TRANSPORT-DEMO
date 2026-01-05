@@ -1,11 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { TripReport } from './entities/trip-report.entity';
+import { TripReport, TripReportStatus } from './entities/trip-report.entity';
 import { Signature, SignatureType } from './entities/signature.entity';
 import { Trip } from './entities/trip.entity';
 import { TripMember } from './entities/trip-member.entity';
 import { PdfService } from './pdf.service';
+import { ActivityLogService } from './activity-log.service';
+import { ActivityType } from './entities/activity-log.entity';
 
 @Injectable()
 export class ReportService {
@@ -18,7 +20,8 @@ export class ReportService {
         private tripRepository: Repository<Trip>,
         @InjectRepository(TripMember)
         private tripMemberRepository: Repository<TripMember>,
-        private pdfService: PdfService
+        private pdfService: PdfService,
+        private activityLogService: ActivityLogService
     ) { }
 
     async createReport(tripId: string, data: Partial<TripReport>): Promise<TripReport> {
@@ -28,7 +31,7 @@ export class ReportService {
         const report = this.tripReportRepository.create({
             ...data,
             tripId,
-            status: 'DRAFT'
+            status: TripReportStatus.DRAFT
         });
 
         return this.tripReportRepository.save(report);
@@ -62,10 +65,18 @@ export class ReportService {
         const report = await this.tripReportRepository.findOne({ where: { id: reportId } });
         if (!report) throw new NotFoundException('Report not found');
 
-        report.status = 'SUBMITTED';
+        report.status = TripReportStatus.SUBMITTED;
         // Logic to update Trip status to FINALIZED or COMPLETED could go here
 
-        return this.tripReportRepository.save(report);
+        const savedReport = await this.tripReportRepository.save(report);
+
+        await this.activityLogService.log(
+            ActivityType.REPORT_SUBMITTED,
+            `Report submitted for Trip #${report.tripId.slice(0, 8)}`,
+            { tripId: report.tripId, reportId: report.id }
+        );
+
+        return savedReport;
     }
 
     async generatePdf(tripId: string): Promise<Buffer> {

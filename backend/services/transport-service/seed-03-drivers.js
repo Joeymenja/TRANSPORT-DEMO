@@ -6,7 +6,7 @@ const dbConfig = {
     host: 'localhost',
     port: 5432,
     user: 'postgres',
-    password: 'POSTGRES',
+    password: 'postgres',
     database: 'gvbh_transport',
 };
 

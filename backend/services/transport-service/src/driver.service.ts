@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import { Driver } from './entities/driver.entity';
 import { User } from './entities/user.entity';
 import { CreateDriverDto, UpdateDriverDto } from './dto/driver.dto';
+import { ActivityLogService } from './activity-log.service';
+import { ActivityType } from './entities/activity-log.entity';
 
 @Injectable()
 export class DriverService {
@@ -12,6 +14,7 @@ export class DriverService {
         private driverRepository: Repository<Driver>,
         @InjectRepository(User)
         private userRepository: Repository<User>,
+        private activityLogService: ActivityLogService,
     ) { }
 
     async createDriver(createDriverDto: CreateDriverDto, organizationId: string): Promise<Driver> {
@@ -40,16 +43,27 @@ export class DriverService {
             assignedVehicleId: createDriverDto.assignedVehicleId,
         });
 
-        return this.driverRepository.save(driver);
+        const savedDriver = await this.driverRepository.save(driver);
+        await this.activityLogService.log(
+            ActivityType.DRIVER_REGISTERED,
+            `New driver registered: ${user.firstName} ${user.lastName}`,
+            { driverId: savedDriver.id, userId: user.id }
+        );
+        return savedDriver;
     }
 
     async findAll(organizationId: string): Promise<Driver[]> {
         // Query drivers and join with User to get names
         return this.driverRepository.find({
             relations: ['user', 'assignedVehicle'],
-            // Note: In a real app, we should filter by organizationId on the User, 
-            // but since Driver doesn't have orgId, we rely on the JOIN or strict user filtering.
-            // For this demo, assuming all drivers are relevant or filtered by the Auth service user query.
+            // In a real app, filter by organizationId
+        });
+    }
+
+    async findPending(organizationId: string): Promise<Driver[]> {
+        return this.driverRepository.find({
+            where: { isActive: false },
+            relations: ['user', 'assignedVehicle'],
         });
     }
 
