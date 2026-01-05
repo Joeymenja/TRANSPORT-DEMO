@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
@@ -14,185 +15,309 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
-import { LocalTaxi, Person, VerifiedUser, CheckCircle, Error, Pending, Description } from '@mui/icons-material';
-import api from '../lib/api';
-import { authApi, DriverDocument } from '../api/auth';
-import { Chip, List, ListItem, ListItemText, ListItemIcon, IconButton, TextField } from '@mui/material';
-
-interface Driver {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    defaultVehicleId: string | null;
-    isActive: boolean;
-}
-
-interface Vehicle {
-    id: string;
-    make: string;
-    model: string;
-    licensePlate: string;
-    vehicleNumber: string;
-}
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import Chip from '@mui/material/Chip';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import Container from '@mui/material/Container';
+import {
+    LocalTaxi,
+    Person,
+    Add,
+    Search,
+    Visibility,
+    Delete,
+    Badge,
+    AssignmentInd,
+    People,
+    GppGood,
+} from '@mui/icons-material';
+import { driverApi, Driver } from '../api/drivers';
+import { vehicleApi, Vehicle } from '../api/vehicles';
+import { AddDriverForm } from '../components/drivers/AddDriverForm';
 
 export const DriversPage = () => {
+    const navigate = useNavigate();
     const [drivers, setDrivers] = useState<Driver[]>([]);
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('ALL');
+
+    // Dialog States
+    const [isAddFormOpen, setIsAddFormOpen] = useState(false);
+    const [isAssignVehicleOpen, setIsAssignVehicleOpen] = useState(false);
     const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
-    const [isReviewOpen, setIsReviewOpen] = useState(false);
-    const [driverDocuments, setDriverDocuments] = useState<DriverDocument[]>([]);
-    const [reviewNotes, setReviewNotes] = useState('');
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [driverToDelete, setDriverToDelete] = useState<string | null>(null);
 
     useEffect(() => {
         loadData();
     }, []);
 
     const loadData = async () => {
+        setLoading(true);
         try {
-            // Fetch Drivers
-            const driversRes = await api.get('/auth/users?role=DRIVER');
-            setDrivers(driversRes.data);
-
-            // Fetch Vehicles (Assuming generic GET /vehicles exists or verify endpoint)
-            const vehiclesRes = await api.get('/vehicles');
-            setVehicles(vehiclesRes.data);
+            const [driversData, vehiclesData] = await Promise.all([
+                driverApi.getAll(),
+                vehicleApi.getAll()
+            ]);
+            setDrivers(driversData);
+            setVehicles(vehiclesData);
         } catch (error) {
-            console.error('Error loading data:', error);
+            console.error('Error loading drivers data:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
-    const handleEditVehicle = (driver: Driver) => {
+    const handleAssignVehicle = (driver: Driver) => {
         setSelectedDriver(driver);
-        setSelectedVehicleId(driver.defaultVehicleId || '');
-        setIsDialogOpen(true);
+        setSelectedVehicleId(driver.assignedVehicleId || '');
+        setIsAssignVehicleOpen(true);
     };
 
-    const handleReviewCompliance = async (driver: Driver) => {
-        setSelectedDriver(driver);
+    const saveVehicleAssignment = async () => {
+        if (!selectedDriver) return;
         try {
-            const docs = await authApi.getDriverDocuments(driver.id);
-            setDriverDocuments(docs);
-            setIsReviewOpen(true);
+            await driverApi.update(selectedDriver.id, { assignedVehicleId: selectedVehicleId || undefined });
+            await loadData();
+            setIsAssignVehicleOpen(false);
         } catch (error) {
-            console.error('Error fetching driver documents:', error);
+            console.error('Error updating driver vehicle:', error);
         }
     };
 
-    const handleReviewDocument = async (docId: string, status: 'APPROVED' | 'REJECTED') => {
+    const handleDeleteDriver = (id: string) => {
+        setDriverToDelete(id);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const confirmDeleteDriver = async () => {
+        if (!driverToDelete) return;
         try {
-            await authApi.reviewDocument(docId, { status, notes: reviewNotes });
-            if (selectedDriver) {
-                const docs = await authApi.getDriverDocuments(selectedDriver.id);
-                setDriverDocuments(docs);
+            await driverApi.delete(driverToDelete);
+            await loadData();
+            setIsDeleteDialogOpen(false);
+            setDriverToDelete(null);
+        } catch (error) {
+            console.error('Error deleting driver:', error);
+        }
+    };
+
+    const filteredDrivers = drivers.filter(d => {
+        const matchesSearch = `${d.user.firstName} ${d.user.lastName} ${d.user.email}`.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = statusFilter === 'ALL' ||
+            (statusFilter === 'ACTIVE' && d.user.isActive) ||
+            (statusFilter === 'INACTIVE' && !d.user.isActive);
+        return matchesSearch && matchesStatus;
+    });
+
+    const getStatusChip = (isActive: boolean, onboardingStep: number = 0) => {
+        if (!isActive) {
+            if (onboardingStep >= 5) {
+                return <Chip label="Pending Approval" size="small" color="warning" variant="filled" />;
             }
-            setReviewNotes('');
-        } catch (error) {
-            console.error('Error reviewing document:', error);
+            if (onboardingStep > 0) {
+                return <Chip label="Onboarding" size="small" color="info" variant="outlined" />;
+            }
+            return <Chip label="Inactive" size="small" color="default" variant="outlined" />;
         }
+        return <Chip label="Active" size="small" color="success" variant="filled" />;
     };
 
-    const handleApproveDriver = async () => {
-        if (!selectedDriver) return;
-        try {
-            await authApi.approveDriver(selectedDriver.id);
-            await loadData();
-            setIsReviewOpen(false);
-        } catch (error) {
-            console.error('Error approving driver:', error);
-        }
-    };
-
-    const handleSave = async () => {
-        if (!selectedDriver) return;
-        try {
-            await api.patch(`/auth/users/${selectedDriver.id}`, {
-                defaultVehicleId: selectedVehicleId
-            });
-            await loadData();
-            setIsDialogOpen(false);
-        } catch (error) {
-            console.error('Error updating driver:', error);
-        }
+    const checkCompliance = (driver: Driver) => {
+        const hasLicense = !!driver.licenseNumber && !!driver.licenseState;
+        const isNotExpired = !driver.licenseExpiryDate || new Date(driver.licenseExpiryDate) > new Date();
+        return hasLicense && isNotExpired;
     };
 
     return (
-        <Box>
-            <Typography variant="h4" gutterBottom>Driver Management</Typography>
+        <Container sx={{ py: 4 }} maxWidth="lg">
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <People color="primary" sx={{ fontSize: 32 }} />
+                    <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                        Driver Management
+                    </Typography>
+                </Box>
+                <Box display="flex" gap={2}>
+                    <Button variant="outlined" onClick={() => navigate('/')}>Back to Dashboard</Button>
+                    <Button
+                        variant="contained"
+                        startIcon={<Add />}
+                        onClick={() => setIsAddFormOpen(true)}
+                        sx={{ bgcolor: '#0096D6', '&:hover': { bgcolor: '#007bb2' } }}
+                    >
+                        Add Driver
+                    </Button>
+                </Box>
+            </Box>
 
-            <Grid container spacing={3}>
-                {drivers.map(driver => {
-                    const assignedVehicle = vehicles.find(v => v.id === driver.defaultVehicleId);
+            <Box display="flex" gap={2} mb={4} flexWrap="wrap">
+                <TextField
+                    placeholder="Search drivers..."
+                    size="small"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    sx={{ minWidth: 300, bgcolor: 'background.paper' }}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <Search color="action" />
+                            </InputAdornment>
+                        ),
+                    }}
+                />
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                    <InputLabel>Status</InputLabel>
+                    <Select
+                        value={statusFilter}
+                        label="Status"
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        sx={{ bgcolor: 'background.paper' }}
+                    >
+                        <MenuItem value="ALL">All Status</MenuItem>
+                        <MenuItem value="ACTIVE">Active</MenuItem>
+                        <MenuItem value="INACTIVE">Inactive</MenuItem>
+                    </Select>
+                </FormControl>
+            </Box>
 
-                    return (
+            {isAddFormOpen && (
+                <AddDriverForm
+                    onSuccess={() => {
+                        setIsAddFormOpen(false);
+                        loadData();
+                    }}
+                    onCancel={() => setIsAddFormOpen(false)}
+                />
+            )}
+
+            {loading ? (
+                <Typography>Loading drivers...</Typography>
+            ) : (
+                <Grid container spacing={3}>
+                    {filteredDrivers.map(driver => (
                         <Grid item xs={12} md={6} lg={4} key={driver.id}>
-                            <Card>
+                            <Card sx={{
+                                height: '100%',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                transition: '0.3s',
+                                '&:hover': { boxShadow: 6, transform: 'translateY(-4px)' }
+                            }}>
                                 <CardContent>
-                                    <Box display="flex" alignItems="center" gap={2} mb={2}>
-                                        <Avatar><Person /></Avatar>
-                                        <Box>
-                                            <Typography variant="h6">{driver.firstName} {driver.lastName}</Typography>
-                                            <Typography variant="body2" color="textSecondary">{driver.email}</Typography>
-                                        </Box>
-                                    </Box>
-
-                                    <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
-                                        <Typography variant="subtitle2" gutterBottom>Default Vehicle</Typography>
-                                        {assignedVehicle ? (
-                                            <Box display="flex" alignItems="center" gap={1}>
-                                                <LocalTaxi color="primary" />
-                                                <Typography>
-                                                    {assignedVehicle.make} {assignedVehicle.model} ({assignedVehicle.vehicleNumber})
+                                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+                                        <Box display="flex" alignItems="center" gap={2}>
+                                            <Avatar sx={{ bgcolor: 'primary.main', width: 56, height: 56 }}>
+                                                <Person />
+                                            </Avatar>
+                                            <Box>
+                                                <Typography variant="h6" fontWeight="600" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    {driver.user.firstName} {driver.user.lastName}
+                                                    {checkCompliance(driver) && (
+                                                        <Tooltip title="Compliance: Valid License">
+                                                            <GppGood color="primary" fontSize="small" />
+                                                        </Tooltip>
+                                                    )}
+                                                </Typography>
+                                                <Typography variant="body2" color="textSecondary">
+                                                    {driver.user.email}
                                                 </Typography>
                                             </Box>
-                                        ) : (
-                                            <Typography color="textSecondary" fontStyle="italic">No vehicle assigned</Typography>
-                                        )}
+                                        </Box>
+                                        {getStatusChip(driver.user.isActive, driver.user.onboardingStep)}
                                     </Box>
 
-                                    <Box mt={2} display="flex" justifyContent="flex-end" gap={1}>
-                                        <Button size="small" variant="outlined" onClick={() => handleEditVehicle(driver)}>
-                                            Assign Vehicle
-                                        </Button>
+                                    <Grid container spacing={2} sx={{ mb: 2 }}>
+                                        <Grid item xs={12}>
+                                            <Box display="flex" alignItems="center" gap={1} color="text.secondary">
+                                                <Badge fontSize="small" />
+                                                <Typography variant="body2">
+                                                    License: {driver.licenseNumber || 'N/A'} ({driver.licenseState || '--'})
+                                                </Typography>
+                                            </Box>
+                                        </Grid>
+                                        <Grid item xs={12}>
+                                            <Box display="flex" alignItems="center" gap={1} color="text.secondary">
+                                                <AssignmentInd fontSize="small" />
+                                                <Typography variant="body2">
+                                                    Status: {(driver.employmentStatus || 'N/A').replace('_', ' ')}
+                                                </Typography>
+                                            </Box>
+                                        </Grid>
+                                        <Grid item xs={12}>
+                                            <Box sx={{ p: 1.5, bgcolor: '#f5f7fa', borderRadius: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                                <LocalTaxi fontSize="small" color={driver.assignedVehicle ? "primary" : "disabled"} />
+                                                <Box>
+                                                    <Typography variant="caption" color="textSecondary" display="block">Assigned Vehicle</Typography>
+                                                    <Typography variant="body2" fontWeight="500">
+                                                        {driver.assignedVehicle
+                                                            ? `${driver.assignedVehicle.make} ${driver.assignedVehicle.model} (${driver.assignedVehicle.vehicleNumber})`
+                                                            : 'No vehicle assigned'}
+                                                    </Typography>
+                                                </Box>
+                                            </Box>
+                                        </Grid>
+                                    </Grid>
+
+                                    <Box mt="auto" pt={2} display="flex" justifyContent="space-between" alignItems="center">
                                         <Button
                                             size="small"
-                                            variant="contained"
-                                            color={driver.isActive ? "primary" : "warning"}
-                                            startIcon={<VerifiedUser />}
-                                            onClick={() => handleReviewCompliance(driver)}
+                                            startIcon={<Visibility />}
+                                            onClick={() => navigate(`/drivers/${driver.id}`)}
                                         >
-                                            {driver.isActive ? "Compliance" : "Review Docs"}
+                                            View Profile
                                         </Button>
+                                        <Box>
+                                            <Tooltip title="Assign Vehicle">
+                                                <IconButton size="small" onClick={() => handleAssignVehicle(driver)}>
+                                                    <LocalTaxi fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Delete">
+                                                <IconButton size="small" color="error" onClick={() => handleDeleteDriver(driver.id)}>
+                                                    <Delete fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </Box>
                                     </Box>
                                 </CardContent>
                             </Card>
                         </Grid>
-                    );
-                })}
-            </Grid>
+                    ))}
+                    {filteredDrivers.length === 0 && (
+                        <Grid item xs={12}>
+                            <Box textAlign="center" py={10} color="text.secondary">
+                                <Search sx={{ fontSize: 48, mb: 1, opacity: 0.5 }} />
+                                <Typography>No drivers found matching your criteria.</Typography>
+                            </Box>
+                        </Grid>
+                    )}
+                </Grid>
+            )}
+
 
             {/* Vehicle Assignment Dialog */}
-            <Dialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)}>
+            <Dialog open={isAssignVehicleOpen} onClose={() => setIsAssignVehicleOpen(false)} fullWidth maxWidth="xs">
                 <DialogTitle>Assign Vehicle</DialogTitle>
-                <DialogContent sx={{ minWidth: 300, mt: 1 }}>
+                <DialogContent dividers>
                     {selectedDriver && (
-                        <Typography variant="subtitle1" gutterBottom>
-                            for {selectedDriver.firstName} {selectedDriver.lastName}
+                        <Typography variant="body2" sx={{ mb: 2 }}>
+                            Assign a default vehicle for <strong>{selectedDriver.user.firstName} {selectedDriver.user.lastName}</strong>.
                         </Typography>
                     )}
-
-                    <FormControl fullWidth margin="normal">
+                    <FormControl fullWidth>
                         <InputLabel>Select Vehicle</InputLabel>
                         <Select
                             value={selectedVehicleId}
                             label="Select Vehicle"
                             onChange={(e) => setSelectedVehicleId(e.target.value)}
                         >
-                            <MenuItem value="">
-                                <em>None</em>
-                            </MenuItem>
+                            <MenuItem value=""><em>None (Unassign)</em></MenuItem>
                             {vehicles.map(v => (
                                 <MenuItem key={v.id} value={v.id}>
                                     {v.vehicleNumber} - {v.make} {v.model}
@@ -202,69 +327,25 @@ export const DriversPage = () => {
                     </FormControl>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                    <Button onClick={handleSave} variant="contained">Save</Button>
+                    <Button onClick={() => setIsAssignVehicleOpen(false)}>Cancel</Button>
+                    <Button onClick={saveVehicleAssignment} variant="contained">Save Assignment</Button>
                 </DialogActions>
             </Dialog>
 
-            {/* Compliance Review Dialog */}
-            <Dialog open={isReviewOpen} onClose={() => setIsReviewOpen(false)} maxWidth="sm" fullWidth>
-                <DialogTitle>Compliance Review - {selectedDriver?.firstName} {selectedDriver?.lastName}</DialogTitle>
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)}>
+                <DialogTitle>Remove Driver Profile?</DialogTitle>
                 <DialogContent>
-                    <Typography variant="subtitle2" gutterBottom>Documents</Typography>
-                    <List>
-                        {driverDocuments.length === 0 && <Typography color="textSecondary">No documents uploaded yet.</Typography>}
-                        {driverDocuments.map(doc => (
-                            <ListItem key={doc.id} divider>
-                                <ListItemIcon><Description /></ListItemIcon>
-                                <ListItemText
-                                    primary={doc.documentType}
-                                    secondary={`Expiry: ${doc.expiryDate ? new Date(doc.expiryDate).toLocaleDateString() : 'N/A'}`}
-                                />
-                                <Box display="flex" alignItems="center" gap={1}>
-                                    <Chip
-                                        label={doc.status}
-                                        size="small"
-                                        color={doc.status === 'APPROVED' ? 'success' : doc.status === 'REJECTED' ? 'error' : 'warning'}
-                                        icon={doc.status === 'PENDING' ? <Pending fontSize="small" /> : undefined}
-                                    />
-                                    <IconButton size="small" onClick={() => handleReviewDocument(doc.id, 'APPROVED')} color="success">
-                                        <CheckCircle fontSize="small" />
-                                    </IconButton>
-                                    <IconButton size="small" onClick={() => handleReviewDocument(doc.id, 'REJECTED')} color="error">
-                                        <Error fontSize="small" />
-                                    </IconButton>
-                                </Box>
-                            </ListItem>
-                        ))}
-                    </List>
-
-                    <Box mt={3}>
-                        <TextField
-                            fullWidth
-                            label="Review Notes"
-                            multiline
-                            rows={2}
-                            value={reviewNotes}
-                            onChange={(e) => setReviewNotes(e.target.value)}
-                            placeholder="Add reason for rejection or approval notes..."
-                        />
-                    </Box>
+                    <Typography>
+                        Are you sure you want to remove this driver profile? This action cannot be undone.
+                    </Typography>
                 </DialogContent>
-                <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
-                    <Button onClick={() => setIsReviewOpen(false)}>Close</Button>
-                    {!selectedDriver?.isActive && (
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            disabled={!driverDocuments.some(d => d.status === 'APPROVED')}
-                            onClick={handleApproveDriver}
-                        >
-                            Approve Driver Account
-                        </Button>
-                    )}
+                <DialogActions>
+                    <Button onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={confirmDeleteDriver} color="error" variant="contained">Remove</Button>
                 </DialogActions>
             </Dialog>
-        </Box>
+        </Container>
     );
 };
+

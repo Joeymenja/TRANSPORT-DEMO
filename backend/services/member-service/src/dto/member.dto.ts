@@ -49,6 +49,26 @@ export class CreateMemberDto {
     @IsString()
     @IsOptional()
     specialNotes?: string;
+
+    @IsBoolean()
+    @IsOptional()
+    consentOnFile?: boolean;
+
+    @IsString()
+    @IsOptional()
+    reportType?: 'NATIVE' | 'NON_NATIVE';
+
+    @IsString()
+    @IsOptional()
+    gender?: string;
+
+    @IsDateString()
+    @IsOptional()
+    consentDate?: string;
+
+    @IsString()
+    @IsOptional()
+    medicalNotes?: string;
 }
 
 export class UpdateMemberDto {
@@ -99,4 +119,24 @@ export class UpdateMemberDto {
     @IsBoolean()
     @IsOptional()
     isActive?: boolean;
+
+    @IsBoolean()
+    @IsOptional()
+    consentOnFile?: boolean;
+
+    @IsString()
+    @IsOptional()
+    reportType?: 'NATIVE' | 'NON_NATIVE';
+
+    @IsString()
+    @IsOptional()
+    gender?: string;
+
+    @IsDateString()
+    @IsOptional()
+    consentDate?: string;
+
+    @IsString()
+    @IsOptional()
+    medicalNotes?: string;
 }

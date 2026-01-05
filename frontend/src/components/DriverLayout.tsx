@@ -1,5 +1,5 @@
-import { Box, AppBar, Toolbar, Typography, IconButton, Menu, MenuItem, BottomNavigation, BottomNavigationAction } from '@mui/material';
-import { DirectionsCar, Person, Home, Logout, VerifiedUser } from '@mui/icons-material';
+import { Box, Paper, BottomNavigation, BottomNavigationAction } from '@mui/material';
+import { Home, CalendarMonth, Email, Person } from '@mui/icons-material';
 import React, { useState } from 'react';
 import { useAuthStore } from '../store/auth';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -32,53 +32,30 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: '#f5f5f5' }}>
-            {/* Simple Mobile Header */}
-            <AppBar position="static" elevation={0} sx={{ bgcolor: '#0096D6' }}>
-                <Toolbar>
-                    <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 600 }}>
-                        {location.pathname.includes('trips') ? 'My Trips' :
-                            location.pathname.includes('compliance') ? 'Compliance' : 'Dashboard'}
-                    </Typography>
-                    <IconButton
-                        size="large"
-                        onClick={handleMenu}
-                        color="inherit"
-                    >
-                        <Person />
-                    </IconButton>
-                    <Menu
-                        anchorEl={anchorEl}
-                        open={Boolean(anchorEl)}
-                        onClose={handleClose}
-                    >
-                        <MenuItem disabled>{user?.email}</MenuItem>
-                        <MenuItem onClick={handleLogout}>
-                            <Logout sx={{ mr: 1 }} /> Logout
-                        </MenuItem>
-                    </Menu>
-                </Toolbar>
-            </AppBar>
 
-            {/* Main Content Area */}
-            <Box sx={{ flexGrow: 1, pb: 7 }}> {/* Padding for bottom nav */}
+            {/* Main Content Area - Full Height */}
+            <Box sx={{ flexGrow: 1, pb: 7 }}>
                 {children}
             </Box>
 
             {/* Bottom Navigation */}
-            <BottomNavigation
-                value={getNavValue()}
-                onChange={(_, newValue) => {
-                    if (newValue === 'home') navigate('/driver');
-                    if (newValue === 'trips') navigate('/driver/trips');
-                    if (newValue === 'compliance') navigate('/driver/compliance');
-                }}
-                showLabels
-                sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, borderTop: '1px solid #e0e0e0' }}
-            >
-                <BottomNavigationAction label="Home" value="home" icon={<Home />} />
-                <BottomNavigationAction label="My Trips" value="trips" icon={<DirectionsCar />} />
-                <BottomNavigationAction label="Compliance" value="compliance" icon={<VerifiedUser />} />
-            </BottomNavigation>
+            <Paper elevation={3} sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
+                <BottomNavigation
+                    value={getNavValue()}
+                    onChange={(_, newValue) => {
+                        if (newValue === 'home') navigate('/driver');
+                        if (newValue === 'schedule') navigate('/driver/schedule'); // Maps to /driver/trips effectively
+                        if (newValue === 'messages') navigate('/driver/messages');
+                        if (newValue === 'profile') navigate('/driver/profile');
+                    }}
+                    showLabels
+                >
+                    <BottomNavigationAction label="Home" value="home" icon={<Home />} />
+                    <BottomNavigationAction label="Schedule" value="schedule" icon={<CalendarMonth />} />
+                    <BottomNavigationAction label="Messages" value="messages" icon={<Email />} />
+                    <BottomNavigationAction label="Profile" value="profile" icon={<Person />} />
+                </BottomNavigation>
+            </Paper>
         </Box>
     );
 }

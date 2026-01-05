@@ -60,8 +60,23 @@ export class Member {
     @Column({ name: 'special_notes', type: 'text', nullable: true })
     specialNotes: string;
 
+    @Column({ nullable: true })
+    gender: string;
+
+    @Column({ name: 'consent_date', type: 'date', nullable: true })
+    consentDate: Date;
+
+    @Column({ name: 'medical_notes', type: 'text', nullable: true })
+    medicalNotes: string;
+
     @Column({ name: 'is_active', default: true })
     isActive: boolean;
+
+    @Column({ name: 'consent_on_file', default: false })
+    consentOnFile: boolean;
+
+    @Column({ name: 'report_type', default: 'NATIVE' })
+    reportType: 'NATIVE' | 'NON_NATIVE';
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;

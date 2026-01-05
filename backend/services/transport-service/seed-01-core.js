@@ -6,7 +6,7 @@ const dbConfig = {
     host: 'localhost',
     port: 5432,
     user: 'postgres',
-    password: 'postgres',
+    password: 'POSTGRES',
     database: 'gvbh_transport',
 };
 
@@ -18,14 +18,14 @@ async function seedCore() {
     try {
         // 1. Get or Create Organization
         let orgId;
-        const orgRes = await client.query("SELECT id FROM organizations WHERE subdomain = 'gvt'");
+        const orgRes = await client.query("SELECT id FROM organizations WHERE subdomain = 'gvbh-demo'");
         if (orgRes.rows.length > 0) {
             orgId = orgRes.rows[0].id;
         } else {
             orgId = uuidv4();
             await client.query(
                 `INSERT INTO organizations (id, name, subdomain, is_active) 
-                 VALUES ($1, 'Great Values Transportation', 'gvt', true)`,
+                 VALUES ($1, 'Great Values Transportation', 'gvbh-demo', true)`,
                 [orgId]
             );
         }
@@ -44,7 +44,7 @@ async function seedCore() {
         let adminId, driverId;
 
         // Admin
-        const adminRes = await client.query("SELECT id FROM users WHERE email = 'admin@gvt.com'");
+        const adminRes = await client.query("SELECT id FROM users WHERE email = 'admin@gvbh-demo.com'");
         if (adminRes.rows.length > 0) {
             adminId = adminRes.rows[0].id;
         } else {
@@ -52,13 +52,13 @@ async function seedCore() {
             const passwordHash = await bcrypt.hash('password123', 10);
             await client.query(
                 `INSERT INTO users (id, organization_id, email, password_hash, first_name, last_name, role, is_active) 
-                 VALUES ($1, $2, 'admin@gvt.com', $3, 'Demo', 'Admin', 'ORG_ADMIN', true)`,
+                 VALUES ($1, $2, 'admin@gvbh-demo.com', $3, 'Demo', 'Admin', 'ORG_ADMIN', true)`,
                 [adminId, orgId, passwordHash]
             );
         }
 
         // Driver
-        const driverRes = await client.query("SELECT id FROM users WHERE email = 'driver@gvt.com'");
+        const driverRes = await client.query("SELECT id FROM users WHERE email = 'driver@gvbh-demo.com'");
         if (driverRes.rows.length > 0) {
             driverId = driverRes.rows[0].id;
         } else {
@@ -66,7 +66,7 @@ async function seedCore() {
             const passwordHash = await bcrypt.hash('password123', 10);
             await client.query(
                 `INSERT INTO users (id, organization_id, email, password_hash, first_name, last_name, role, is_active) 
-                 VALUES ($1, $2, 'driver@gvt.com', $3, 'Demo', 'Driver', 'DRIVER', true)`,
+                 VALUES ($1, $2, 'driver@gvbh-demo.com', $3, 'Demo', 'Driver', 'DRIVER', true)`,
                 [driverId, orgId, passwordHash]
             );
         }

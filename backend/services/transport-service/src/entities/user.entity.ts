@@ -29,4 +29,10 @@ export class User {
 
     @Column({ name: 'is_active', default: true })
     isActive: boolean;
+
+    @Column({ name: 'onboarding_step', default: 0 })
+    onboardingStep: number;
+
+    @Column({ name: 'signature_url', type: 'text', nullable: true })
+    signatureUrl: string;
 }

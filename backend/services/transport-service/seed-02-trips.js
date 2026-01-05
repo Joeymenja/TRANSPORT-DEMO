@@ -5,7 +5,7 @@ const dbConfig = {
     host: 'localhost',
     port: 5432,
     user: 'postgres',
-    password: 'postgres',
+    password: 'POSTGRES',
     database: 'gvbh_transport',
 };
 
@@ -17,15 +17,15 @@ async function seedTrips() {
     try {
         // 1. Fetch dependencies
         // Org
-        const orgRes = await client.query("SELECT id FROM organizations WHERE subdomain = 'gvt'");
+        const orgRes = await client.query("SELECT id FROM organizations WHERE subdomain = 'gvbh-demo'");
         if (orgRes.rows.length === 0) throw new Error('Org not found! Run Phase 1.');
         const orgId = orgRes.rows[0].id;
 
         // Users
-        const adminRes = await client.query("SELECT id FROM users WHERE email = 'admin@gvt.com'");
+        const adminRes = await client.query("SELECT id FROM users WHERE email = 'admin@gvbh-demo.com'");
         const adminId = adminRes.rows[0].id;
 
-        const driverRes = await client.query("SELECT id FROM users WHERE email = 'driver@gvt.com'");
+        const driverRes = await client.query("SELECT id FROM users WHERE email = 'driver@gvbh-demo.com'");
         const driverId = driverRes.rows[0].id;
 
         // Vehicle (V-001)

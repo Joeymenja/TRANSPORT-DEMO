@@ -1,0 +1,6 @@
+-- Update Vehicles table
+ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'AVAILABLE' CHECK (status IN ('AVAILABLE', 'IN_USE', 'MAINTENANCE'));
+
+-- Update Members table
+ALTER TABLE members ADD COLUMN IF NOT EXISTS consent_on_file BOOLEAN DEFAULT false;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS report_type VARCHAR(50) DEFAULT 'NATIVE' CHECK (report_type IN ('NATIVE', 'NON_NATIVE'));

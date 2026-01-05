@@ -24,6 +24,14 @@ export interface Trip {
     tripType: 'DROP_OFF' | 'PICK_UP' | 'ROUND_TRIP';
     isCarpool: boolean;
     status: 'PENDING_APPROVAL' | 'SCHEDULED' | 'IN_PROGRESS' | 'WAITING_FOR_CLIENTS' | 'COMPLETED' | 'FINALIZED' | 'CANCELLED';
+    reasonForVisit?: string;
+    escortName?: string;
+    escortRelationship?: string;
+    reportStatus?: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'ARCHIVED';
+    reportFilePath?: string;
+    reportRejectionReason?: string;
+    reportVerifiedAt?: string;
+    reportVerifiedBy?: string;
     memberCount: number;
     stops: any[];
     members: any[];
@@ -51,6 +59,9 @@ export interface CreateTripData {
     };
     tripType?: 'DROP_OFF' | 'PICK_UP' | 'ROUND_TRIP';
     isCarpool?: boolean;
+    reasonForVisit?: string;
+    escortName?: string;
+    escortRelationship?: string;
     members: { memberId: string }[];
     stops: {
         stopType: 'PICKUP' | 'DROPOFF';
@@ -63,7 +74,7 @@ export interface CreateTripData {
 }
 
 export const tripApi = {
-    getTrips: async (queryParams?: { date?: string, startDate?: string, endDate?: string }): Promise<Trip[]> => {
+    getTrips: async (queryParams?: { date?: string, startDate?: string, endDate?: string, memberId?: string }): Promise<Trip[]> => {
         const { data } = await api.get('/trips', { params: queryParams });
         return data;
     },
@@ -75,6 +86,21 @@ export const tripApi = {
 
     createTrip: async (tripData: CreateTripData): Promise<Trip> => {
         const { data } = await api.post('/trips', tripData);
+        return data;
+    },
+
+    createTripsBulk: async (tripData: CreateTripData[]): Promise<Trip[]> => {
+        const { data } = await api.post('/trips/bulk', tripData);
+        return data;
+    },
+
+    verifyReport: async (tripId: string): Promise<Trip> => {
+        const { data } = await api.post(`/trips/${tripId}/report/verify`);
+        return data;
+    },
+
+    rejectReport: async (tripId: string, reason: string): Promise<Trip> => {
+        const { data } = await api.post(`/trips/${tripId}/report/reject`, { reason });
         return data;
     },
 

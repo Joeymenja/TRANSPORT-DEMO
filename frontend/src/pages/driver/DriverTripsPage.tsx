@@ -1,4 +1,4 @@
-import { Box, Card, CardContent, Chip, Container, Typography } from '@mui/material';
+import { Box, Card, CardContent, Chip, Container, Typography, Button } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { tripApi } from '../../api/trips';
 import { useAuthStore } from '../../store/auth';
@@ -7,8 +7,8 @@ import { ChevronRight, Schedule, Person } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
 export default function DriverTripsPage() {
-    const user = useAuthStore((state) => state.user);
     const navigate = useNavigate();
+    const user = useAuthStore((state) => state.user);
     const today = new Date();
 
     const { data: trips = [], isLoading } = useQuery({
@@ -40,13 +40,15 @@ export default function DriverTripsPage() {
 
     return (
         <Container sx={{ py: 2 }}>
+            <Button variant="text" onClick={() => navigate('/driver')} sx={{ mb: 2 }}>
+                ← Back to Driver Home
+            </Button>
             <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>
                 Today's Schedule
             </Typography>
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 3 }}>
                 {format(today, 'EEEE, MMMM d')}
             </Typography>
-
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {trips.map((trip) => (
                     <Card
@@ -77,28 +79,19 @@ export default function DriverTripsPage() {
                                     Trip #{trip.id.slice(0, 5)}
                                 </Typography>
                             </Box>
-
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                                 <Schedule fontSize="small" color="action" />
                                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                                     {trip.stops[0]?.scheduledTime ? format(new Date(trip.stops[0].scheduledTime), 'h:mm a') : 'TBD'}
                                 </Typography>
                             </Box>
-
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <Person fontSize="small" color="action" />
                                 <Typography variant="body2" color="text.secondary">
                                     {trip.members.map((tm: any) => tm.member ? `${tm.member.firstName} ${tm.member.lastName}` : 'Unknown').join(', ')}
                                 </Typography>
                             </Box>
-
-                            <Box sx={{
-                                position: 'absolute',
-                                right: 16,
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                                color: '#bdbdbd'
-                            }}>
+                            <Box sx={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', color: '#bdbdbd' }}>
                                 <ChevronRight />
                             </Box>
                         </CardContent>

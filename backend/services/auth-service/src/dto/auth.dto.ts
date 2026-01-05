@@ -40,7 +40,7 @@ export class DriverRegisterDto {
     email: string;
 
     @IsString()
-    @MinLength(6)
+    @MinLength(8)
     password: string;
 
     @IsString()
@@ -52,6 +52,71 @@ export class DriverRegisterDto {
     @IsString()
     @IsOptional()
     phone?: string;
+
+    @IsString()
+    licenseNumber: string;
+
+    @IsString()
+    @IsOptional()
+    licenseState?: string;
+
+    @IsString()
+    @IsOptional()
+    vehiclePlate?: string;
+}
+
+export class UpdateProfileDto {
+    @IsString()
+    @IsOptional()
+    firstName?: string;
+
+    @IsString()
+    @IsOptional()
+    lastName?: string;
+
+    @IsString()
+    @IsOptional()
+    phone?: string;
+
+    @IsString()
+    @IsOptional()
+    dob?: string; // YYYY-MM-DD
+
+    @IsString()
+    @IsOptional()
+    addressStreet?: string;
+
+    @IsString()
+    @IsOptional()
+    addressUnit?: string;
+
+    @IsString()
+    @IsOptional()
+    addressCity?: string;
+
+    @IsString()
+    @IsOptional()
+    addressState?: string;
+
+    @IsString()
+    @IsOptional()
+    addressZip?: string;
+
+    @IsString()
+    @IsOptional()
+    emergencyContactName?: string;
+
+    @IsString()
+    @IsOptional()
+    emergencyContactPhone?: string;
+
+    @IsString()
+    @IsOptional()
+    emergencyContactRelationship?: string;
+
+    @IsString()
+    @IsOptional()
+    profilePhotoUrl?: string;
 }
 
 export class UploadDocumentDto {
@@ -84,5 +149,6 @@ export class AuthResponseDto {
         lastName: string;
         role: UserRole;
         organizationId: string;
+        onboardingStep: number;
     };
 }

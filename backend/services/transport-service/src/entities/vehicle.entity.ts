@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import { VehicleDocument } from './vehicle-document.entity';
 
 @Entity('vehicles')
 export class Vehicle {
@@ -40,6 +41,27 @@ export class Vehicle {
 
     @Column({ name: 'is_active', default: true })
     isActive: boolean;
+
+    @Column({ type: 'varchar', length: 50, default: 'AVAILABLE' })
+    status: 'AVAILABLE' | 'IN_USE' | 'MAINTENANCE';
+
+    @Column({ name: 'condition_status', default: 'GOOD' })
+    conditionStatus: string;
+
+    @Column({ name: 'purchase_date', type: 'date', nullable: true })
+    purchaseDate: Date;
+
+    @Column({ name: 'next_maintenance_date', type: 'date', nullable: true })
+    nextMaintenanceDate: Date;
+
+    @Column({ name: 'wheelchair_accessible', default: false })
+    wheelchairAccessible: boolean;
+
+    @Column({ type: 'text', nullable: true })
+    notes: string;
+
+    @OneToMany(() => VehicleDocument, (document) => document.vehicle)
+    documents: VehicleDocument[];
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;

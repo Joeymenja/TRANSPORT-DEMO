@@ -24,6 +24,17 @@ export class TripController {
         return this.tripService.createTrip(createTripDto, organizationId, userId);
     }
 
+    @Post('bulk')
+    async createTripsBulk(
+        @Body() createTripDtos: CreateTripDto[],
+        @Request() req,
+    ): Promise<TripResponseDto[]> {
+        const organizationId = req.headers['x-organization-id'];
+        const userId = req.headers['x-user-id'];
+
+        return this.tripService.createTripsBulk(createTripDtos, organizationId, userId);
+    }
+
     @Get(':id')
     async getTripById(
         @Param('id') id: string,
@@ -38,6 +49,7 @@ export class TripController {
         @Query('date') date: string,
         @Query('startDate') startDate: string,
         @Query('endDate') endDate: string,
+        @Query('memberId') memberId: string,
         @Request() req,
     ): Promise<TripResponseDto[]> {
         const organizationId = req.headers['x-organization-id'];
@@ -45,6 +57,7 @@ export class TripController {
             date: date ? new Date(date) : undefined,
             startDate: startDate ? new Date(startDate) : undefined,
             endDate: endDate ? new Date(endDate) : undefined,
+            memberId,
         });
     }
 
@@ -88,6 +101,27 @@ export class TripController {
         });
 
         res.end(buffer);
+    }
+
+    @Post(':id/report/verify')
+    async verifyReport(
+        @Param('id') id: string,
+        @Request() req,
+    ): Promise<TripResponseDto> {
+        const organizationId = req.headers['x-organization-id'];
+        const userId = req.headers['x-user-id'];
+        return this.tripService.verifyReport(id, userId, organizationId);
+    }
+
+    @Post(':id/report/reject')
+    async rejectReport(
+        @Param('id') id: string,
+        @Body('reason') reason: string,
+        @Request() req,
+    ): Promise<TripResponseDto> {
+        const organizationId = req.headers['x-organization-id'];
+        const userId = req.headers['x-user-id'];
+        return this.tripService.rejectReport(id, reason, userId, organizationId);
     }
 
     @Post(':id/complete')

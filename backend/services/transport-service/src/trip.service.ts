@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
-import { Trip, TripStatus, TripType } from './entities/trip.entity';
+import { Trip, TripStatus, TripType, ReportStatus } from './entities/trip.entity';
 import { TripMember, MemberStatus } from './entities/trip-member.entity';
 import { TripStop } from './entities/trip-stop.entity';
 import { User } from './entities/user.entity';
@@ -38,8 +38,12 @@ export class TripService {
                 assignedDriverId: createTripDto.assignedDriverId,
                 assignedVehicleId: assignedVehicleId,
                 tripType: createTripDto.tripType || TripType.DROP_OFF,
-                isCarpool: createTripDto.members.length > 1,
-                status: TripStatus.PENDING_APPROVAL,
+                isCarpool: createTripDto.isCarpool !== undefined ? createTripDto.isCarpool : (createTripDto.members.length > 1),
+                status: TripStatus.SCHEDULED,
+                reasonForVisit: createTripDto.reasonForVisit,
+                escortName: createTripDto.escortName,
+                escortRelationship: createTripDto.escortRelationship,
+                reportStatus: ReportStatus.PENDING,
                 createdById: userId,
             });
 
@@ -74,6 +78,14 @@ export class TripService {
         }
     }
 
+    async createTripsBulk(createTripDtos: CreateTripDto[], organizationId: string, userId: string): Promise<TripResponseDto[]> {
+        const results = [];
+        for (const dto of createTripDtos) {
+            results.push(await this.createTrip(dto, organizationId, userId));
+        }
+        return results;
+    }
+
     async findOne(id: string): Promise<Trip> {
         const trip = await this.tripRepository.findOne({
             where: { id },
@@ -104,6 +116,14 @@ export class TripService {
             tripType: trip.tripType,
             isCarpool: trip.isCarpool,
             status: trip.status,
+            reasonForVisit: trip.reasonForVisit,
+            escortName: trip.escortName,
+            escortRelationship: trip.escortRelationship,
+            reportStatus: trip.reportStatus,
+            reportFilePath: trip.reportFilePath,
+            reportRejectionReason: trip.reportRejectionReason,
+            reportVerifiedAt: trip.reportVerifiedAt,
+            reportVerifiedBy: trip.reportVerifiedBy,
             memberCount: trip.tripMembers?.length || 0,
             stops: trip.tripStops || [],
             members: trip.tripMembers || [],
@@ -111,7 +131,7 @@ export class TripService {
         };
     }
 
-    async getTrips(organizationId: string, filters: { date?: Date, startDate?: Date, endDate?: Date, status?: TripStatus }): Promise<TripResponseDto[]> {
+    async getTrips(organizationId: string, filters: { date?: Date, startDate?: Date, endDate?: Date, status?: TripStatus, memberId?: string }): Promise<TripResponseDto[]> {
         const whereClause: any = { organizationId };
 
         if (filters.date) {
@@ -132,6 +152,12 @@ export class TripService {
             whereClause.status = filters.status;
         }
 
+        if (filters.memberId) {
+            whereClause.tripMembers = {
+                memberId: filters.memberId
+            };
+        }
+
         const trips = await this.tripRepository.find({
             where: whereClause,
             relations: ['tripMembers', 'tripStops'],
@@ -147,6 +173,14 @@ export class TripService {
             tripType: trip.tripType,
             isCarpool: trip.isCarpool,
             status: trip.status,
+            reasonForVisit: trip.reasonForVisit,
+            escortName: trip.escortName,
+            escortRelationship: trip.escortRelationship,
+            reportStatus: trip.reportStatus,
+            reportFilePath: trip.reportFilePath,
+            reportRejectionReason: trip.reportRejectionReason,
+            reportVerifiedAt: trip.reportVerifiedAt,
+            reportVerifiedBy: trip.reportVerifiedBy,
             memberCount: trip.tripMembers?.length || 0,
             stops: trip.tripStops || [],
             members: trip.tripMembers || [],
@@ -177,6 +211,14 @@ export class TripService {
             tripType: trip.tripType,
             isCarpool: trip.isCarpool,
             status: trip.status,
+            reasonForVisit: trip.reasonForVisit,
+            escortName: trip.escortName,
+            escortRelationship: trip.escortRelationship,
+            reportStatus: trip.reportStatus,
+            reportFilePath: trip.reportFilePath,
+            reportRejectionReason: trip.reportRejectionReason,
+            reportVerifiedAt: trip.reportVerifiedAt,
+            reportVerifiedBy: trip.reportVerifiedBy,
             memberCount: trip.tripMembers?.length || 0,
             stops: trip.tripStops || [],
             members: trip.tripMembers || [],
@@ -301,5 +343,28 @@ export class TripService {
         if (!validTransitions[currentStatus]?.includes(newStatus)) {
             throw new BadRequestException(`Cannot transition from ${currentStatus} to ${newStatus}`);
         }
+    }
+
+    async verifyReport(tripId: string, userId: string, organizationId: string): Promise<TripResponseDto> {
+        const trip = await this.findOne(tripId);
+        if (trip.organizationId !== organizationId) throw new ForbiddenException();
+
+        trip.reportStatus = ReportStatus.VERIFIED;
+        trip.reportVerifiedAt = new Date();
+        trip.reportVerifiedBy = userId;
+        await this.tripRepository.save(trip);
+
+        return this.getTripById(tripId, organizationId);
+    }
+
+    async rejectReport(tripId: string, reason: string, userId: string, organizationId: string): Promise<TripResponseDto> {
+        const trip = await this.findOne(tripId);
+        if (trip.organizationId !== organizationId) throw new ForbiddenException();
+
+        trip.reportStatus = ReportStatus.REJECTED;
+        trip.reportRejectionReason = reason;
+        await this.tripRepository.save(trip);
+
+        return this.getTripById(tripId, organizationId);
     }
 }

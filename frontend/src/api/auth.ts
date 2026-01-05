@@ -1,4 +1,5 @@
 import api from '../lib/api';
+import { User } from '../store/auth';
 
 export interface DriverDocument {
     id: string;
@@ -11,14 +12,27 @@ export interface DriverDocument {
     createdAt: string;
 }
 
+export interface DriverRegistrationData {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    phone: string;
+    licenseNumber: string;
+    licenseState?: string;
+    vehiclePlate?: string;
+}
+
 export const authApi = {
-    registerDriver: async (data: any) => {
+    registerDriver: async (data: DriverRegistrationData) => {
         const response = await api.post('/auth/register-driver', data);
         return response.data;
     },
 
-    uploadDocument: async (data: { documentType: string, fileUrl: string, expiryDate?: string }) => {
-        const response = await api.post('/auth/documents', data);
+    uploadDocument: async (data: FormData) => {
+        const response = await api.post('/auth/documents', data, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
         return response.data;
     },
 
@@ -39,6 +53,11 @@ export const authApi = {
 
     approveDriver: async (driverId: string) => {
         const response = await api.post(`/auth/drivers/${driverId}/approve`);
+        return response.data;
+    },
+
+    updateProfile: async (data: Partial<User>) => {
+        const response = await api.patch('/auth/profile', data);
         return response.data;
     }
 };

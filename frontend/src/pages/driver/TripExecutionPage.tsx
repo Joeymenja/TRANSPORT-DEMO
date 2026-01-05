@@ -1,17 +1,32 @@
-import { Box, Button, Card, CardContent, Container, Step, StepContent, StepLabel, Stepper, Typography, Chip } from '@mui/material';
+import { Box, Typography, Container, CircularProgress, Paper, Button } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import { tripApi } from '../../api/trips';
-import { CheckCircle, Navigation, Create } from '@mui/icons-material';
 import { useState } from 'react';
-import SignaturePad from '../../components/SignaturePad';
+import PreTripChecklist from '../../components/driver/execution/PreTripChecklist';
+import ActiveNavigation from '../../components/driver/execution/ActiveNavigation';
+import PickupWorkflow from '../../components/driver/execution/PickupWorkflow';
+import DropoffWorkflow from '../../components/driver/execution/DropoffWorkflow';
+import TripSummary from '../../components/driver/execution/TripSummary';
+
+// Trip Execution States
+type ExecutionState = 'LOADING' | 'PRE_TRIP' | 'EN_ROUTE_PICKUP' | 'AT_PICKUP' | 'EN_ROUTE_DROPOFF' | 'AT_DROPOFF' | 'COMPLETED';
 
 export default function TripExecutionPage() {
     const { tripId } = useParams();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const [isSignatureOpen, setIsSignatureOpen] = useState(false);
-    const [signingMemberId, setSigningMemberId] = useState<string | null>(null);
+
+    // In a real app, we would derive this from trip.status and internal flags
+    const [viewState, setViewState] = useState<ExecutionState>('PRE_TRIP');
+
+    // Trip Data State
+    const [tripReport, setTripReport] = useState({
+        startOdometer: 0,
+        endOdometer: 0,
+        notes: '',
+        signature: null as string | null
+    });
 
     const { data: trip, isLoading } = useQuery({
         queryKey: ['trip', tripId],
@@ -20,170 +35,184 @@ export default function TripExecutionPage() {
     });
 
     const startTripMutation = useMutation({
-        mutationFn: () => tripApi.startTrip(tripId!),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trip', tripId] })
+        mutationFn: (data: { odometer: number }) => tripApi.startTrip(tripId!),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['trip', tripId] });
+            setViewState('EN_ROUTE_PICKUP');
+        }
     });
 
     const arriveStopMutation = useMutation({
-        mutationFn: (stopId: string) => tripApi.arriveAtStop(tripId!, stopId, { lat: 33.4484, lng: -112.0740 }), // Mock GPS
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trip', tripId] })
+        mutationFn: (stopId: string) => tripApi.arriveAtStop(tripId!, stopId, { lat: 33.4, lng: -112.0 }), // Mock GPS
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['trip', tripId] });
+            // Auto-transition based on current state (could be improved with explicit state from backend)
+            if (viewState === 'EN_ROUTE_PICKUP') setViewState('AT_PICKUP');
+            if (viewState === 'EN_ROUTE_DROPOFF') setViewState('AT_DROPOFF');
+        }
     });
 
     const completeStopMutation = useMutation({
-        mutationFn: ({ stopId, odometer }: { stopId: string, odometer?: number }) => tripApi.completeStop(tripId!, stopId, odometer),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trip', tripId] })
+        mutationFn: ({ stopId, odometer }: { stopId: string, odometer?: number }) =>
+            tripApi.completeStop(tripId!, stopId, odometer),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['trip', tripId] });
+            // Transition logic
+            // Ideally we check variables.stopId against trip.stops to see if it was pickup or dropoff
+        }
     });
 
-    const signatureMutation = useMutation({
+    const saveSignatureMutation = useMutation({
         mutationFn: ({ memberId, data }: { memberId: string, data: string }) => tripApi.saveSignature(tripId!, memberId, data),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trip', tripId] })
     });
 
     const completeTripMutation = useMutation({
         mutationFn: () => tripApi.completeTrip(tripId!),
-        onSuccess: () => navigate('/driver/trips')
+        onSuccess: () => navigate('/driver')
     });
 
-    if (isLoading || !trip) return <Typography sx={{ p: 4 }}>Loading trip details...</Typography>;
+    if (isLoading || !trip) return <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>;
 
+    // Helper to get stop IDs
+    const pickupStop = trip.stops.find((s: any) => s.stopType === 'PICKUP');
+    const dropoffStop = trip.stops.find((s: any) => s.stopType === 'DROPOFF');
 
-    // Simplified: Just list stops in Stepper.
-    const activeStep = trip.stops.findIndex((s: any) => !s.actualArrivalTime || !s.actualDepartureTime);
-    // If all completed, activeStep is -1 (from findIndex).
-    const currentStepIndex = activeStep === -1 ? trip.stops.length : activeStep;
-
-    const handleSignatureSave = (base64: string) => {
-        if (signingMemberId) {
-            signatureMutation.mutate({ memberId: signingMemberId, data: base64 });
-        }
-    };
-
+    // State Machine Rendering
     return (
-        <Container sx={{ py: 2, pb: 10 }}>
-            {/* Header info */}
-            <Box sx={{ mb: 3 }}>
-                <Typography variant="h5" fontWeight={600}>Trip #{trip.id.slice(0, 5)}</Typography>
-                <Chip label={trip.status} color={trip.status === 'IN_PROGRESS' ? 'warning' : 'default'} sx={{ mt: 1 }} />
-            </Box>
+        <Box sx={{ height: '100vh', width: '100vw', bgcolor: '#e5e3df', position: 'relative', overflow: 'hidden' }}>
 
-            {/* Members */}
-            <Card sx={{ mb: 3 }} variant="outlined">
-                <CardContent>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>PASSENGERS</Typography>
-                    {trip.members.map((tm: any) => (
-                        <Box key={tm.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                            <Typography variant="body1" fontWeight={500}>{tm.member?.firstName || 'Unknown'} {tm.member?.lastName || ''}</Typography>
-                            {tm.memberSignatureBase64 && <CheckCircle color="success" fontSize="small" />}
-                        </Box>
-                    ))}
-                </CardContent>
-            </Card>
-
-            {/* Stepper */}
-            <Stepper activeStep={currentStepIndex} orientation="vertical">
-                {trip.stops.map((stop: any, index: number) => (
-                    <Step key={stop.id} expanded={true}>
-                        <StepLabel
-                            StepIconProps={{
-                                sx: { color: stop.actualDepartureTime ? '#2e7d32' : (index === currentStepIndex ? '#1976d2' : '#bdbdbd') }
-                            }}
-                        >
-                            <Typography variant="subtitle1" fontWeight={600}>{stop.stopType}</Typography>
-                            <Typography variant="body2">{stop.address}</Typography>
-                        </StepLabel>
-                        <StepContent>
-                            <Box sx={{ mb: 2, mt: 1 }}>
-                                {trip.status === 'SCHEDULED' && index === 0 ? (
-                                    <Button
-                                        variant="contained"
-                                        fullWidth
-                                        size="large"
-                                        onClick={() => startTripMutation.mutate()}
-                                        disabled={startTripMutation.isPending}
-                                    >
-                                        Start Trip
-                                    </Button>
-                                ) : (
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                        {/* Arrive Button */}
-                                        {!stop.actualArrivalTime && (
-                                            <Button
-                                                variant="contained"
-                                                color="primary"
-                                                startIcon={<Navigation />}
-                                                onClick={() => arriveStopMutation.mutate(stop.id)}
-                                                disabled={arriveStopMutation.isPending}
-                                            >
-                                                Arrive at {stop.stopType === 'PICKUP' ? 'Pickup' : 'Dropoff'}
-                                            </Button>
-                                        )}
-
-                                        {/* Actions at Stop */}
-                                        {stop.actualArrivalTime && !stop.actualDepartureTime && (
-                                            <Box>
-                                                {stop.stopType === 'DROPOFF' && (
-                                                    <Box sx={{ mb: 2 }}>
-                                                        <Typography variant="caption" sx={{ mb: 1, display: 'block' }}>REQUIRED</Typography>
-                                                        {trip.members.map((tm: any) => (
-                                                            <Button
-                                                                key={tm.id}
-                                                                variant="outlined"
-                                                                fullWidth
-                                                                startIcon={tm.memberSignatureBase64 ? <CheckCircle /> : <Create />}
-                                                                color={tm.memberSignatureBase64 ? "success" : "primary"}
-                                                                onClick={() => {
-                                                                    setSigningMemberId(tm.memberId);
-                                                                    setIsSignatureOpen(true);
-                                                                }}
-                                                                sx={{ mb: 1 }}
-                                                            >
-                                                                {tm.memberSignatureBase64 ? `Signed: ${tm.member?.firstName || 'Member'}` : `Correct Signature: ${tm.member?.firstName || 'Member'}`}
-                                                            </Button>
-                                                        ))}
-                                                    </Box>
-                                                )}
-
-                                                <Button
-                                                    variant="contained"
-                                                    color="success"
-                                                    fullWidth
-                                                    onClick={() => completeStopMutation.mutate({ stopId: stop.id })}
-                                                    disabled={completeStopMutation.isPending}
-                                                >
-                                                    Complete {stop.stopType === 'PICKUP' ? 'Pickup' : 'Dropoff'}
-                                                </Button>
-                                            </Box>
-                                        )}
-                                    </Box>
-                                )}
-                            </Box>
-                        </StepContent>
-                    </Step>
-                ))}
-            </Stepper>
-
-            {/* Complete Trip Action */}
-            {trip.status === 'IN_PROGRESS' && currentStepIndex === trip.stops.length && (
-                <Box sx={{ mt: 4, p: 2, bgcolor: '#e8f5e9', borderRadius: 2, textAlign: 'center' }}>
-                    <Typography variant="h6" color="success.main" gutterBottom>All Stops Completed</Typography>
+            {/* Background Map Simulation */}
+            <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: '40%', opacity: 0.8 }}>
+                <img src="https://maps.googleapis.com/maps/api/staticmap?center=Phoenix,AZ&zoom=13&size=600x800&scale=2&key=YOUR_KEY"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    alt="Map Background"
+                />
+                {/* Back Button Overlay */}
+                <Box sx={{ position: 'absolute', top: 48, left: 16 }}>
                     <Button
+                        onClick={() => navigate('/driver')}
                         variant="contained"
-                        color="success"
-                        size="large"
-                        fullWidth
-                        onClick={() => completeTripMutation.mutate()}
+                        sx={{ bgcolor: 'white', color: '#111', borderRadius: '50px', '&:hover': { bgcolor: '#f5f5f5' } }}
                     >
-                        Finalize Trip
+                        Back
                     </Button>
                 </Box>
-            )}
+            </Box>
 
-            <SignaturePad
-                open={isSignatureOpen}
-                onClose={() => setIsSignatureOpen(false)}
-                onSave={handleSignatureSave}
-                title={`Sign for ${trip.members.find((m: any) => m.memberId === signingMemberId)?.member?.firstName || 'Member'}`}
-            />
-        </Container>
+            {/* Bottom Sheet Container */}
+            <Paper
+                elevation={6}
+                sx={{
+                    position: 'absolute',
+                    top: '40%', // Starts from map edge
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    bgcolor: 'white',
+                    borderRadius: '24px 24px 0 0',
+                    overflowY: 'auto',
+                    zIndex: 10
+                }}
+            >
+                <Container maxWidth="sm" sx={{ pt: 1, pb: 4 }}>
+                    {/* Drag Handle */}
+                    <Box sx={{ width: 40, height: 4, bgcolor: '#e0e0e0', borderRadius: 2, mx: 'auto', my: 2 }} />
+
+                    <Box sx={{ px: 2 }}>
+                        {viewState === 'PRE_TRIP' && (
+                            <PreTripChecklist
+                                lastOdometer={15000}
+                                onCancel={() => navigate('/driver')}
+                                onComplete={(data) => {
+                                    setTripReport(prev => ({ ...prev, startOdometer: data.odometer }));
+                                    startTripMutation.mutate({ odometer: data.odometer });
+                                }}
+                            />
+                        )}
+
+                        {viewState === 'EN_ROUTE_PICKUP' && (
+                            <ActiveNavigation
+                                destinationAddress={pickupStop?.address || 'Unknown'}
+                                destinationType="PICKUP"
+                                clientName={trip.members[0]?.member?.firstName + ' ' + trip.members[0]?.member?.lastName}
+                                onNavigate={() => {
+                                    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(pickupStop?.address)}`, '_blank');
+                                }}
+                                onArrive={() => arriveStopMutation.mutate(pickupStop?.id)}
+                            />
+                        )}
+
+                        {viewState === 'AT_PICKUP' && (
+                            <PickupWorkflow
+                                clientName={trip.members[0]?.member?.firstName + ' ' + trip.members[0]?.member?.lastName}
+                                onConfirmPickup={(data) => {
+                                    // 1. Mark ready (optional) 
+                                    // 2. Complete Pickup Stop
+                                    completeStopMutation.mutate({ stopId: pickupStop?.id }, {
+                                        onSuccess: () => setViewState('EN_ROUTE_DROPOFF')
+                                    });
+                                }}
+                                onNoShow={(data) => {
+                                    // Handle no show API
+                                    console.log('No Show:', data);
+                                    navigate('/driver');
+                                }}
+                            />
+                        )}
+
+                        {viewState === 'EN_ROUTE_DROPOFF' && (
+                            <ActiveNavigation
+                                destinationAddress={dropoffStop?.address || 'Unknown'}
+                                destinationType="DROPOFF"
+                                clientName={trip.members[0]?.member?.firstName + ' ' + trip.members[0]?.member?.lastName}
+                                onNavigate={() => {
+                                    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dropoffStop?.address)}`, '_blank');
+                                }}
+                                onArrive={() => arriveStopMutation.mutate(dropoffStop?.id)}
+                            />
+                        )}
+
+                        {viewState === 'AT_DROPOFF' && (
+                            <DropoffWorkflow
+                                startOdometer={tripReport.startOdometer}
+                                onComplete={(data) => {
+                                    setTripReport(prev => ({
+                                        ...prev,
+                                        endOdometer: data.odometer,
+                                        notes: data.notes,
+                                        signature: data.signature
+                                    }));
+
+                                    if (trip.members[0]?.memberId) {
+                                        saveSignatureMutation.mutate({ memberId: trip.members[0].memberId, data: data.signature });
+                                    }
+
+                                    // 2. Complete Dropoff Stop (passing end odometer if needed by API)
+                                    // Note: In real app, we might save notes/odometer to a separate endpoint or as trip metadata
+                                    completeStopMutation.mutate({
+                                        stopId: dropoffStop?.id,
+                                        odometer: data.odometer
+                                        // notes: data.notes 
+                                    }, {
+                                        onSuccess: () => setViewState('COMPLETED')
+                                    });
+                                }}
+                            />
+                        )}
+
+                        {viewState === 'COMPLETED' && (
+                            <TripSummary
+                                startOdometer={tripReport.startOdometer}
+                                endOdometer={tripReport.endOdometer}
+                                notes={tripReport.notes}
+                                signature={tripReport.signature}
+                                onSubmit={() => navigate(`/driver/trips/${id}/report`)}
+                            />
+                        )}
+                    </Box>
+                </Container>
+            </Paper>
+        </Box>
     );
 }

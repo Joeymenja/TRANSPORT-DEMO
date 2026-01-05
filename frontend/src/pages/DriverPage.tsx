@@ -251,30 +251,22 @@ export default function DriverPage() {
                 </DialogActions>
             </Dialog>
 
-            <Dialog
-                open={isSignatureDialogOpen}
-                onClose={() => setIsSignatureDialogOpen(false)}
-                fullWidth
-                maxWidth="xs"
-            >
-                <DialogTitle>Member Signature</DialogTitle>
-                <DialogContent>
-                    {signatureMemberId && (
-                        <SignaturePad
-                            onSave={(sig) => {
-                                if (activeTrip && signatureMemberId) {
-                                    signatureMutation.mutate({
-                                        tripId: activeTrip.id,
-                                        memberId: signatureMemberId,
-                                        signature: sig
-                                    });
-                                }
-                            }}
-                            onCancel={() => setIsSignatureDialogOpen(false)}
-                        />
-                    )}
-                </DialogContent>
-            </Dialog>
+            {signatureMemberId && (
+                <SignaturePad
+                    open={isSignatureDialogOpen}
+                    onClose={() => setIsSignatureDialogOpen(false)}
+                    title="Member Signature"
+                    onSave={(sig) => {
+                        if (activeTrip && signatureMemberId) {
+                            signatureMutation.mutate({
+                                tripId: activeTrip.id,
+                                memberId: signatureMemberId,
+                                signature: sig
+                            });
+                        }
+                    }}
+                />
+            )}
         </Container>
     );
 }

@@ -65,6 +65,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
                                 Drivers
                             </Button>
                         )}
+                        <Button color="inherit" onClick={() => navigate('/vehicles')} sx={{ color: '#212121' }}>
+                            Vehicles
+                        </Button>
                         <Button color="inherit" onClick={() => navigate('/driver')} sx={{ color: '#212121' }}>
                             Driver
                         </Button>

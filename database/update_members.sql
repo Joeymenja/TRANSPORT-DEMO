@@ -1,0 +1,4 @@
+-- Update Members Table
+ALTER TABLE members ADD COLUMN IF NOT EXISTS gender VARCHAR(20);
+ALTER TABLE members ADD COLUMN IF NOT EXISTS consent_date DATE;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS medical_notes TEXT;

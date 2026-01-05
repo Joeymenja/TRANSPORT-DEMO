@@ -1,0 +1,8 @@
+-- Add missing columns to vehicles table
+ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS color VARCHAR(50);
+ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS condition_status VARCHAR(50) DEFAULT 'GOOD';
+ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS purchase_date DATE;
+ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS next_maintenance_date DATE;
+ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS wheelchair_accessible BOOLEAN DEFAULT false;
+ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS vin VARCHAR(100);

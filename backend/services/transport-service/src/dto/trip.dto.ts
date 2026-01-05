@@ -4,8 +4,8 @@ import { TripType, TripStatus } from '../entities/trip.entity';
 import { StopType } from '../entities/trip-stop.entity';
 
 export class CreateTripStopDto {
-    @IsEnum(StopType)
-    stopType: StopType;
+    @IsString()
+    stopType: string;
 
     @IsNumber()
     stopOrder: number;
@@ -28,15 +28,15 @@ export class CreateTripStopDto {
 }
 
 export class CreateTripMemberDto {
-    @IsUUID()
+    @IsString()
     memberId: string;
 
     @IsOptional()
-    @IsUUID()
+    @IsString()
     pickupStopId?: string;
 
     @IsOptional()
-    @IsUUID()
+    @IsString()
     dropoffStopId?: string;
 }
 
@@ -46,20 +46,36 @@ export class CreateTripDto {
     tripDate: Date;
 
     @IsOptional()
-    @IsUUID()
+    @IsString()
     assignedDriverId?: string;
 
     @IsOptional()
-    @IsUUID()
+    @IsString()
     assignedVehicleId?: string;
 
-    @IsEnum(TripType)
+    @IsString()
     @IsOptional()
-    tripType?: TripType;
+    tripType?: string;
+
+    @IsOptional()
+    @IsString()
+    status?: string;
 
     @IsBoolean()
     @IsOptional()
     isCarpool?: boolean;
+
+    @IsString()
+    @IsOptional()
+    reasonForVisit?: string;
+
+    @IsString()
+    @IsOptional()
+    escortName?: string;
+
+    @IsString()
+    @IsOptional()
+    escortRelationship?: string;
 
     @IsArray()
     @ValidateNested({ each: true })
@@ -74,11 +90,11 @@ export class CreateTripDto {
 
 export class UpdateTripDto {
     @IsOptional()
-    @IsUUID()
+    @IsString()
     assignedDriverId?: string;
 
     @IsOptional()
-    @IsUUID()
+    @IsString()
     assignedVehicleId?: string;
 
     @IsOptional()
@@ -94,6 +110,14 @@ export class UpdateTripDto {
     @IsDate()
     @Type(() => Date)
     completedAt?: Date;
+
+    @IsOptional()
+    @IsString()
+    reportStatus?: string;
+
+    @IsOptional()
+    @IsString()
+    reportRejectionReason?: string;
 }
 
 export class TripResponseDto {
@@ -105,6 +129,14 @@ export class TripResponseDto {
     tripType: TripType;
     isCarpool: boolean;
     status: TripStatus;
+    reasonForVisit?: string;
+    escortName?: string;
+    escortRelationship?: string;
+    reportStatus?: string;
+    reportFilePath?: string;
+    reportRejectionReason?: string;
+    reportVerifiedAt?: Date;
+    reportVerifiedBy?: string;
     memberCount: number;
     stops: any[];
     members: any[];

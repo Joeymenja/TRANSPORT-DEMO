@@ -24,6 +24,11 @@ export interface Member {
     emergencyContactPhone?: string;
     specialNotes?: string;
     isActive: boolean;
+    consentOnFile?: boolean;
+    reportType?: 'NATIVE' | 'NON_NATIVE';
+    gender?: string;
+    consentDate?: string;
+    medicalNotes?: string;
     createdAt: string;
     updatedAt: string;
 }

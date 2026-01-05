@@ -1,12 +1,16 @@
 import { useState } from 'react';
-import { Box, Container, Typography, Card, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Grid } from '@mui/material';
-import { Add, Edit, Delete, Groups, AutoFixHigh } from '@mui/icons-material';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'; // Import useMutation and useQueryClient
+import { Box, Container, Typography, Card, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Grid, FormControlLabel, Checkbox, Tooltip } from '@mui/material';
+import { Add, Edit, Delete, Groups, AutoFixHigh, Assignment, AssignmentTurnedIn } from '@mui/icons-material';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { memberApi, MobilityRequirement, CreateMemberData } from '../api/members';
 
 export default function MembersPage() {
+    const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [memberToDelete, setMemberToDelete] = useState<string | null>(null);
     const [formData, setFormData] = useState<CreateMemberData>({
         firstName: '',
         lastName: '',
@@ -16,7 +20,13 @@ export default function MembersPage() {
         insuranceProvider: '',
         insuranceId: '',
         phone: '',
-        address: ''
+        address: '',
+        consentOnFile: false,
+        reportType: 'NATIVE',
+        gender: '',
+        consentDate: '',
+        medicalNotes: '',
+        specialNotes: ''
     });
 
     const { data: members, isLoading } = useQuery({
@@ -29,19 +39,53 @@ export default function MembersPage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['members'] });
             setIsDialogOpen(false);
-            setFormData({
-                firstName: '',
-                lastName: '',
-                dateOfBirth: new Date().toISOString().split('T')[0],
-                memberId: '',
-                mobilityRequirement: MobilityRequirement.AMBULATORY,
-                insuranceProvider: '',
-                insuranceId: '',
-                phone: '',
-                address: ''
-            });
+            resetForm();
+        },
+        onError: (error: any) => {
+            console.error('Failed to create member:', error);
+        }
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: (id: string) => memberApi.deleteMember(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['members'] });
         },
     });
+
+    const resetForm = () => {
+        setFormData({
+            firstName: '',
+            lastName: '',
+            dateOfBirth: new Date().toISOString().split('T')[0],
+            memberId: '',
+            mobilityRequirement: MobilityRequirement.AMBULATORY,
+            insuranceProvider: '',
+            insuranceId: '',
+            phone: '',
+            address: '',
+            consentOnFile: false,
+            reportType: 'NATIVE',
+            gender: '',
+            consentDate: '',
+            medicalNotes: '',
+            specialNotes: ''
+        });
+    };
+
+    const handleDelete = (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        setMemberToDelete(id);
+        setDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = () => {
+        if (memberToDelete) {
+            deleteMutation.mutate(memberToDelete);
+            setDeleteDialogOpen(false);
+            setMemberToDelete(null);
+        }
+    };
 
     const getMobilityColor = (req: MobilityRequirement) => {
         switch (req) {
@@ -64,12 +108,30 @@ export default function MembersPage() {
             insuranceProvider: 'Health Choice',
             insuranceId: `INS-${randomId * 2}`,
             phone: '555-0123',
-            address: '123 Fake St, Phoenix, AZ'
+            address: '123 Fake St, Phoenix, AZ',
+            consentOnFile: Math.random() > 0.5,
+            reportType: Math.random() > 0.5 ? 'NATIVE' : 'NON_NATIVE',
+            gender: ['Male', 'Female', 'Other'][randomId % 3],
+            consentDate: new Date().toISOString().split('T')[0],
+            medicalNotes: 'Standard transport requirements.',
+            specialNotes: 'Door-to-door service required.'
         });
     };
 
     const handleSubmit = () => {
-        createMutation.mutate(formData);
+        // Sanitize data: remove empty strings for optional fields to avoid backend validation errors
+        const sanitizedData = { ...formData };
+
+        if (!sanitizedData.consentDate) delete sanitizedData.consentDate;
+        if (!sanitizedData.gender) delete sanitizedData.gender;
+        if (!sanitizedData.medicalNotes) delete sanitizedData.medicalNotes;
+        if (!sanitizedData.specialNotes) delete sanitizedData.specialNotes;
+        if (!sanitizedData.insuranceProvider) delete sanitizedData.insuranceProvider;
+        if (!sanitizedData.insuranceId) delete sanitizedData.insuranceId;
+        if (!sanitizedData.phone) delete sanitizedData.phone;
+        if (!sanitizedData.address) delete sanitizedData.address;
+
+        createMutation.mutate(sanitizedData);
     };
 
     return (
@@ -96,24 +158,30 @@ export default function MembersPage() {
                             <TableRow>
                                 <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
                                 <TableCell sx={{ fontWeight: 600 }}>Member ID</TableCell>
+                                <TableCell sx={{ fontWeight: 600 }}>Report Type</TableCell>
+                                <TableCell sx={{ fontWeight: 600 }}>Consent</TableCell>
                                 <TableCell sx={{ fontWeight: 600 }}>Mobility</TableCell>
                                 <TableCell sx={{ fontWeight: 600 }}>Insurance</TableCell>
-                                <TableCell sx={{ fontWeight: 600 }}>Phone</TableCell>
                                 <TableCell sx={{ fontWeight: 600, textAlign: 'right' }}>Actions</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {isLoading ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} align="center" sx={{ py: 4 }}>Loading members...</TableCell>
+                                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>Loading members...</TableCell>
                                 </TableRow>
                             ) : members?.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>No members found.</TableCell>
+                                    <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>No members found.</TableCell>
                                 </TableRow>
                             ) : (
                                 members?.map((member) => (
-                                    <TableRow key={member.id} hover>
+                                    <TableRow
+                                        key={member.id}
+                                        hover
+                                        onClick={() => navigate(`/members/${member.id}`)}
+                                        sx={{ cursor: 'pointer' }}
+                                    >
                                         <TableCell>
                                             <Typography variant="body2" sx={{ fontWeight: 500 }}>
                                                 {member.lastName}, {member.firstName}
@@ -125,6 +193,25 @@ export default function MembersPage() {
                                         <TableCell>{member.memberId}</TableCell>
                                         <TableCell>
                                             <Chip
+                                                label={member.reportType === 'NON_NATIVE' ? 'Non-Native' : 'Native'}
+                                                size="small"
+                                                variant="outlined"
+                                                color="default"
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            {member.consentOnFile ? (
+                                                <Tooltip title="Consent on file">
+                                                    <AssignmentTurnedIn color="success" fontSize="small" />
+                                                </Tooltip>
+                                            ) : (
+                                                <Tooltip title="Missing consent">
+                                                    <Assignment color="disabled" fontSize="small" />
+                                                </Tooltip>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Chip
                                                 label={member.mobilityRequirement}
                                                 size="small"
                                                 color={getMobilityColor(member.mobilityRequirement) as any}
@@ -134,12 +221,24 @@ export default function MembersPage() {
                                             <Typography variant="body2">{member.insuranceProvider || 'N/A'}</Typography>
                                             <Typography variant="caption" color="textSecondary">{member.insuranceId}</Typography>
                                         </TableCell>
-                                        <TableCell>{member.phone || 'N/A'}</TableCell>
                                         <TableCell align="right">
-                                            <IconButton size="small" color="primary">
+                                            <IconButton
+                                                size="small"
+                                                color="primary"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    // TODO: Implement quick edit or navigate to edit tab
+                                                    navigate(`/members/${member.id}`);
+                                                }}
+                                            >
                                                 <Edit fontSize="small" />
                                             </IconButton>
-                                            <IconButton size="small" color="error">
+                                            <IconButton
+                                                size="small"
+                                                color="error"
+                                                onClick={(e) => handleDelete(e, member.id)}
+                                                disabled={deleteMutation.isPending}
+                                            >
                                                 <Delete fontSize="small" />
                                             </IconButton>
                                         </TableCell>
@@ -165,7 +264,7 @@ export default function MembersPage() {
                 </DialogTitle>
                 <DialogContent dividers>
                     <Grid container spacing={2}>
-                        <Grid item xs={12} sm={6}>
+                        <Grid item xs={12} sm={4}>
                             <TextField
                                 label="First Name"
                                 fullWidth
@@ -173,13 +272,26 @@ export default function MembersPage() {
                                 onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid item xs={12} sm={4}>
                             <TextField
                                 label="Last Name"
                                 fullWidth
                                 value={formData.lastName}
                                 onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                             />
+                        </Grid>
+                        <Grid item xs={12} sm={4}>
+                            <TextField
+                                select
+                                label="Gender"
+                                fullWidth
+                                value={formData.gender}
+                                onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                            >
+                                <MenuItem value="Male">Male</MenuItem>
+                                <MenuItem value="Female">Female</MenuItem>
+                                <MenuItem value="Other">Other</MenuItem>
+                            </TextField>
                         </Grid>
                         <Grid item xs={12} sm={6}>
                             <TextField
@@ -201,6 +313,26 @@ export default function MembersPage() {
                         </Grid>
                         <Grid item xs={12} sm={6}>
                             <TextField
+                                label="Phone"
+                                fullWidth
+                                value={formData.phone}
+                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                select
+                                label="Report Type"
+                                fullWidth
+                                value={formData.reportType}
+                                onChange={(e) => setFormData({ ...formData, reportType: e.target.value as any })}
+                            >
+                                <MenuItem value="NATIVE">Native</MenuItem>
+                                <MenuItem value="NON_NATIVE">Non-Native</MenuItem>
+                            </TextField>
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
                                 select
                                 label="Mobility Requirement"
                                 fullWidth
@@ -216,10 +348,23 @@ export default function MembersPage() {
                         </Grid>
                         <Grid item xs={12} sm={6}>
                             <TextField
-                                label="Phone"
+                                label="Date of Consent"
+                                type="date"
                                 fullWidth
-                                value={formData.phone}
-                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                InputLabelProps={{ shrink: true }}
+                                value={formData.consentDate}
+                                onChange={(e) => setFormData({ ...formData, consentDate: e.target.value })}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6} display="flex" alignItems="center">
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={formData.consentOnFile}
+                                        onChange={(e) => setFormData({ ...formData, consentOnFile: e.target.checked })}
+                                    />
+                                }
+                                label="Consent Form On File"
                             />
                         </Grid>
                         <Grid item xs={12} sm={6}>
@@ -240,6 +385,26 @@ export default function MembersPage() {
                         </Grid>
                         <Grid item xs={12}>
                             <TextField
+                                label="Medical Notes"
+                                fullWidth
+                                multiline
+                                rows={2}
+                                value={formData.medicalNotes}
+                                onChange={(e) => setFormData({ ...formData, medicalNotes: e.target.value })}
+                            />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <TextField
+                                label="Special Notes"
+                                fullWidth
+                                multiline
+                                rows={2}
+                                value={formData.specialNotes}
+                                onChange={(e) => setFormData({ ...formData, specialNotes: e.target.value })}
+                            />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <TextField
                                 label="Address"
                                 fullWidth
                                 multiline
@@ -254,6 +419,28 @@ export default function MembersPage() {
                     <Button onClick={() => setIsDialogOpen(false)}>Cancel</Button>
                     <Button onClick={handleSubmit} variant="contained" disabled={createMutation.isPending}>
                         {createMutation.isPending ? 'Saving...' : 'Save Member'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog
+                open={deleteDialogOpen}
+                onClose={() => setDeleteDialogOpen(false)}
+                aria-labelledby="alert-dialog-title"
+                aria-describedby="alert-dialog-description"
+            >
+                <DialogTitle id="alert-dialog-title">
+                    {"Delete Member?"}
+                </DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        Are you sure you want to delete this member? This action cannot be undone.
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={confirmDelete} color="error" variant="contained" autoFocus>
+                        Delete
                     </Button>
                 </DialogActions>
             </Dialog>

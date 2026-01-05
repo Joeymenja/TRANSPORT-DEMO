@@ -1,6 +1,6 @@
 import { Controller, Post, Body, UseGuards, Get, Request, Param, Patch } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto, AuthResponseDto, DriverRegisterDto, UploadDocumentDto, ReviewDocumentDto } from './dto/auth.dto';
+import { LoginDto, RegisterDto, AuthResponseDto, DriverRegisterDto, UploadDocumentDto, ReviewDocumentDto, UpdateProfileDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
@@ -21,6 +21,12 @@ export class AuthController {
     @Get('me')
     async getProfile(@Request() req) {
         return req.user;
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Patch('profile')
+    async updateProfile(@Request() req, @Body() body: UpdateProfileDto) {
+        return this.authService.updateProfile(req.user.id, body);
     }
 
     @UseGuards(JwtAuthGuard)

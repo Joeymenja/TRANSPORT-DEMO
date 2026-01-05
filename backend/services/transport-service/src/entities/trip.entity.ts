@@ -19,6 +19,13 @@ export enum TripStatus {
     CANCELLED = 'CANCELLED',
 }
 
+export enum ReportStatus {
+    PENDING = 'PENDING',
+    VERIFIED = 'VERIFIED',
+    REJECTED = 'REJECTED',
+    ARCHIVED = 'ARCHIVED',
+}
+
 @Entity('trips')
 export class Trip {
     @PrimaryGeneratedColumn('uuid')
@@ -56,6 +63,34 @@ export class Trip {
         default: TripStatus.SCHEDULED,
     })
     status: TripStatus;
+
+    @Column({ name: 'reason_for_visit', nullable: true })
+    reasonForVisit: string;
+
+    @Column({ name: 'escort_name', nullable: true })
+    escortName: string;
+
+    @Column({ name: 'escort_relationship', nullable: true })
+    escortRelationship: string;
+
+    @Column({
+        name: 'report_status',
+        type: 'varchar',
+        default: ReportStatus.PENDING
+    })
+    reportStatus: string;
+
+    @Column({ name: 'report_file_path', nullable: true })
+    reportFilePath: string;
+
+    @Column({ name: 'report_rejection_reason', nullable: true })
+    reportRejectionReason: string;
+
+    @Column({ name: 'report_verified_at', nullable: true })
+    reportVerifiedAt: Date;
+
+    @Column({ name: 'report_verified_by', nullable: true })
+    reportVerifiedBy: string;
 
     @Column({ name: 'started_at', nullable: true })
     startedAt: Date;

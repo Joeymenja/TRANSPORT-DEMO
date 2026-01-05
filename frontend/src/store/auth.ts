@@ -8,7 +8,11 @@ export interface User {
     lastName: string;
     role: 'SUPER_ADMIN' | 'ORG_ADMIN' | 'DISPATCHER' | 'DRIVER';
     organizationId: string;
+    orientationId: string;
     defaultVehicleId?: string;
+    onboardingStep?: number;
+    signatureUrl?: string; // Driver signature
+    isActive: boolean;
 }
 
 interface AuthState {
@@ -18,17 +22,18 @@ interface AuthState {
     login: (email: string, password: string) => Promise<void>;
     logout: () => void;
     setUser: (user: User, token: string) => void;
+    checkAuth: () => Promise<void>; // Refresh user profile
 }
 
 export const useAuthStore = create<AuthState>()(
     persist(
-        (set) => ({
+        (set, get) => ({
             user: null,
             token: null,
             isAuthenticated: false,
 
             login: async (email: string, password: string) => {
-                const response = await fetch('/api/auth/login', {
+                const response = await fetch('http://localhost:3003/auth/login', { // Using full URL for now to ensure hitting correct service
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password }),
@@ -53,6 +58,23 @@ export const useAuthStore = create<AuthState>()(
             setUser: (user: User, token: string) => {
                 set({ user, token, isAuthenticated: true });
             },
+
+            checkAuth: async () => {
+                const { token } = get();
+                if (!token) return;
+
+                try {
+                    const response = await fetch('http://localhost:3003/auth/profile', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (response.ok) {
+                        const user = await response.json();
+                        set({ user });
+                    }
+                } catch (e) {
+                    console.error('Failed to refresh auth', e);
+                }
+            }
         }),
         {
             name: 'gvbh-auth',
