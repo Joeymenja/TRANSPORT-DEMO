@@ -35,6 +35,7 @@ export interface Trip {
     memberCount: number;
     stops: any[];
     members: any[];
+    mobilityRequirement: 'AMBULATORY' | 'WHEELCHAIR' | 'STRETCHER' | 'CAR_SEAT';
     createdAt: Date;
 }
 
@@ -71,6 +72,7 @@ export interface CreateTripData {
         gpsLongitude?: number;
         scheduledTime?: Date;
     }[];
+    mobilityRequirement?: 'AMBULATORY' | 'WHEELCHAIR' | 'STRETCHER' | 'CAR_SEAT';
 }
 
 export const tripApi = {
@@ -85,7 +87,9 @@ export const tripApi = {
     },
 
     createTrip: async (tripData: CreateTripData): Promise<Trip> => {
+        console.log('Creating trip with data:', tripData);
         const { data } = await api.post('/trips', tripData);
+        console.log('Trip created, response:', data);
         return data;
     },
 
@@ -127,6 +131,16 @@ export const tripApi = {
         link.remove();
     },
 
+    cancelTrip: async (tripId: string, reason: string, notes?: string): Promise<Trip> => {
+        const { data } = await api.post(`/trips/${tripId}/cancel`, { reason, notes });
+        return data;
+    },
+
+    markNoShow: async (tripId: string, notes: string, attemptedContact: boolean = false): Promise<Trip> => {
+        const { data } = await api.post(`/trips/${tripId}/no-show`, { notes, attemptedContact });
+        return data;
+    },
+
     arriveAtStop: async (tripId: string, stopId: string, gps?: { lat: number, lng: number }): Promise<any> => {
         const { data } = await api.post(`/trips/${tripId}/stops/${stopId}/arrive`, {
             gpsLatitude: gps?.lat,
@@ -135,9 +149,10 @@ export const tripApi = {
         return data;
     },
 
-    saveSignature: async (tripId: string, memberId: string, signatureBase64: string): Promise<any> => {
+    saveSignature: async (tripId: string, memberId: string, signatureBase64: string, proxyData?: { isProxy?: boolean, proxySignerName?: string, proxyRelationship?: string, proxyReason?: string }): Promise<any> => {
         const { data } = await api.post(`/trips/${tripId}/members/${memberId}/signature`, {
             signatureBase64,
+            ...proxyData
         });
         return data;
     },

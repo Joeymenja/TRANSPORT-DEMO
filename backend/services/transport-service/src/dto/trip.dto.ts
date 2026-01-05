@@ -1,6 +1,6 @@
 import { IsString, IsUUID, IsEnum, IsOptional, IsBoolean, IsDate, IsArray, ValidateNested, IsNumber } from 'class-validator';
 import { Type } from 'class-transformer';
-import { TripType, TripStatus } from '../entities/trip.entity';
+import { TripType, TripStatus, MobilityRequirement } from '../entities/trip.entity';
 import { StopType } from '../entities/trip-stop.entity';
 
 export class CreateTripStopDto {
@@ -86,6 +86,10 @@ export class CreateTripDto {
     @ValidateNested({ each: true })
     @Type(() => CreateTripStopDto)
     stops: CreateTripStopDto[];
+
+    @IsEnum(MobilityRequirement)
+    @IsOptional()
+    mobilityRequirement?: MobilityRequirement;
 }
 
 export class UpdateTripDto {
@@ -112,12 +116,18 @@ export class UpdateTripDto {
     completedAt?: Date;
 
     @IsOptional()
+    @IsOptional()
     @IsString()
     reportStatus?: string;
 
     @IsOptional()
     @IsString()
     reportRejectionReason?: string;
+
+    @IsOptional()
+    @IsEnum(MobilityRequirement)
+    mobilityRequirement?: MobilityRequirement;
+
 }
 
 export class TripResponseDto {
@@ -140,6 +150,7 @@ export class TripResponseDto {
     memberCount: number;
     stops: any[];
     members: any[];
+    mobilityRequirement: MobilityRequirement;
     createdAt: Date;
 }
 export class UpdateStopDto {
@@ -169,4 +180,39 @@ export class UpdateStopDto {
 export class MemberSignatureDto {
     @IsString()
     signatureBase64: string;
+
+
+    @IsOptional()
+    @IsBoolean()
+    isProxySignature?: boolean;
+
+    @IsOptional()
+    @IsString()
+    proxySignerName?: string;
+
+    @IsOptional()
+    @IsString()
+    proxyRelationship?: string;
+
+    @IsOptional()
+    @IsString()
+    proxyReason?: string;
+}
+
+export class CancelTripDto {
+    @IsEnum(['MEMBER_CANCELLED', 'NO_SHOW', 'WEATHER', 'VEHICLE_ISSUE', 'DRIVER_UNAVAILABLE', 'OTHER'])
+    reason: string;
+
+    @IsOptional()
+    @IsString()
+    notes?: string;
+}
+
+export class MarkNoShowDto {
+    @IsString()
+    notes: string;
+
+    @IsOptional()
+    @IsBoolean()
+    attemptedContact?: boolean;
 }

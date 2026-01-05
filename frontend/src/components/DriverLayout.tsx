@@ -25,13 +25,15 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
     };
 
     const getNavValue = () => {
-        if (location.pathname === '/driver/trips') return 'trips';
-        if (location.pathname === '/driver/compliance') return 'compliance';
-        return 'home';
+        if (location.pathname.startsWith('/driver/trips')) return 'trips';
+        if (location.pathname.startsWith('/driver/compliance')) return 'compliance';
+        if (location.pathname === '/driver' || location.pathname === '/driver/') return 'home';
+        return 'trips'; // Default to trips for nested routes
     };
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: '#f5f5f5' }}>
+
 
             {/* Main Content Area - Full Height */}
             <Box sx={{ flexGrow: 1, pb: 7 }}>

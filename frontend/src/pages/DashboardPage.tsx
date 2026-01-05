@@ -1,4 +1,4 @@
-import { Box, Container, Grid, Card, CardContent, Typography, Button, Chip, Collapse, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Divider, List, ListItem, ListItemText, ListItemIcon, Checkbox, FormControlLabel } from '@mui/material';
+import { Box, Container, Grid, Card, CardContent, Typography, Button, Chip, Collapse, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Divider, List, ListItem, ListItemText, ListItemIcon, Checkbox, FormControlLabel, FormControl, InputLabel, Select } from '@mui/material';
 import {
     DirectionsCar,
     Schedule,
@@ -10,13 +10,16 @@ import {
     Visibility,
     VerifiedUser,
     ErrorOutline,
-    Add
+    Add,
+    AssignmentInd,
+    Warning
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tripApi, CreateTripData } from '../api/trips';
 import { memberApi } from '../api/members';
 import { driverApi } from '../api/drivers';
 import { useAuthStore } from '../store/auth';
+import api from '../lib/api';
 import { format } from 'date-fns';
 import { useState, ReactNode } from 'react';
 import DriverStatusToggle from '../components/driver/DriverStatusToggle';
@@ -36,7 +39,15 @@ export default function DashboardPage() {
 
     const today = format(new Date(), 'yyyy-MM-dd');
     const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
-    const [previewSignature, setPreviewSignature] = useState<{ name: string, data: string } | null>(null);
+    const [dispatchTripId, setDispatchTripId] = useState<string | null>(null);
+    const [previewSignature, setPreviewSignature] = useState<{
+        name: string,
+        data: string,
+        isProxy?: boolean,
+        proxySigner?: string,
+        proxyRelationship?: string,
+        proxyReason?: string
+    } | null>(null);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
     // Fetch Driver Profile
@@ -59,6 +70,7 @@ export default function DashboardPage() {
         dropoffAddress: string;
         isRoundTrip: boolean;
         returnTime: string;
+        mobilityRequirement: 'AMBULATORY' | 'WHEELCHAIR' | 'STRETCHER' | 'CAR_SEAT';
     }>({
         date: today,
         time: '09:00',
@@ -66,7 +78,8 @@ export default function DashboardPage() {
         pickupAddress: '',
         dropoffAddress: '',
         isRoundTrip: false,
-        returnTime: '12:00'
+        returnTime: '12:00',
+        mobilityRequirement: 'AMBULATORY'
     });
 
 
@@ -82,11 +95,19 @@ export default function DashboardPage() {
     });
 
     // Fetch All Drivers for Live Map (Poll every 10s)
-    const { data: allDrivers = [] } = useQuery({
+    const { data: drivers = [] } = useQuery({
         queryKey: ['drivers-live'],
         queryFn: () => driverApi.getAll(),
         refetchInterval: 10000,
         enabled: !isSuspended
+    });
+
+    const { data: vehicles = [] } = useQuery({
+        queryKey: ['vehicles'],
+        queryFn: async () => {
+            const res = await api.get('/vehicles');
+            return res.data;
+        }
     });
 
     const createTripMutation = useMutation({
@@ -97,16 +118,32 @@ export default function DashboardPage() {
             return tripApi.createTrip(data);
         },
         onSuccess: () => {
+            console.log('Trip created successfully, invalidating queries...');
             queryClient.invalidateQueries({ queryKey: ['trips'] });
+            queryClient.refetchQueries({ queryKey: ['trips', today] });
             setIsCreateDialogOpen(false);
             setTripForm({ ...tripForm, memberId: '', pickupAddress: '', dropoffAddress: '', isRoundTrip: false });
+        },
+        onError: (error: any) => {
+            console.error('Trip creation failed:', error);
+            alert(`Failed to create trip: ${error.response?.data?.message || error.message}`);
         }
     });
+
 
     const approveTripMutation = useMutation({
         mutationFn: (tripId: string) => tripApi.updateTrip(tripId, { status: 'SCHEDULED' as any }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['trips'] });
+        }
+    });
+
+    const dispatchMutation = useMutation({
+        mutationFn: ({ tripId, driverId, vehicleId }: { tripId: string, driverId?: string, vehicleId?: string }) =>
+            tripApi.updateTrip(tripId, { assignedDriverId: driverId, assignedVehicleId: vehicleId, status: 'SCHEDULED' as any }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['trips'] });
+            setDispatchTripId(null);
         }
     });
 
@@ -117,6 +154,7 @@ export default function DashboardPage() {
         const outboundTrip: CreateTripData = {
             tripDate,
             members: [{ memberId: tripForm.memberId }],
+            mobilityRequirement: tripForm.mobilityRequirement,
             stops: [
                 {
                     stopType: 'PICKUP',
@@ -138,6 +176,7 @@ export default function DashboardPage() {
             const returnTrip: CreateTripData = {
                 tripDate: returnTripDate,
                 members: [{ memberId: tripForm.memberId }],
+                mobilityRequirement: tripForm.mobilityRequirement,
                 stops: [
                     {
                         stopType: 'PICKUP',
@@ -220,7 +259,7 @@ export default function DashboardPage() {
             {!driver && (
                 <Grid container spacing={3} sx={{ mb: 4, height: 500 }}>
                     <Grid item xs={12} md={3} sx={{ height: '100%' }}>
-                        <UnassignedTripsList trips={trips} drivers={allDrivers} />
+                        <UnassignedTripsList trips={trips} drivers={drivers} />
                     </Grid>
                     <Grid item xs={12} md={9} sx={{ height: '100%' }}>
                         <Card sx={{ borderRadius: 2, height: '100%' }}>
@@ -228,7 +267,7 @@ export default function DashboardPage() {
                                 <Box sx={{ p: 2, borderBottom: '1px solid #eee' }}>
                                     <Typography variant="h6" fontWeight={600}>Live Fleet Map</Typography>
                                 </Box>
-                                <LiveMap drivers={allDrivers} height="calc(100% - 60px)" />
+                                <LiveMap drivers={drivers} height="calc(100% - 60px)" />
                             </CardContent>
                         </Card>
                     </Grid>
@@ -336,14 +375,16 @@ export default function DashboardPage() {
                                                                     sx={{ bgcolor: '#E3F2FD', color: '#0096D6' }}
                                                                 />
                                                             )}
-                                                            {trip.status === 'PENDING_APPROVAL' && (
-                                                                <Chip
-                                                                    label="PENDING APPROVAL"
-                                                                    color="error"
-                                                                    size="small"
-                                                                    icon={<ErrorOutline />}
-                                                                />
-                                                            )}
+                                                            <Chip
+                                                                label={trip.mobilityRequirement}
+                                                                size="small"
+                                                                variant="outlined"
+                                                                sx={{
+                                                                    borderColor: trip.mobilityRequirement === 'AMBULATORY' ? '#9e9e9e' : '#ff9800',
+                                                                    color: trip.mobilityRequirement === 'AMBULATORY' ? '#616161' : '#ed6c02',
+                                                                    fontWeight: 500
+                                                                }}
+                                                            />
                                                         </Box>
                                                         <Typography variant="body2" color="text.secondary">
                                                             {(trip.tripType || 'DROP_OFF').replace('_', ' ')} • {trip.stops?.length || 0} stops
@@ -363,6 +404,19 @@ export default function DashboardPage() {
                                                                 sx={{ mb: 1 }}
                                                             />
                                                         </Box>
+
+                                                        {(trip.status === 'PENDING_APPROVAL' || trip.status === 'SCHEDULED') && (
+                                                            <Button
+                                                                variant="contained"
+                                                                size="small"
+                                                                color="primary"
+                                                                startIcon={<AssignmentInd />}
+                                                                onClick={() => setDispatchTripId(trip.id)}
+                                                                sx={{ mr: 1, textTransform: 'none' }}
+                                                            >
+                                                                Dispatch
+                                                            </Button>
+                                                        )}
 
                                                         {trip.status === 'PENDING_APPROVAL' && (
                                                             <Button
@@ -417,15 +471,30 @@ export default function DashboardPage() {
                                                                                 secondaryTypographyProps={{ variant: 'caption' }}
                                                                             />
                                                                             {tm.memberSignatureBase64 && tm.member && (
-                                                                                <IconButton
-                                                                                    size="small"
-                                                                                    onClick={() => setPreviewSignature({
-                                                                                        name: `${tm.member.firstName} ${tm.member.lastName}`,
-                                                                                        data: tm.memberSignatureBase64
-                                                                                    })}
-                                                                                >
-                                                                                    <Visibility fontSize="small" />
-                                                                                </IconButton>
+                                                                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                                                    {tm.isProxySignature && (
+                                                                                        <Chip
+                                                                                            label="Proxy"
+                                                                                            size="small"
+                                                                                            color="warning"
+                                                                                            variant="outlined"
+                                                                                            sx={{ height: 20, fontSize: '0.65rem', mr: 1 }}
+                                                                                        />
+                                                                                    )}
+                                                                                    <IconButton
+                                                                                        size="small"
+                                                                                        onClick={() => setPreviewSignature({
+                                                                                            name: `${tm.member.firstName} ${tm.member.lastName}`,
+                                                                                            data: tm.memberSignatureBase64,
+                                                                                            isProxy: tm.isProxySignature,
+                                                                                            proxySigner: tm.proxySignerName,
+                                                                                            proxyRelationship: tm.proxyRelationship,
+                                                                                            proxyReason: tm.proxyReason
+                                                                                        })}
+                                                                                    >
+                                                                                        <Visibility fontSize="small" />
+                                                                                    </IconButton>
+                                                                                </Box>
                                                                             )}
                                                                         </ListItem>
                                                                     ))}
@@ -445,7 +514,7 @@ export default function DashboardPage() {
                                                                                 primary={`${idx + 1}. ${(stop.stopType || 'STOP')}: ${(stop.address || '').split(',')[0]}`}
                                                                                 secondary={
                                                                                     stop.actualArrivalTime ?
-                                                                                        `Arrived: ${new Date(stop.actualArrivalTime).toLocaleTimeString()} ${stop.gpsLatitude ? `@ ${Number(stop.gpsLatitude).toFixed(4)}, ${Number(stop.gpsLongitude).toFixed(4)}` : '(No GPS)'}` :
+                                                                                        `Arrived: ${new Date(stop.actualArrivalTime).toLocaleTimeString()} ${stop.gpsLatitude ? `@ ${stop.gpsLatitude.toFixed(4)}, ${stop.gpsLongitude.toFixed(4)}` : '(No GPS)'}` :
                                                                                         'Pending'
                                                                                 }
                                                                                 primaryTypographyProps={{ variant: 'body2' }}
@@ -474,14 +543,35 @@ export default function DashboardPage() {
             </Grid>
 
             <Dialog open={!!previewSignature} onClose={() => setPreviewSignature(null)} maxWidth="xs" fullWidth>
-                <DialogTitle sx={{ variant: 'subtitle1' }}>Signature: {previewSignature?.name}</DialogTitle>
+                <DialogTitle sx={{ variant: 'subtitle1' }}>
+                    Signature: {previewSignature?.name}
+                    {previewSignature?.isProxy && (
+                        <Chip label="Proxy Signature" size="small" color="warning" sx={{ ml: 1 }} />
+                    )}
+                </DialogTitle>
                 <DialogContent>
                     <Box
                         component="img"
                         src={previewSignature?.data}
-                        sx={{ width: '100%', border: '1px solid #eee', borderRadius: 1 }}
+                        sx={{ width: '100%', border: '1px solid #eee', borderRadius: 1, mb: previewSignature?.isProxy ? 2 : 0 }}
                     />
+                    {previewSignature?.isProxy && (
+                        <Box sx={{ bgcolor: '#FFF8E1', p: 1.5, borderRadius: 1, borderLeft: '4px solid #FFC107' }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold' }}>
+                                PROXY DETAILS
+                            </Typography>
+                            <Typography variant="body2">
+                                <strong>Signer:</strong> {previewSignature.proxySigner} ({previewSignature.proxyRelationship})
+                            </Typography>
+                            <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                <strong>Reason:</strong> {previewSignature.proxyReason}
+                            </Typography>
+                        </Box>
+                    )}
                 </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setPreviewSignature(null)}>Close</Button>
+                </DialogActions>
             </Dialog>
 
             <Dialog open={isCreateDialogOpen} onClose={() => setIsCreateDialogOpen(false)} maxWidth="sm" fullWidth>
@@ -531,7 +621,21 @@ export default function DashboardPage() {
                                 />
                             </Grid>
                         )}
-                        <Grid item xs={12}>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                select
+                                label="Mobility Requirement"
+                                fullWidth
+                                value={tripForm.mobilityRequirement}
+                                onChange={(e) => setTripForm({ ...tripForm, mobilityRequirement: e.target.value as any })}
+                            >
+                                <MenuItem value="AMBULATORY">Ambulatory</MenuItem>
+                                <MenuItem value="WHEELCHAIR">Wheelchair</MenuItem>
+                                <MenuItem value="STRETCHER">Stretcher</MenuItem>
+                                <MenuItem value="CAR_SEAT">Car Seat</MenuItem>
+                            </TextField>
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
                             <TextField
                                 select
                                 label="Select Member"
@@ -552,6 +656,11 @@ export default function DashboardPage() {
                                 fullWidth
                                 value={tripForm.pickupAddress}
                                 onChange={(e) => setTripForm({ ...tripForm, pickupAddress: e.target.value })}
+                                placeholder="Enter full street address"
+                                inputProps={{
+                                    autoComplete: 'street-address',
+                                }}
+                                helperText="Example: 123 Main St, Phoenix, AZ 85001"
                             />
                         </Grid>
                         <Grid item xs={12}>
@@ -560,6 +669,11 @@ export default function DashboardPage() {
                                 fullWidth
                                 value={tripForm.dropoffAddress}
                                 onChange={(e) => setTripForm({ ...tripForm, dropoffAddress: e.target.value })}
+                                placeholder="Enter full street address"
+                                inputProps={{
+                                    autoComplete: 'street-address',
+                                }}
+                                helperText="Example: 456 Oak Ave, Scottsdale, AZ 85251"
                             />
                         </Grid>
                     </Grid>
@@ -575,7 +689,96 @@ export default function DashboardPage() {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            <AssignDispatchDialog
+                open={!!dispatchTripId}
+                onClose={() => setDispatchTripId(null)}
+                tripId={dispatchTripId || ''}
+                drivers={drivers}
+                vehicles={vehicles}
+                onAssign={(driverId, vehicleId) => {
+                    dispatchMutation.mutate({ tripId: dispatchTripId!, driverId, vehicleId });
+                }}
+            />
         </Container>
+    );
+}
+
+function AssignDispatchDialog({ open, onClose, tripId, drivers, vehicles, onAssign }: {
+    open: boolean,
+    onClose: () => void,
+    tripId: string,
+    drivers: any[],
+    vehicles: any[],
+    onAssign: (driverId?: string, vehicleId?: string) => void
+}) {
+    const [driverId, setDriverId] = useState('');
+    const [vehicleId, setVehicleId] = useState('');
+
+    const handleAssign = () => {
+        onAssign(driverId || undefined, vehicleId || undefined);
+    };
+
+    return (
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+            <DialogTitle>Assign Dispatch - Trip #{tripId.slice(0, 8)}</DialogTitle>
+            <DialogContent dividers>
+                <Grid container spacing={3}>
+                    <Grid item xs={12}>
+                        <FormControl fullWidth>
+                            <InputLabel>Assign Driver</InputLabel>
+                            <Select
+                                value={driverId}
+                                label="Assign Driver"
+                                onChange={(e) => setDriverId(e.target.value)}
+                            >
+                                <MenuItem value=""><em>None</em></MenuItem>
+                                {drivers.map((driver) => (
+                                    <MenuItem key={driver.id} value={driver.id}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                                            <Typography variant="body2">{driver.firstName} {driver.lastName}</Typography>
+                                            {!driver.isActive && (
+                                                <Chip
+                                                    icon={<Warning sx={{ fontSize: '1rem !important' }} />}
+                                                    label="Pending Compliance"
+                                                    size="small"
+                                                    color="warning"
+                                                    variant="outlined"
+                                                    sx={{ height: 20, fontSize: '0.65rem' }}
+                                                />
+                                            )}
+                                        </Box>
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Grid>
+                    <Grid item xs={12}>
+                        <FormControl fullWidth>
+                            <InputLabel>Assign Vehicle</InputLabel>
+                            <Select
+                                value={vehicleId}
+                                label="Assign Vehicle"
+                                onChange={(e) => setVehicleId(e.target.value)}
+                            >
+                                <MenuItem value=""><em>None</em></MenuItem>
+                                {vehicles.map((vehicle) => (
+                                    <MenuItem key={vehicle.id} value={vehicle.id}>
+                                        {vehicle.make} {vehicle.model} ({vehicle.licensePlate})
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Grid>
+                </Grid>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={onClose}>Cancel</Button>
+                <Button variant="contained" onClick={handleAssign} color="primary">
+                    Confirm Assignment
+                </Button>
+            </DialogActions>
+        </Dialog>
     );
 }
 

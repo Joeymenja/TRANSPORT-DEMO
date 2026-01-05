@@ -62,8 +62,9 @@ export default function TripExecutionPage() {
         }
     });
 
-    const saveSignatureMutation = useMutation({
-        mutationFn: ({ memberId, data }: { memberId: string, data: string }) => tripApi.saveSignature(tripId!, memberId, data),
+    const signatureMutation = useMutation({
+        mutationFn: ({ memberId, data, proxyData }: { memberId: string, data: string, proxyData?: any }) =>
+            tripApi.saveSignature(tripId!, memberId, data, proxyData),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trip', tripId] })
     });
 
@@ -77,8 +78,24 @@ export default function TripExecutionPage() {
     // Helper to get stop IDs
     const pickupStop = trip.stops.find((s: any) => s.stopType === 'PICKUP');
     const dropoffStop = trip.stops.find((s: any) => s.stopType === 'DROPOFF');
+    const signingMemberId = trip.members[0]?.memberId;
 
-    // State Machine Rendering
+
+    const handleSignatureSave = (data: { signatureBase64: string; isProxy?: boolean; proxySignerName?: string; proxyRelationship?: string; proxyReason?: string }) => {
+        if (signingMemberId) {
+            signatureMutation.mutate({
+                memberId: signingMemberId,
+                data: data.signatureBase64,
+                proxyData: data.isProxy ? {
+                    isProxy: data.isProxy,
+                    proxySignerName: data.proxySignerName,
+                    proxyRelationship: data.proxyRelationship,
+                    proxyReason: data.proxyReason
+                } : undefined
+            });
+        }
+    };
+
     return (
         <Box sx={{ height: '100vh', width: '100vw', bgcolor: '#e5e3df', position: 'relative', overflow: 'hidden' }}>
 
@@ -184,9 +201,10 @@ export default function TripExecutionPage() {
                                         signature: data.signature
                                     }));
 
-                                    if (trip.members[0]?.memberId) {
-                                        saveSignatureMutation.mutate({ memberId: trip.members[0].memberId, data: data.signature });
-                                    }
+                                    handleSignatureSave({
+                                        signatureBase64: data.signature,
+                                        // TODO: Pass proxy data from DropoffWorkflow if supported
+                                    });
 
                                     // 2. Complete Dropoff Stop (passing end odometer if needed by API)
                                     // Note: In real app, we might save notes/odometer to a separate endpoint or as trip metadata
@@ -207,7 +225,7 @@ export default function TripExecutionPage() {
                                 endOdometer={tripReport.endOdometer}
                                 notes={tripReport.notes}
                                 signature={tripReport.signature}
-                                onSubmit={() => navigate(`/driver/trips/${id}/report`)}
+                                onSubmit={() => completeTripMutation.mutate()}
                             />
                         )}
                     </Box>
