@@ -3,6 +3,7 @@ import { Menu as MenuIcon, Dashboard as DashboardIcon, Assignment as AssignmentI
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth';
+import NotificationBell from '../NotificationBell';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const navigate = useNavigate();
@@ -42,6 +43,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
                         Admin Portal
                     </Typography>
+                    <NotificationBell />
                     <Button color="inherit" onClick={handleLogout}>Logout</Button>
                 </Toolbar>
             </AppBar>

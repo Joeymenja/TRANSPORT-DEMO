@@ -8,9 +8,11 @@ import ActiveNavigation from '../../components/driver/execution/ActiveNavigation
 import PickupWorkflow from '../../components/driver/execution/PickupWorkflow';
 import DropoffWorkflow from '../../components/driver/execution/DropoffWorkflow';
 import TripSummary from '../../components/driver/execution/TripSummary';
+import TripReportForm from '../../components/driver/TripReportForm';
+import { reportApi } from '../../api/reports';
 
 // Trip Execution States
-type ExecutionState = 'LOADING' | 'PRE_TRIP' | 'EN_ROUTE_PICKUP' | 'AT_PICKUP' | 'EN_ROUTE_DROPOFF' | 'AT_DROPOFF' | 'COMPLETED';
+type ExecutionState = 'LOADING' | 'PRE_TRIP' | 'EN_ROUTE_PICKUP' | 'AT_PICKUP' | 'EN_ROUTE_DROPOFF' | 'AT_DROPOFF' | 'TRIP_REPORT' | 'COMPLETED';
 
 export default function TripExecutionPage() {
     const { tripId } = useParams();
@@ -66,6 +68,14 @@ export default function TripExecutionPage() {
         mutationFn: ({ memberId, data, proxyData }: { memberId: string, data: string, proxyData?: any }) =>
             tripApi.saveSignature(tripId!, memberId, data, proxyData),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trip', tripId] })
+    });
+
+    const submitReportMutation = useMutation({
+        mutationFn: (reportData: any) => reportApi.createAndSubmitReport(tripId!, reportData),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['trip', tripId] });
+            setViewState('COMPLETED');
+        }
     });
 
     const completeTripMutation = useMutation({
@@ -201,21 +211,44 @@ export default function TripExecutionPage() {
                                         signature: data.signature
                                     }));
 
-                                    handleSignatureSave({
-                                        signatureBase64: data.signature,
-                                        // TODO: Pass proxy data from DropoffWorkflow if supported
-                                    });
-
-                                    // 2. Complete Dropoff Stop (passing end odometer if needed by API)
-                                    // Note: In real app, we might save notes/odometer to a separate endpoint or as trip metadata
+                                    // Complete Dropoff Stop
                                     completeStopMutation.mutate({
                                         stopId: dropoffStop?.id,
                                         odometer: data.odometer
-                                        // notes: data.notes 
                                     }, {
-                                        onSuccess: () => setViewState('COMPLETED')
+                                        onSuccess: () => setViewState('TRIP_REPORT')
                                     });
                                 }}
+                            />
+                        )}
+
+                        {viewState === 'TRIP_REPORT' && (
+                            <TripReportForm
+                                tripData={{
+                                    id: trip.id,
+                                    memberId: signingMemberId || '',
+                                    memberName: trip.members[0]?.member?.firstName
+                                        ? `${trip.members[0].member.firstName} ${trip.members[0].member.lastName}`
+                                        : 'Client',
+                                    memberAhcccsId: trip.members[0]?.member?.medicaidId,
+                                    memberDOB: trip.members[0]?.member?.dateOfBirth,
+                                    memberAddress: trip.members[0]?.member?.address,
+                                    pickupAddress: pickupStop?.address || 'Unknown',
+                                    dropoffAddress: dropoffStop?.address || 'Unknown',
+                                    vehicleId: trip.assignedVehicle?.licensePlate || 'Unknown',
+                                    vehicleMake: trip.assignedVehicle?.make,
+                                    vehicleColor: trip.assignedVehicle?.color,
+                                    vehicleType: trip.assignedVehicle?.type,
+                                }}
+                                driverInfo={{
+                                    id: trip.assignedDriverId || '',
+                                    name: trip.assignedDriver?.user?.firstName
+                                        ? `${trip.assignedDriver.user.firstName} ${trip.assignedDriver.user.lastName}`
+                                        : 'Driver',
+                                }}
+                                startOdometer={tripReport.startOdometer}
+                                onSubmit={(reportData) => submitReportMutation.mutate(reportData)}
+                                onCancel={() => navigate('/driver')}
                             />
                         )}
 

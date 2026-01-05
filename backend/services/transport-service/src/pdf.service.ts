@@ -32,7 +32,7 @@ export class PdfService {
             doc.fillColor('black').text('Trip Details', 60, doc.y + 7);
             doc.moveDown(2);
 
-            doc.text(`Date & Time: ${trip.scheduledDate} ${trip.pickupTime}`, { continued: true });
+            doc.text(`Date & Time: ${trip.tripDate}`, { continued: true });
             doc.text(`   Status: ${trip.status.toUpperCase()}`);
             doc.moveDown(0.5);
 
@@ -41,17 +41,20 @@ export class PdfService {
             doc.text(`Driver: ${driverName}`);
 
             // Client
-            const client = trip.members?.[0]?.member;
+            const client = trip.tripMembers?.[0]?.member;
             const clientName = client ? `${client.firstName} ${client.lastName}` : 'Unknown';
             doc.text(`Client: ${clientName}`);
             doc.moveDown();
 
             // Addresses
+            const pickupStop = trip.tripStops?.find(s => s.stopType === 'PICKUP');
+            const dropoffStop = trip.tripStops?.find(s => s.stopType === 'DROPOFF');
+
             doc.text('Pickup:', { underline: true });
-            doc.text(trip.pickupStops?.[0]?.address || 'N/A');
+            doc.text(pickupStop?.address || 'N/A');
             doc.moveDown(0.5);
             doc.text('Dropoff:', { underline: true });
-            doc.text(trip.dropoffStops?.[0]?.address || 'N/A');
+            doc.text(dropoffStop?.address || 'N/A');
             doc.moveDown();
 
             // --- Report Data ---
@@ -122,7 +125,6 @@ export class PdfService {
             doc.page.margins.bottom = 0;
             doc.text('Confidential - HIPAA Compliant', 50, doc.page.height - 50, {
                 align: 'center',
-                opacity: 0.5
             });
 
             doc.end();

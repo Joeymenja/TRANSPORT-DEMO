@@ -3,6 +3,7 @@ import { TripMember } from './trip-member.entity';
 import { TripStop } from './trip-stop.entity';
 import { Vehicle } from './vehicle.entity';
 import { TripReport } from './trip-report.entity';
+import { Driver } from './driver.entity';
 
 export enum TripType {
     DROP_OFF = 'DROP_OFF',
@@ -153,4 +154,8 @@ export class Trip {
     @ManyToOne(() => Vehicle)
     @JoinColumn({ name: 'assigned_vehicle_id' })
     assignedVehicle: Vehicle;
+
+    @ManyToOne(() => Driver)
+    @JoinColumn({ name: 'assigned_driver_id' })
+    assignedDriver: Driver;
 }

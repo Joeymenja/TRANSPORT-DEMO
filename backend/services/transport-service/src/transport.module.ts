@@ -25,6 +25,9 @@ import { VehicleDocument } from './entities/vehicle-document.entity';
 import { Driver } from './entities/driver.entity';
 import { TripReport } from './entities/trip-report.entity';
 import { Signature } from './entities/signature.entity';
+import { Notification } from './entities/notification.entity';
+import { NotificationController } from './notification.controller';
+import { NotificationService } from './notification.service';
 import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -43,13 +46,13 @@ import { extname } from 'path';
                 username: configService.get('DB_USERNAME'),
                 password: configService.get('DB_PASSWORD'),
                 database: configService.get('DB_DATABASE'),
-                entities: [Trip, TripMember, TripStop, Vehicle, Member, User, VehicleMaintenance, VehicleDocument, Driver, TripReport, Signature, ActivityLog],
+                entities: [Trip, TripMember, TripStop, Vehicle, Member, User, VehicleMaintenance, VehicleDocument, Driver, TripReport, Signature, ActivityLog, Notification],
                 synchronize: true,
                 logging: configService.get('NODE_ENV') === 'development',
             }),
             inject: [ConfigService],
         }),
-        TypeOrmModule.forFeature([Trip, TripMember, TripStop, Vehicle, Member, User, VehicleMaintenance, VehicleDocument, Driver, TripReport, Signature, ActivityLog]),
+        TypeOrmModule.forFeature([Trip, TripMember, TripStop, Vehicle, Member, User, VehicleMaintenance, VehicleDocument, Driver, TripReport, Signature, ActivityLog, Notification]),
         ScheduleModule.forRoot(),
         MulterModule.registerAsync({
             useFactory: () => ({
@@ -63,8 +66,8 @@ import { extname } from 'path';
             }),
         }),
     ],
-    controllers: [TripController, VehicleController, DriverController, ReportController, ActivityLogController],
-    providers: [TripService, VehicleService, PdfService, DriverService, ReportService, ActivityLogService],
+    controllers: [TripController, VehicleController, DriverController, ReportController, ActivityLogController, NotificationController],
+    providers: [TripService, VehicleService, PdfService, DriverService, ReportService, ActivityLogService, NotificationService],
     exports: [TripService, VehicleService, ActivityLogService],
 })
 export class TransportModule { }

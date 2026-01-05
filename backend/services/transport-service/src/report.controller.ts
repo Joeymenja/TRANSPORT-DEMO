@@ -31,6 +31,32 @@ export class ReportController {
         return this.reportService.submitReport(reportId);
     }
 
+    @Post('trip/:tripId/submit')
+    createAndSubmitReport(
+        @Param('tripId') tripId: string,
+        @Body() body: {
+            driverId: string;
+            startOdometer: number;
+            endOdometer: number;
+            pickupTime: string;
+            dropoffTime: string;
+            notes?: string;
+            serviceVerified: boolean;
+            clientArrived: boolean;
+            incidentReported: boolean;
+            incidentDescription?: string;
+            clientSignature?: string;
+            refusedSignature?: boolean;
+            refusalReason?: string;
+        }
+    ) {
+        return this.reportService.createAndSubmitReport(tripId, body.driverId, {
+            ...body,
+            pickupTime: new Date(body.pickupTime),
+            dropoffTime: new Date(body.dropoffTime),
+        });
+    }
+
     @Get(':tripId/pdf')
     async downloadPdf(@Param('tripId') tripId: string, @Res() res: Response) {
         const buffer = await this.reportService.generatePdf(tripId);

@@ -53,5 +53,17 @@ export const reportApi = {
     submit: async (reportId: string): Promise<TripReport> => {
         const response = await axios.put(`${API_URL}/reports/${reportId}/submit`);
         return response.data;
-    }
+    },
+
+    createAndSubmitReport: async (tripId: string, data: any): Promise<TripReport> => {
+        const response = await axios.post(`${API_URL}/reports/trip/${tripId}/submit`, data);
+        return response.data;
+    },
+
+    downloadPdf: async (tripId: string): Promise<Blob> => {
+        const response = await axios.get(`${API_URL}/reports/${tripId}/pdf`, {
+            responseType: 'blob',
+        });
+        return response.data;
+    },
 };
