@@ -17,7 +17,7 @@ async function checkUsers() {
         const users = await client.query(`
             SELECT id, email, role, is_active, organization_id
             FROM users
-            WHERE role IN ('ORG_ADMIN', 'STAFF')
+            WHERE role = 'ORG_ADMIN'
             LIMIT 5
         `);
 

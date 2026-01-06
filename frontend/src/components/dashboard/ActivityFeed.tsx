@@ -10,11 +10,12 @@ interface ActivityFeedProps {
 
 export default function ActivityFeed({ }: ActivityFeedProps) {
 
-    const { data: logs = [], isLoading } = useQuery({
+    const { data, isLoading } = useQuery({
         queryKey: ['activity-logs'],
         queryFn: () => activityApi.getLogs(20),
         refetchInterval: 10000 // Poll every 10s for new activity
     });
+    const logs = Array.isArray(data) ? data : [];
 
     const getIcon = (type: string) => {
         switch (type) {
