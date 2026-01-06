@@ -46,13 +46,13 @@ import { extname } from 'path';
                 username: configService.get('DB_USERNAME'),
                 password: configService.get('DB_PASSWORD'),
                 database: configService.get('DB_DATABASE'),
-                entities: [Trip, TripMember, TripStop, Vehicle, Member, User, VehicleMaintenance, VehicleDocument, Driver, TripReport, Signature, ActivityLog, Notification],
+                entities: [Trip, TripMember, TripStop, Vehicle, Member, User, VehicleMaintenance, VehicleDocument, Driver, TripReport, Signature, ActivityLog],
                 synchronize: true,
                 logging: configService.get('NODE_ENV') === 'development',
             }),
             inject: [ConfigService],
         }),
-        TypeOrmModule.forFeature([Trip, TripMember, TripStop, Vehicle, Member, User, VehicleMaintenance, VehicleDocument, Driver, TripReport, Signature, ActivityLog, Notification]),
+        TypeOrmModule.forFeature([Trip, TripMember, TripStop, Vehicle, Member, User, VehicleMaintenance, VehicleDocument, Driver, TripReport, Signature, ActivityLog]),
         ScheduleModule.forRoot(),
         MulterModule.registerAsync({
             useFactory: () => ({
@@ -66,8 +66,8 @@ import { extname } from 'path';
             }),
         }),
     ],
-    controllers: [TripController, VehicleController, DriverController, ReportController, ActivityLogController, NotificationController],
-    providers: [TripService, VehicleService, PdfService, DriverService, ReportService, ActivityLogService, NotificationService],
+    controllers: [TripController, VehicleController, DriverController, ReportController, ActivityLogController],
+    providers: [TripService, VehicleService, PdfService, DriverService, ReportService, ActivityLogService],
     exports: [TripService, VehicleService, ActivityLogService],
 })
 export class TransportModule { }

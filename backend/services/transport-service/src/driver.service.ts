@@ -51,14 +51,6 @@ export class DriverService {
             `New driver registered: ${user.firstName} ${user.lastName}`,
             { driverId: savedDriver.id, userId: user.id }
         );
-
-        // Notify admin about pending driver approval
-        await this.notificationService.notifyPendingDriver(
-            organizationId,
-            savedDriver.id,
-            `${user.firstName} ${user.lastName}`
-        );
-
         return savedDriver;
     }
 

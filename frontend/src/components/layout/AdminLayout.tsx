@@ -43,7 +43,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
                         Admin Portal
                     </Typography>
-                    <NotificationBell />
                     <Button color="inherit" onClick={handleLogout}>Logout</Button>
                 </Toolbar>
             </AppBar>
