@@ -11,16 +11,21 @@ export class ActivityLogService {
     ) { }
 
     async log(type: ActivityType, message: string, metadata?: any): Promise<ActivityLog> {
+        // Try to extract organizationId from metadata if available (common pattern)
+        const organizationId = metadata?.organizationId || metadata?.user?.organizationId;
+        
         const log = this.activityLogRepository.create({
             type,
             message,
             metadata,
+            organizationId
         });
         return this.activityLogRepository.save(log);
     }
 
-    async findAll(limit: number = 20): Promise<ActivityLog[]> {
+    async findAll(organizationId: string, limit: number = 20): Promise<ActivityLog[]> {
         return this.activityLogRepository.find({
+            where: { organizationId }, // Filter by Org ID
             order: { createdAt: 'DESC' },
             take: limit,
         });

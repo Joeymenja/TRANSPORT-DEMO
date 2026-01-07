@@ -134,7 +134,7 @@ export class TripService {
             await this.activityLogService.log(
                 ActivityType.TRIP_CREATED,
                 `New trip #${savedTrip.id.slice(0, 8)} created`,
-                { tripId: savedTrip.id, createdBy: userId }
+                { tripId: savedTrip.id, createdBy: userId, organizationId }
             );
 
             return this.getTripById(savedTrip.id, organizationId);
@@ -344,7 +344,7 @@ export class TripService {
                  await this.activityLogService.log(
                     ActivityType.SYSTEM,
                     `Trip #${trip.id.slice(0, 8)} assigned to ${driver?.firstName} ${driver?.lastName}`,
-                    { tripId: trip.id, driverId: updateTripDto.assignedDriverId }
+                    { tripId: trip.id, driverId: updateTripDto.assignedDriverId, organizationId }
                  );
             }
             // Update the ID to the real Driver ID
@@ -385,7 +385,7 @@ export class TripService {
         await this.activityLogService.log(
             ActivityType.TRIP_COMPLETED,
             `Trip #${tripId.slice(0, 8)} completed`,
-            { tripId }
+            { tripId, organizationId }
         );
 
         return result;
@@ -623,20 +623,14 @@ export class TripService {
                 {
                     stopOrder: 1,
                     stopType: StopType.PICKUP,
-                    street: member.address || '123 Main St',
-                    city: 'Phoenix',
-                    state: 'AZ',
-                    zipCode: '85001',
-                    scheduledArrivalTime: tomorrow,
+                    address: member.address || '123 Main St, Phoenix, AZ 85001',
+                    scheduledTime: tomorrow,
                 },
                 {
                     stopOrder: 2,
                     stopType: StopType.DROPOFF,
-                    street: '123 Medical Center Dr',
-                    city: 'Phoenix',
-                    state: 'AZ',
-                    zipCode: '85001',
-                    scheduledArrivalTime: new Date(tomorrow.getTime() + 3600000), // +1 hour
+                    address: '123 Medical Center Dr, Phoenix, AZ 85001',
+                    scheduledTime: new Date(tomorrow.getTime() + 3600000), // +1 hour
                 }
             ],
             members: [

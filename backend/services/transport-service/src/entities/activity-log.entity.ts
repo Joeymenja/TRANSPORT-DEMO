@@ -31,4 +31,7 @@ export class ActivityLog {
 
     @Column({ name: 'is_read', default: false })
     isRead: boolean;
+
+    @Column({ name: 'organization_id', nullable: true })
+    organizationId: string;
 }
