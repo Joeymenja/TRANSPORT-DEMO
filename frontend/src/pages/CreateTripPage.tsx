@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Box, Container, Typography, Card, Button, TextField, Grid, MenuItem, Stepper, Step, StepLabel, Checkbox, FormControlLabel, Alert } from '@mui/material';
+import { Box, Container, Typography, Card, Button, TextField, Grid, MenuItem, Stepper, Step, StepLabel, Checkbox, FormControlLabel, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { tripApi, CreateTripData } from '../api/trips';
 import { driverApi } from '../api/drivers';
-import { memberApi } from '../api/members';
+import { memberApi, MobilityRequirement } from '../api/members';
 import { vehicleApi } from '../api/vehicles';
 import { ALL_TRIP_REASONS } from '../constants/trip-reasons';
 
@@ -12,6 +12,18 @@ export default function CreateTripPage() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [activeStep, setActiveStep] = useState(0);
+    const [openMemberDialog, setOpenMemberDialog] = useState(false);
+    
+    // Member Create State
+    const [newMember, setNewMember] = useState({
+        firstName: '',
+        lastName: '',
+        memberId: '',
+        dateOfBirth: '',
+        phone: '',
+    });
+    const [memberError, setMemberError] = useState<string | null>(null);
+
     const [formData, setFormData] = useState({
         memberId: '',
         date: new Date().toISOString().split('T')[0],
@@ -33,6 +45,37 @@ export default function CreateTripPage() {
     const { data: members } = useQuery({ queryKey: ['members'], queryFn: () => memberApi.getMembers() });
     const { data: drivers } = useQuery({ queryKey: ['drivers'], queryFn: () => driverApi.getAll() });
     const { data: vehicles } = useQuery({ queryKey: ['vehicles'], queryFn: () => vehicleApi.getAll() });
+
+    const createMemberMutation = useMutation({
+        mutationFn: async () => {
+            return memberApi.createMember({
+                firstName: newMember.firstName,
+                lastName: newMember.lastName,
+                memberId: newMember.memberId || `TEMP-${Date.now()}`, // Fallback if empty
+                phone: newMember.phone,
+                dateOfBirth: newMember.dateOfBirth,
+                mobilityRequirement: MobilityRequirement.AMBULATORY, // Default
+            });
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['members'] });
+            setFormData(prev => ({ 
+                ...prev, 
+                memberId: data.id,
+                // If member has address (future proofing), set it. 
+                // For simplified creation, we might not ask for address yet.
+            }));
+            setOpenMemberDialog(false);
+            setMemberError(null);
+            // Reset new member form
+            setNewMember({ firstName: '', lastName: '', memberId: '', dateOfBirth: '', phone: '' });
+        },
+        onError: (err: any) => {
+            console.error('Create member failed:', err);
+            const msg = err.response?.data?.message || err.message || 'Failed to create member';
+            setMemberError(Array.isArray(msg) ? msg.join(', ') : msg);
+        }
+    });
 
     const createMutation = useMutation({
         mutationFn: async () => {
@@ -94,6 +137,11 @@ export default function CreateTripPage() {
 
     // Pre-fill addresses when member is selected
     const handleMemberChange = (memberId: string) => {
+        if (memberId === 'NEW') {
+            setOpenMemberDialog(true);
+            return;
+        }
+
         const member = members?.find(m => m.id === memberId);
         setFormData(prev => ({
             ...prev,
@@ -125,6 +173,9 @@ export default function CreateTripPage() {
                                 value={formData.memberId}
                                 onChange={(e) => handleMemberChange(e.target.value)}
                             >
+                                <MenuItem value="NEW" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                                    + Add New Member
+                                </MenuItem>
                                 {members?.map(m => (
                                     <MenuItem key={m.id} value={m.id}>
                                         {m.lastName}, {m.firstName} ({m.memberId})
@@ -283,6 +334,76 @@ export default function CreateTripPage() {
                     </Button>
                 </Box>
             </Card>
+
+            <Dialog open={openMemberDialog} onClose={() => setOpenMemberDialog(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Add New Member</DialogTitle>
+                <DialogContent>
+                     {memberError && (
+                        <Alert severity="error" sx={{ mb: 2 }}>{memberError}</Alert>
+                    )}
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Quick add member. Full details can be added later in the Members tab.
+                    </Typography>
+                    <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                label="First Name"
+                                fullWidth
+                                required
+                                value={newMember.firstName}
+                                onChange={(e) => setNewMember({ ...newMember, firstName: e.target.value })}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                label="Last Name"
+                                fullWidth
+                                required
+                                value={newMember.lastName}
+                                onChange={(e) => setNewMember({ ...newMember, lastName: e.target.value })}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                label="Date of Birth"
+                                type="date"
+                                fullWidth
+                                required
+                                InputLabelProps={{ shrink: true }}
+                                value={newMember.dateOfBirth}
+                                onChange={(e) => setNewMember({ ...newMember, dateOfBirth: e.target.value })}
+                            />
+                        </Grid>
+                         <Grid item xs={12} sm={6}>
+                            <TextField
+                                label="Phone (Optional)"
+                                fullWidth
+                                value={newMember.phone}
+                                onChange={(e) => setNewMember({ ...newMember, phone: e.target.value })}
+                            />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <TextField
+                                label="Member ID / Insurance ID (Optional)"
+                                fullWidth
+                                placeholder="Generated if empty"
+                                value={newMember.memberId}
+                                onChange={(e) => setNewMember({ ...newMember, memberId: e.target.value })}
+                            />
+                        </Grid>
+                    </Grid>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenMemberDialog(false)}>Cancel</Button>
+                    <Button 
+                        variant="contained"
+                        onClick={() => createMemberMutation.mutate()}
+                        disabled={createMemberMutation.isPending || !newMember.firstName || !newMember.lastName || !newMember.dateOfBirth}
+                    >
+                        {createMemberMutation.isPending ? 'Saving...' : 'Save & Select'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Container>
     );
 }
