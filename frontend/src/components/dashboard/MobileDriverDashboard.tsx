@@ -1,6 +1,5 @@
-import { Box, Button, IconButton, Typography, Avatar, Paper, AppBar, Toolbar, Container, Snackbar, Alert } from '@mui/material';
-import { Menu as MenuIcon, LocationOn, DirectionsCarOutlined, PersonOutline, MyLocation } from '@mui/icons-material'; // Outlined icons
-import DriverStatusToggle from '../driver/DriverStatusToggle';
+import { Box, Button, IconButton, Typography, Paper, AppBar, Toolbar, Snackbar, Alert } from '@mui/material';
+import { Menu as MenuIcon, DirectionsCarOutlined, PersonOutline, MyLocation } from '@mui/icons-material'; // Outlined icons
 import ActiveTripCard from './ActiveTripCard';
 import DriverDrawer from '../navigation/DriverDrawer';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
@@ -93,7 +92,7 @@ export default function MobileDriverDashboard() {
         },
         onError: (err) => {
             console.error(err);
-            alert(`Failed to create demo trip: ${err.response?.data?.message || err.message || "Unknown error"}`);
+            alert(`Failed to create demo trip: ${(err as any).response?.data?.message || (err as any).message || "Unknown error"}`);
         }
     });
 
@@ -206,6 +205,13 @@ export default function MobileDriverDashboard() {
                                 >
                                     Create Demo Trip
                                 </Button>
+                                <Button
+                                    variant="contained"
+                                    onClick={() => navigate('/driver/create-trip')}
+                                    sx={{ ml: 2, borderRadius: 20, textTransform: 'none' }}
+                                >
+                                    Schedule New Trip
+                                </Button>
                             </Box>
                         </>
                     ) : (
@@ -222,11 +228,11 @@ export default function MobileDriverDashboard() {
                                 You're all set for now. Set your availability to receive new trips.
                             </Typography>
                             <Button
-                                variant="outlined"
-                                onClick={() => createDemoTripMutation.mutate()}
+                                variant="contained"
+                                onClick={() => navigate('/driver/create-trip')}
                                 sx={{ borderRadius: 20, textTransform: 'none' }}
                             >
-                                Generate Demo Trip
+                                Schedule New Trip
                             </Button>
                         </Box>
                     )}

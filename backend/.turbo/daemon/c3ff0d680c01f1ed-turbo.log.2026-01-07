@@ -18,3 +18,11 @@
 2026-01-07T04:25:46.579492Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("services/transport-service/dist/main.js")}
 2026-01-07T04:25:46.579516Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@gvbh/transport-service"), path: AnchoredSystemPathBuf("services/transport-service") }}))
 2026-01-07T04:25:46.579559Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2026-01-07T04:53:42.779301Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("services/transport-service/src/trip.service.ts")}
+2026-01-07T04:53:42.780112Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@gvbh/transport-service"), path: AnchoredSystemPathBuf("services/transport-service") }}))
+2026-01-07T04:53:44.570313Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("services/transport-service/dist/main.js")}
+2026-01-07T04:53:44.570359Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@gvbh/transport-service"), path: AnchoredSystemPathBuf("services/transport-service") }}))
+2026-01-07T04:53:44.666728Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2026-01-07T04:53:44.770064Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("services/transport-service/dist/main.js")}
+2026-01-07T04:53:44.770080Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@gvbh/transport-service"), path: AnchoredSystemPathBuf("services/transport-service") }}))
+2026-01-07T04:53:44.858347Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun

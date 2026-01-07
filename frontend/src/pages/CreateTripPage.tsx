@@ -6,6 +6,7 @@ import { tripApi, CreateTripData } from '../api/trips';
 import { driverApi } from '../api/drivers';
 import { memberApi } from '../api/members';
 import { vehicleApi } from '../api/vehicles';
+import { ALL_TRIP_REASONS } from '../constants/trip-reasons';
 
 export default function CreateTripPage() {
     const navigate = useNavigate();
@@ -133,11 +134,18 @@ export default function CreateTripPage() {
                         </Grid>
                         <Grid item xs={12}>
                             <TextField
+                                select
                                 label="Reason for Visit"
                                 fullWidth
                                 value={formData.reasonForVisit}
                                 onChange={(e) => setFormData({ ...formData, reasonForVisit: e.target.value })}
-                            />
+                            >
+                                {ALL_TRIP_REASONS.map((reason) => (
+                                    <MenuItem key={reason} value={reason}>
+                                        {reason}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
                         </Grid>
                         <Grid item xs={12} sm={6}>
                             <TextField

@@ -37,6 +37,7 @@ import DriverSchedulePage from './pages/driver/DriverSchedulePage';
 import DriverMessagesPage from './pages/driver/DriverMessagesPage';
 import DriverProfilePage from './pages/driver/DriverProfilePage';
 import DriverSettingsPage from './pages/driver/DriverSettingsPage';
+import DriverCreateTripPage from './pages/driver/DriverCreateTripPage';
 import AppLayout from './components/AppLayout';
 import { KeyboardNavigation } from './components/KeyboardNavigation';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -139,6 +140,7 @@ function AppRoutes() {
                                 <Route path="profile" element={<DriverProfilePage />} />
                                 <Route path="settings" element={<DriverSettingsPage />} />
                                 <Route path="compliance" element={<CompliancePage />} />
+                                <Route path="create-trip" element={<DriverCreateTripPage />} />
                             </Routes>
                         </DriverLayout>
                     </PrivateRoute>

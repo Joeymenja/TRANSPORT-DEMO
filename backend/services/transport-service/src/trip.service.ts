@@ -259,13 +259,20 @@ export class TripService {
     }
 
     async getDriverTrips(driverId: string, organizationId: string): Promise<TripResponseDto[]> {
+        // Resolve User ID to Driver ID if necessary
+        let resolvedDriverId = driverId;
+        const driver = await this.userRepository.manager.findOne(Driver, { where: { userId: driverId } });
+        if (driver) {
+            resolvedDriverId = driver.id;
+        }
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
         const trips = await this.tripRepository.find({
             where: {
                 organizationId,
-                assignedDriverId: driverId,
+                assignedDriverId: resolvedDriverId,
                 tripDate: Between(today, new Date(today.getTime() + 86400000)),
             },
             relations: ['tripMembers', 'tripStops'],
