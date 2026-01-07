@@ -43,6 +43,8 @@ export default function MembersPage() {
         },
         onError: (error: any) => {
             console.error('Failed to create member:', error);
+            const msg = error.response?.data?.message;
+            alert(`Failed to create member: ${Array.isArray(msg) ? msg.join(', ') : msg || error.message}`);
         }
     });
 
@@ -161,6 +163,7 @@ export default function MembersPage() {
                                 <TableCell sx={{ fontWeight: 600 }}>Report Type</TableCell>
                                 <TableCell sx={{ fontWeight: 600 }}>Consent</TableCell>
                                 <TableCell sx={{ fontWeight: 600 }}>Mobility</TableCell>
+                                <TableCell sx={{ fontWeight: 600 }}>Phone</TableCell>
                                 <TableCell sx={{ fontWeight: 600 }}>Insurance</TableCell>
                                 <TableCell sx={{ fontWeight: 600, textAlign: 'right' }}>Actions</TableCell>
                             </TableRow>
@@ -168,11 +171,11 @@ export default function MembersPage() {
                         <TableBody>
                             {isLoading ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>Loading members...</TableCell>
+                                    <TableCell colSpan={8} align="center" sx={{ py: 4 }}>Loading members...</TableCell>
                                 </TableRow>
                             ) : members?.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>No members found.</TableCell>
+                                    <TableCell colSpan={8} align="center" sx={{ py: 4, color: 'text.secondary' }}>No members found.</TableCell>
                                 </TableRow>
                             ) : (
                                 members?.map((member) => (
@@ -216,6 +219,9 @@ export default function MembersPage() {
                                                 size="small"
                                                 color={getMobilityColor(member.mobilityRequirement) as any}
                                             />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Typography variant="body2">{member.phone || '-'}</Typography>
                                         </TableCell>
                                         <TableCell>
                                             <Typography variant="body2">{member.insuranceProvider || 'N/A'}</Typography>

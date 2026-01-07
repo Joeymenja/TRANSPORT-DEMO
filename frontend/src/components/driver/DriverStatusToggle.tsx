@@ -41,8 +41,9 @@ export default function DriverStatusToggle({ driverId, initialStatus = 'OFF_DUTY
             });
             setStatus(newStatus);
             if (onChange) onChange(newStatus);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to update status', err);
+            alert(`Failed to update status: ${err.response?.data?.message || err.message}`);
             // Revert or show error
         } finally {
             setLoading(false);
