@@ -25,7 +25,7 @@ export default function DriverCreateTripPage() {
 
     const [formData, setFormData] = useState({
         memberId: '',
-        date: new Date().toISOString().split('T')[0],
+        date: new Date().toLocaleDateString('en-CA'), // Use local date YYYY-MM-DD
         time: '09:00',
         pickupAddress: '',
         dropoffAddress: '',
