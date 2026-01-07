@@ -15,7 +15,7 @@ export default function DriverProfilePage() {
                         {user?.firstName?.[0]}
                     </Avatar>
                     <Typography variant="h5" fontWeight={700}>{user?.firstName} {user?.lastName}</Typography>
-                    <Typography color="text.secondary">Professional Driver</Typography>
+                    <Typography color="text.secondary">NEMT Transport</Typography>
 
                     <Box sx={{ display: 'flex', gap: 1, mt: 1, alignItems: 'center' }}>
                         <Star sx={{ color: '#FFB400' }} />

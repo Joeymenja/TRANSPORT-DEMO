@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Box, Container, Typography, Card, Button, TextField, Grid, MenuItem, Stepper, Step, StepLabel, Alert } from '@mui/material';
+import { Box, Container, Typography, Card, Button, TextField, Grid, MenuItem, Stepper, Step, StepLabel, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { tripApi, CreateTripData } from '../../api/trips';
-import { memberApi } from '../../api/members';
+import { memberApi, MobilityRequirement } from '../../api/members';
 import { useAuthStore } from '../../store/auth';
 import { ALL_TRIP_REASONS } from '../../constants/trip-reasons';
 
@@ -12,6 +12,15 @@ export default function DriverCreateTripPage() {
     const queryClient = useQueryClient();
     const user = useAuthStore((state) => state.user);
     const [activeStep, setActiveStep] = useState(0);
+    const [openMemberDialog, setOpenMemberDialog] = useState(false);
+    
+    // Member form state
+    const [newMember, setNewMember] = useState({
+        firstName: '',
+        lastName: '',
+        memberId: '', // insurance ID
+    });
+
     const [formData, setFormData] = useState({
         memberId: '',
         date: new Date().toISOString().split('T')[0],
@@ -28,16 +37,31 @@ export default function DriverCreateTripPage() {
 
     const { data: members } = useQuery({ queryKey: ['members'], queryFn: () => memberApi.getMembers() });
 
+    const createMemberMutation = useMutation({
+        mutationFn: async () => {
+            return memberApi.createMember({
+                firstName: newMember.firstName,
+                lastName: newMember.lastName,
+                memberId: newMember.memberId || `TEMP-${Date.now()}`, // Fallback if empty, though invalid for real use
+                mobilityRequirement: MobilityRequirement.AMBULATORY,
+                isActive: true
+            });
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['members'] });
+            setFormData(prev => ({ ...prev, memberId: data.id }));
+            setOpenMemberDialog(false);
+        },
+        onError: (err: any) => {
+            alert('Failed to create member: ' + err.message);
+        }
+    });
+
     const createMutation = useMutation({
         mutationFn: async () => {
             if (!user?.id) throw new Error('User not found');
 
             const tripDate = new Date(`${formData.date}T${formData.time}`);
-            
-            // Driver creating trip -> Auto-assign to self
-            // But we need the Driver ID, not just User ID. 
-            // The backend trip creation expects assignedDriverId to be the USER ID of the driver (based on my audit of CreateTripPage).
-            // Let's verify: CreateTripPage uses d.user.id. So yes, User ID.
             
             const tripData: CreateTripData = {
                 tripDate,
@@ -75,6 +99,10 @@ export default function DriverCreateTripPage() {
     const handleBack = () => setActiveStep((prev) => prev - 1);
 
     const handleMemberChange = (memberId: string) => {
+        if (memberId === 'NEW') {
+            setOpenMemberDialog(true);
+            return;
+        }
         const member = members?.find(m => m.id === memberId);
         setFormData(prev => ({
             ...prev,
@@ -114,6 +142,9 @@ export default function DriverCreateTripPage() {
                                 value={formData.memberId}
                                 onChange={(e) => handleMemberChange(e.target.value)}
                             >
+                                <MenuItem value="NEW" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                                    + Create New Member
+                                </MenuItem>
                                 {members?.map(m => (
                                     <MenuItem key={m.id} value={m.id}>
                                         {m.lastName}, {m.firstName}
@@ -122,19 +153,21 @@ export default function DriverCreateTripPage() {
                             </TextField>
                         </Grid>
                         <Grid item xs={12}>
-                            <TextField
-                                select
-                                label="Reason for Visit"
-                                fullWidth
+                             <Autocomplete
+                                freeSolo
+                                options={ALL_TRIP_REASONS}
                                 value={formData.reasonForVisit}
-                                onChange={(e) => setFormData({ ...formData, reasonForVisit: e.target.value })}
-                            >
-                                {ALL_TRIP_REASONS.map((reason) => (
-                                    <MenuItem key={reason} value={reason}>
-                                        {reason}
-                                    </MenuItem>
-                                ))}
-                            </TextField>
+                                onChange={(_, newValue) => setFormData({ ...formData, reasonForVisit: newValue || '' })}
+                                onInputChange={(_, newInputValue) => setFormData({ ...formData, reasonForVisit: newInputValue })}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Reason for Visit"
+                                        placeholder="Select or type..."
+                                        fullWidth
+                                    />
+                                )}
+                            />
                         </Grid>
                         <Grid item xs={12}>
                              <TextField
@@ -205,6 +238,48 @@ export default function DriverCreateTripPage() {
                     </Button>
                 </Box>
             </Card>
+
+            <Dialog open={openMemberDialog} onClose={() => setOpenMemberDialog(false)}>
+                <DialogTitle>Add New Member</DialogTitle>
+                <DialogContent>
+                    <Grid container spacing={2} sx={{ mt: 1 }}>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                label="First Name"
+                                fullWidth
+                                value={newMember.firstName}
+                                onChange={(e) => setNewMember({ ...newMember, firstName: e.target.value })}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                label="Last Name"
+                                fullWidth
+                                value={newMember.lastName}
+                                onChange={(e) => setNewMember({ ...newMember, lastName: e.target.value })}
+                            />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <TextField
+                                label="Member ID / Insurance ID"
+                                fullWidth
+                                value={newMember.memberId}
+                                onChange={(e) => setNewMember({ ...newMember, memberId: e.target.value })}
+                            />
+                        </Grid>
+                    </Grid>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenMemberDialog(false)}>Cancel</Button>
+                    <Button 
+                        variant="contained" 
+                        onClick={() => createMemberMutation.mutate()}
+                        disabled={!newMember.firstName || !newMember.lastName || createMemberMutation.isPending}
+                    >
+                        {createMemberMutation.isPending ? 'Saving...' : 'Save & Select'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Container>
     );
 }
