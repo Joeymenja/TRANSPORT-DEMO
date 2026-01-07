@@ -40,7 +40,8 @@ export const useAuthStore = create<AuthState>()(
                 });
 
                 if (!response.ok) {
-                    throw new Error('Login failed');
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.message || 'Login failed');
                 }
 
                 const data = await response.json();

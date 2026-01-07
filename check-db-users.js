@@ -15,14 +15,14 @@ async function checkUsers() {
 
         console.log('=== Checking All Users ===');
         const users = await client.query(`
-            SELECT id, email, role, is_active, first_name, last_name
+            SELECT id, email, role, is_active, first_name, last_name, organization_id
             FROM users
             LIMIT 10
         `);
 
         console.log(`Found ${users.rows.length} users:`);
         users.rows.forEach(user => {
-            console.log(`- ${user.email} (${user.role}) - ${user.first_name} ${user.last_name} [Active: ${user.is_active}]`);
+            console.log(`- ${user.email} (${user.role}) Org: ${user.organization_id} - ${user.first_name} ${user.last_name} [Active: ${user.is_active}]`);
         });
 
         console.log('\n=== Checking Drivers ===');

@@ -66,8 +66,8 @@ export default function LoginPage() {
             } else {
                 navigate('/dashboard');
             }
-        } catch (err) {
-            setError('Invalid email or password');
+        } catch (err: any) {
+            setError(err.message || 'Invalid email or password');
         } finally {
             setLoading(false);
         }

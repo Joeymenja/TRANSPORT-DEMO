@@ -12,17 +12,17 @@ export default defineConfig({
                 rewrite: (path) => path.replace(/^\/api/, ''),
             },
             '/api/trips': {
-                target: 'http://localhost:8082',
+                target: 'http://localhost:3003',
                 changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/api/, ''),
             },
             '/api/vehicles': {
-                target: 'http://localhost:8082',
+                target: 'http://localhost:3003',
                 changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/api/, ''),
             },
             '/api/drivers': {
-                target: 'http://localhost:8082',
+                target: 'http://localhost:3003',
                 changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/api/, ''),
             },

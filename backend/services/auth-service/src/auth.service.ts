@@ -2,6 +2,9 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
+import { HttpService } from '@nestjs/axios';
+import { ConfigService } from '@nestjs/config';
+import { firstValueFrom } from 'rxjs';
 import * as bcrypt from 'bcryptjs';
 import { User, UserRole } from './entities/user.entity';
 import { Organization } from './entities/organization.entity';
@@ -10,6 +13,8 @@ import { LoginDto, RegisterDto, AuthResponseDto, DriverRegisterDto, UploadDocume
 
 @Injectable()
 export class AuthService {
+    private readonly transportServiceUrl: string;
+
     constructor(
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
@@ -18,7 +23,11 @@ export class AuthService {
         @InjectRepository(DriverDocument)
         private readonly documentRepository: Repository<DriverDocument>,
         private readonly jwtService: JwtService,
-    ) { }
+        private readonly httpService: HttpService,
+        private readonly configService: ConfigService,
+    ) {
+        this.transportServiceUrl = this.configService.get('TRANSPORT_SERVICE_URL') || 'http://localhost:8082';
+    }
 
     async login(loginDto: LoginDto): Promise<AuthResponseDto> {
         console.log(`[DEBUG] Login attempt for email: "${loginDto.email}"`);
@@ -40,10 +49,16 @@ export class AuthService {
             }
 
             console.log(`[DEBUG] User found. Verifying password...`);
+            console.log(`[DEBUG] Password received length: ${loginDto.password.length}`);
+            console.log(`[DEBUG] Password received (first 5 chars): "${loginDto.password.substring(0, 5)}"`);
+            console.log(`[DEBUG] Hash in DB (first 20 chars): "${user.passwordHash.substring(0, 20)}"`);
             const isPasswordValid = await bcrypt.compare(loginDto.password, user.passwordHash);
 
             if (!isPasswordValid) {
                 console.log(`[DEBUG] Password invalid for user ${user.email}`);
+                console.log(`[DEBUG] Testing with "password123"...`);
+                const testResult = await bcrypt.compare('password123', user.passwordHash);
+                console.log(`[DEBUG] Test result for "password123": ${testResult}`);
                 throw new UnauthorizedException('Invalid credentials');
             }
 
@@ -167,6 +182,25 @@ export class AuthService {
              VALUES ($1, 'DRIVER_REGISTERED', $2, $3, NOW(), false)`,
             [logId, logMessage, logMeta]
         );
+
+        // Create notification for admins via transport-service
+        try {
+            await firstValueFrom(
+                this.httpService.post(`${this.transportServiceUrl}/notifications`, {
+                    organizationId: organization.id,
+                    type: 'DRIVER_PENDING',
+                    title: 'New Driver Pending Approval',
+                    message: `${user.firstName} ${user.lastName} has registered and is awaiting approval`,
+                    metadata: {
+                        driverId,
+                        userId: savedUser.id,
+                    },
+                })
+            );
+        } catch (error) {
+            console.error('Failed to create notification:', error.message);
+            // Don't fail the registration if notification creation fails
+        }
 
         return savedUser;
     }
