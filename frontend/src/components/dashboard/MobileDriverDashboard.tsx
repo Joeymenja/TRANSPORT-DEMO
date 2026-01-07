@@ -93,7 +93,7 @@ export default function MobileDriverDashboard() {
         },
         onError: (err) => {
             console.error(err);
-            alert("Failed to create demo trip");
+            alert(`Failed to create demo trip: ${err.response?.data?.message || err.message || "Unknown error"}`);
         }
     });
 
@@ -198,6 +198,15 @@ export default function MobileDriverDashboard() {
                                     onStartTrip={handleStartTrip}
                                 />
                             ))}
+                            <Box sx={{ mt: 3, mb: 5, textAlign: 'center' }}>
+                                <Button
+                                    variant="outlined"
+                                    onClick={() => createDemoTripMutation.mutate()}
+                                    sx={{ borderRadius: 20, textTransform: 'none' }}
+                                >
+                                    Create Demo Trip
+                                </Button>
+                            </Box>
                         </>
                     ) : (
                         <Box sx={{ textAlign: 'center', py: 6 }}>

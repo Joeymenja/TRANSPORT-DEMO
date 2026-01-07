@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:3003'; // Transport Service
+const API_URL = 'http://localhost:8082'; // Transport Service
 
 export interface Notification {
     id: string;

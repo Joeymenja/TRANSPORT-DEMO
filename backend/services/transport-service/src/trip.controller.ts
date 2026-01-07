@@ -20,10 +20,23 @@ export class TripController {
         @Request() req,
     ): Promise<TripResponseDto> {
         // TODO: Extract from JWT
+        console.log('Create Trip Headers:', req.headers);
         const organizationId = req.headers['x-organization-id'];
         const userId = req.headers['x-user-id'];
 
         return this.tripService.createTrip(createTripDto, organizationId, userId);
+    }
+
+    @Post('demo')
+    async createDemoTrip(
+        @Body() body: { driverId: string, organizationId: string },
+        @Request() req,
+    ): Promise<TripResponseDto> {
+        console.log('Creating demo trip:', body);
+        const headerOrgId = req.headers['x-organization-id'];
+        // Use body orgId if provided (for testing) or header
+        const organizationId = body.organizationId || headerOrgId;
+        return this.tripService.createDemoTrip(body.driverId, organizationId);
     }
 
     @Post('bulk')

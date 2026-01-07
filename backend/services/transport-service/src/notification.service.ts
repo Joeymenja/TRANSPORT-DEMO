@@ -2,42 +2,35 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification, NotificationType, NotificationStatus } from './entities/notification.entity';
+import { CreateNotificationDto, NotificationResponseDto } from './dto/notification.dto';
 
 @Injectable()
 export class NotificationService {
     constructor(
         @InjectRepository(Notification)
-        private notificationRepository: Repository<Notification>,
+        private readonly notificationRepository: Repository<Notification>,
     ) {}
 
-    async create(
-        organizationId: string,
-        type: NotificationType,
-        title: string,
-        message: string,
-        metadata?: any,
-    ): Promise<Notification> {
-        const notification = this.notificationRepository.create({
-            organizationId,
-            type,
-            title,
-            message,
-            metadata,
-            status: NotificationStatus.UNREAD,
-        });
-
-        return this.notificationRepository.save(notification);
+    async create(createDto: CreateNotificationDto): Promise<Notification> {
+        const notification = this.notificationRepository.create(createDto);
+        return await this.notificationRepository.save(notification);
     }
 
-    async findAll(organizationId: string): Promise<Notification[]> {
-        return this.notificationRepository.find({
-            where: { organizationId },
+    async findAll(organizationId: string, status?: NotificationStatus): Promise<Notification[]> {
+        const query: any = { organizationId };
+
+        if (status) {
+            query.status = status;
+        }
+
+        return await this.notificationRepository.find({
+            where: query,
             order: { createdAt: 'DESC' },
         });
     }
 
     async findUnread(organizationId: string): Promise<Notification[]> {
-        return this.notificationRepository.find({
+        return await this.notificationRepository.find({
             where: {
                 organizationId,
                 status: NotificationStatus.UNREAD,
@@ -51,13 +44,14 @@ export class NotificationService {
             where: { id },
         });
 
-        if (notification) {
-            notification.status = NotificationStatus.READ;
-            notification.readAt = new Date();
-            return this.notificationRepository.save(notification);
+        if (!notification) {
+            throw new Error('Notification not found');
         }
 
-        return notification;
+        notification.status = NotificationStatus.READ;
+        notification.readAt = new Date();
+
+        return await this.notificationRepository.save(notification);
     }
 
     async markAllAsRead(organizationId: string): Promise<void> {
@@ -73,50 +67,97 @@ export class NotificationService {
         );
     }
 
-    // Helper method to notify admin about pending driver
-    async notifyPendingDriver(
-        organizationId: string,
-        driverId: string,
-        driverName: string,
-    ): Promise<Notification> {
-        return this.create(
-            organizationId,
-            NotificationType.DRIVER_PENDING,
-            'New Driver Pending Approval',
-            `${driverName} has registered and is awaiting approval.`,
-            { driverId },
-        );
+    // Helper methods for creating specific notification types
+
+    async createDriverPendingNotification(params: {
+        organizationId: string;
+        driverId: string;
+        userId: string;
+        driverName: string;
+    }): Promise<Notification> {
+        return await this.create({
+            organizationId: params.organizationId,
+            type: NotificationType.DRIVER_PENDING,
+            title: 'New Driver Pending Approval',
+            message: `${params.driverName} has registered and is awaiting approval`,
+            metadata: {
+                driverId: params.driverId,
+                userId: params.userId,
+            },
+        });
     }
 
-    // Helper method to notify admin about trip report submission
-    async notifyTripReportSubmitted(
-        organizationId: string,
-        tripReportId: string,
-        tripId: string,
-        driverName: string,
-    ): Promise<Notification> {
-        return this.create(
-            organizationId,
-            NotificationType.TRIP_REPORT_SUBMITTED,
-            'Trip Report Submitted',
-            `${driverName} has submitted a trip report for review.`,
-            { tripReportId, tripId },
-        );
+    async createTripReportSubmittedNotification(params: {
+        organizationId: string;
+        tripId: string;
+        reportId: string;
+        driverId?: string;
+        driverName?: string;
+    }): Promise<Notification> {
+        const driverInfo = params.driverName ? ` by ${params.driverName}` : '';
+
+        return await this.create({
+            organizationId: params.organizationId,
+            type: NotificationType.TRIP_REPORT_SUBMITTED,
+            title: 'Trip Report Submitted',
+            message: `A trip report has been submitted${driverInfo} and is ready for review`,
+            metadata: {
+                tripId: params.tripId,
+                tripReportId: params.reportId,
+                driverId: params.driverId,
+            },
+        });
     }
 
-    // Helper method to notify admin about incident
-    async notifyIncidentReported(
-        organizationId: string,
-        tripReportId: string,
-        tripId: string,
-        driverName: string,
-    ): Promise<Notification> {
-        return this.create(
-            organizationId,
-            NotificationType.INCIDENT_REPORTED,
-            'Incident Reported',
-            `${driverName} reported an incident in trip report. Please review immediately.`,
-            { tripReportId, tripId },
-        );
+    async createIncidentReportedNotification(params: {
+        organizationId: string;
+        tripId: string;
+        reportId: string;
+        incidentDescription: string;
+    }): Promise<Notification> {
+        return await this.create({
+            organizationId: params.organizationId,
+            type: NotificationType.INCIDENT_REPORTED,
+            title: 'Incident Reported',
+            message: `An incident has been reported: ${params.incidentDescription.substring(0, 100)}${params.incidentDescription.length > 100 ? '...' : ''}`,
+            metadata: {
+                tripId: params.tripId,
+                tripReportId: params.reportId,
+            },
+        });
+    }
+
+    async createTripCancelledNotification(params: {
+        organizationId: string;
+        tripId: string;
+        cancelledBy: string;
+        reason?: string;
+    }): Promise<Notification> {
+        const reasonText = params.reason ? `: ${params.reason}` : '';
+
+        return await this.create({
+            organizationId: params.organizationId,
+            type: NotificationType.TRIP_CANCELLED,
+            title: 'Trip Cancelled',
+            message: `A trip has been cancelled by ${params.cancelledBy}${reasonText}`,
+            metadata: {
+                tripId: params.tripId,
+            },
+        });
+    }
+
+    toResponseDto(notification: Notification): NotificationResponseDto {
+        return {
+            id: notification.id,
+            organizationId: notification.organizationId,
+            type: notification.type,
+            title: notification.title,
+            message: notification.message,
+            status: notification.status,
+            metadata: notification.metadata,
+            readAt: notification.readAt,
+            createdAt: notification.createdAt,
+            updatedAt: notification.updatedAt,
+        };
     }
 }

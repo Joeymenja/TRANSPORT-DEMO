@@ -2,12 +2,43 @@ import { Injectable } from '@nestjs/common';
 import PDFDocument from 'pdfkit';
 import { TripReport } from './entities/trip-report.entity';
 import { Trip } from './entities/trip.entity';
-import * as mkrip from 'mkdirp';
+import { mkdirp } from 'mkdirp';
 import { join } from 'path';
 import { createWriteStream } from 'fs';
+import { format } from 'date-fns';
 
 @Injectable()
 export class PdfService {
+    /**
+     * Generate the file path for a trip report PDF
+     * Format: reports/YYYY-MM/YYYY-MM-DD/trip-{tripId}.pdf
+     */
+    private getReportFilePath(tripDate: Date, tripId: string): string {
+        const yearMonth = format(new Date(tripDate), 'yyyy-MM');
+        const fullDate = format(new Date(tripDate), 'yyyy-MM-dd');
+        return join('reports', yearMonth, fullDate, `trip-${tripId}.pdf`);
+    }
+
+    /**
+     * Save PDF buffer to disk with organized folder structure
+     */
+    async savePdfToDisk(pdfBuffer: Buffer, tripDate: Date, tripId: string): Promise<string> {
+        const filePath = this.getReportFilePath(tripDate, tripId);
+        const fullPath = join(process.cwd(), filePath);
+
+        // Create directories if they don't exist
+        await mkdirp(join(process.cwd(), 'reports', format(new Date(tripDate), 'yyyy-MM'), format(new Date(tripDate), 'yyyy-MM-dd')));
+
+        // Write file
+        return new Promise((resolve, reject) => {
+            const writeStream = createWriteStream(fullPath);
+            writeStream.write(pdfBuffer);
+            writeStream.end();
+
+            writeStream.on('finish', () => resolve(filePath));
+            writeStream.on('error', reject);
+        });
+    }
 
     async generateTripReportPdf(trip: Trip, report: TripReport): Promise<Buffer> {
         return new Promise((resolve, reject) => {

@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, BadRequestException, ForbiddenException 
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { Trip, TripStatus, TripType, ReportStatus, MobilityRequirement } from './entities/trip.entity';
+import { Member } from './entities/member.entity';
+import { Driver } from './entities/driver.entity';
 import { TripReport, TripReportStatus } from './entities/trip-report.entity';
 import { TripMember, MemberStatus } from './entities/trip-member.entity';
 import { TripStop, StopType } from './entities/trip-stop.entity';
@@ -24,22 +26,53 @@ export class TripService {
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
         private readonly activityLogService: ActivityLogService,
+        @InjectRepository(Member)
+        private readonly memberRepository: Repository<Member>,
     ) { }
 
     async createTrip(createTripDto: CreateTripDto, organizationId: string, userId: string): Promise<TripResponseDto> {
         try {
             // Create trip
             // Auto-assign vehicle if driver is assigned but vehicle is not
+            // Auto-assign vehicle if driver is assigned but vehicle is not
             let assignedVehicleId = createTripDto.assignedVehicleId;
-            if (createTripDto.assignedDriverId && !assignedVehicleId) {
-                const driver = await this.userRepository.findOne({ where: { id: createTripDto.assignedDriverId } });
+            let assignedDriverId = createTripDto.assignedDriverId;
+
+            if (assignedDriverId) {
+                // Resolve User ID to Driver ID if necessary
+                const driverRows = await this.userRepository.query('SELECT id FROM drivers WHERE user_id = $1', [assignedDriverId]);
+                const driver = driverRows.length > 0 ? { id: driverRows[0].id } : null;
                 if (driver) {
-                    // Compliance Guard
-                    if (!driver.isActive) {
-                        throw new BadRequestException('Cannot assign a non-active or non-compliant driver');
+                     assignedDriverId = driver.id; // It was a User ID
+                } else {
+                     // Maybe it is already a driver ID?
+                     const driverById = await this.userRepository.manager.findOne(Driver, { where: { id: assignedDriverId } });
+                     if (!driverById) {
+                         // Fallback check
+                         const user = await this.userRepository.findOne({ where: { id: createTripDto.assignedDriverId } });
+                         if (!user) throw new BadRequestException('Assigned driver user not found');
+                         if (!user.isActive) throw new BadRequestException('Driver user is not active');
+                         
+                         // If user exists but no driver profile, we can't assign to trip if FK expects driver_id.
+                         // But if we return user.id (which assumes NO FK enforcement or User ID matches), we fail.
+                         // Let's create a driver profile relative to user? No.
+                         throw new BadRequestException('User exists but has no Driver profile');
+                     }
+                     // It is a driver ID
+                }
+            }
+            
+            if (createTripDto.assignedDriverId && !assignedVehicleId) {
+                // Note: We used createTripDto.assignedDriverId (User ID) to check User for vehicle.
+                // But User.defaultVehicleId is what we want.
+                // The original code did:
+                const user = await this.userRepository.findOne({ where: { id: createTripDto.assignedDriverId } });
+                if (user) {
+                    if (!user.isActive) {
+                         throw new BadRequestException('Cannot assign a non-active or non-compliant driver');
                     }
-                    if (driver.defaultVehicleId) {
-                        assignedVehicleId = driver.defaultVehicleId;
+                    if (user.defaultVehicleId) {
+                        assignedVehicleId = user.defaultVehicleId;
                     }
                 }
             }
@@ -47,7 +80,8 @@ export class TripService {
             const trip = this.tripRepository.create({
                 organizationId,
                 tripDate: createTripDto.tripDate,
-                assignedDriverId: createTripDto.assignedDriverId,
+
+                assignedDriverId: assignedDriverId, // Use resolved Driver ID
                 assignedVehicleId: assignedVehicleId,
                 tripType: (createTripDto.tripType as TripType) || TripType.DROP_OFF,
                 isCarpool: createTripDto.isCarpool !== undefined ? createTripDto.isCarpool : (createTripDto.members.length > 1),
@@ -290,13 +324,24 @@ export class TripService {
             }
         }
 
-        if (updateTripDto.assignedDriverId && updateTripDto.assignedDriverId !== trip.assignedDriverId) {
-            const driver = await this.userRepository.findOne({ where: { id: updateTripDto.assignedDriverId } });
-            await this.activityLogService.log(
-                ActivityType.SYSTEM,
-                `Trip #${trip.id.slice(0, 8)} assigned to ${driver?.firstName} ${driver?.lastName}`,
-                { tripId: trip.id, driverId: updateTripDto.assignedDriverId }
-            );
+        if (updateTripDto.assignedDriverId) {
+            let driverId = updateTripDto.assignedDriverId;
+            const driverByUserId = await this.userRepository.manager.findOne(Driver, { where: { userId: driverId } });
+            if (driverByUserId) {
+                driverId = driverByUserId.id;
+            }
+
+            // Check if driverId differs from current
+            if (driverId !== trip.assignedDriverId) {
+                 const driver = await this.userRepository.findOne({ where: { id: updateTripDto.assignedDriverId } }); // Log uses User details
+                 await this.activityLogService.log(
+                    ActivityType.SYSTEM,
+                    `Trip #${trip.id.slice(0, 8)} assigned to ${driver?.firstName} ${driver?.lastName}`,
+                    { tripId: trip.id, driverId: updateTripDto.assignedDriverId }
+                 );
+            }
+            // Update the ID to the real Driver ID
+            updateTripDto.assignedDriverId = driverId;
         }
 
         // Validate status transitions
@@ -541,5 +586,62 @@ export class TripService {
             mobilityRequirement: savedTrip.mobilityRequirement,
             createdAt: savedTrip.createdAt,
         };
+    }
+
+    async createDemoTrip(driverId: string, organizationId: string): Promise<TripResponseDto> {
+        // Find a member
+        const member = await this.memberRepository.findOne({
+            where: { organizationId }
+        });
+
+        if (!member) {
+            console.log('No members found in organization to create demo trip with');
+            // If no member found, create a dummy member logic or throw specific error
+            // For now, let's assume at least one member exists or throw error
+             throw new BadRequestException('No members found in organization to create demo trip with. Please create a member first.');
+        }
+
+        // Create a trip for tomorrow
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(9, 0, 0, 0);
+
+        const demoTripDto: CreateTripDto = {
+            tripDate: tomorrow,
+            assignedDriverId: driverId,
+            tripType: TripType.PICK_UP,
+            reasonForVisit: 'Dialysis',
+            mobilityRequirement: MobilityRequirement.AMBULATORY,
+            stops: [
+                {
+                    stopOrder: 1,
+                    stopType: StopType.PICKUP,
+                    street: member.address || '123 Main St',
+                    city: 'Phoenix',
+                    state: 'AZ',
+                    zipCode: '85001',
+                    scheduledArrivalTime: tomorrow,
+                },
+                {
+                    stopOrder: 2,
+                    stopType: StopType.DROPOFF,
+                    street: '123 Medical Center Dr',
+                    city: 'Phoenix',
+                    state: 'AZ',
+                    zipCode: '85001',
+                    scheduledArrivalTime: new Date(tomorrow.getTime() + 3600000), // +1 hour
+                }
+            ],
+            members: [
+                {
+                    memberId: member.id,
+                    pickupStopId: null, // these will be ignored/generated by create logic usually, but DTO might require them? 
+                    // CreateTripDto.members is TripMemberDto[]
+                    // TripMemberDto needs memberId.
+                }
+            ]
+        };
+
+        return this.createTrip(demoTripDto, organizationId, driverId);
     }
 }

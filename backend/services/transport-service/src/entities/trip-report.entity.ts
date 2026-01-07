@@ -23,7 +23,7 @@ export class TripReport {
     @JoinColumn({ name: 'trip_id' })
     trip: Trip;
 
-    @Column({ name: 'member_id' })
+    @Column({ name: 'member_id', nullable: true })
     memberId: string;
 
     @ManyToOne(() => Member)

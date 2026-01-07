@@ -42,6 +42,7 @@ export class Member {
         type: 'enum',
         enum: MobilityRequirement,
         default: MobilityRequirement.AMBULATORY,
+        nullable: true,
     })
     mobilityRequirement: MobilityRequirement;
 

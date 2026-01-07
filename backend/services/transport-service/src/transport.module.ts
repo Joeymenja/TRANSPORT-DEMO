@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
+import { PassportModule } from '@nestjs/passport';
+import { JwtModule } from '@nestjs/jwt';
+import { JwtStrategy } from './strategies/jwt.strategy';
 import { TripController } from './trip.controller';
 import { TripService } from './trip.service';
 import { PdfService } from './pdf.service';
@@ -14,6 +17,9 @@ import { ReportService } from './report.service';
 import { ActivityLog } from './entities/activity-log.entity';
 import { ActivityLogController } from './activity-log.controller';
 import { ActivityLogService } from './activity-log.service';
+import { Notification } from './entities/notification.entity';
+import { NotificationController } from './notification.controller';
+import { NotificationService } from './notification.service';
 import { Trip } from './entities/trip.entity';
 import { TripMember } from './entities/trip-member.entity';
 import { TripStop } from './entities/trip-stop.entity';
@@ -25,9 +31,7 @@ import { VehicleDocument } from './entities/vehicle-document.entity';
 import { Driver } from './entities/driver.entity';
 import { TripReport } from './entities/trip-report.entity';
 import { Signature } from './entities/signature.entity';
-import { Notification } from './entities/notification.entity';
-import { NotificationController } from './notification.controller';
-import { NotificationService } from './notification.service';
+import { Organization } from './entities/organization.entity';
 import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -46,13 +50,22 @@ import { extname } from 'path';
                 username: configService.get('DB_USERNAME'),
                 password: configService.get('DB_PASSWORD'),
                 database: configService.get('DB_DATABASE'),
-                entities: [Trip, TripMember, TripStop, Vehicle, Member, User, VehicleMaintenance, VehicleDocument, Driver, TripReport, Signature, ActivityLog],
+                entities: [Trip, TripMember, TripStop, Vehicle, Member, User, VehicleMaintenance, VehicleDocument, Driver, TripReport, Signature, ActivityLog, Notification, Organization],
                 synchronize: true,
                 logging: configService.get('NODE_ENV') === 'development',
             }),
             inject: [ConfigService],
         }),
-        TypeOrmModule.forFeature([Trip, TripMember, TripStop, Vehicle, Member, User, VehicleMaintenance, VehicleDocument, Driver, TripReport, Signature, ActivityLog]),
+        TypeOrmModule.forFeature([Trip, TripMember, TripStop, Vehicle, Member, User, VehicleMaintenance, VehicleDocument, Driver, TripReport, Signature, ActivityLog, Notification]),
+        PassportModule,
+        JwtModule.registerAsync({
+            imports: [ConfigModule],
+            useFactory: (configService: ConfigService) => ({
+                secret: configService.get('JWT_SECRET') || 'gvbh-transport-secret-key-change-in-production',
+                signOptions: { expiresIn: '24h' },
+            }),
+            inject: [ConfigService],
+        }),
         ScheduleModule.forRoot(),
         MulterModule.registerAsync({
             useFactory: () => ({
@@ -66,8 +79,8 @@ import { extname } from 'path';
             }),
         }),
     ],
-    controllers: [TripController, VehicleController, DriverController, ReportController, ActivityLogController],
-    providers: [TripService, VehicleService, PdfService, DriverService, ReportService, ActivityLogService],
+    controllers: [TripController, VehicleController, DriverController, ReportController, ActivityLogController, NotificationController],
+    providers: [TripService, VehicleService, PdfService, DriverService, ReportService, ActivityLogService, NotificationService, JwtStrategy],
     exports: [TripService, VehicleService, ActivityLogService],
 })
 export class TransportModule { }

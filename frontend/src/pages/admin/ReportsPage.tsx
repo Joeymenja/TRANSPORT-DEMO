@@ -11,9 +11,12 @@ import {
     TableRow,
     Chip,
     IconButton,
-    CircularProgress
+    CircularProgress,
+    TextField,
+    Button,
+    Stack
 } from '@mui/material';
-import { Visibility } from '@mui/icons-material';
+import { Visibility, Refresh } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { tripApi } from '../../api/trips';
 
@@ -22,15 +25,29 @@ export default function ReportsPage() {
     const [trips, setTrips] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // Date filters - default to last 30 days
+    const [startDate, setStartDate] = useState<string>(() => {
+        const date = new Date();
+        date.setDate(date.getDate() - 30);
+        return date.toISOString().split('T')[0];
+    });
+    const [endDate, setEndDate] = useState<string>(() => {
+        const date = new Date();
+        return date.toISOString().split('T')[0];
+    });
+
     useEffect(() => {
         loadTrips();
     }, []);
 
     const loadTrips = async () => {
         try {
-            // Fetch all trips. ideally we'd filter for "completed" or "has report"
-            // For demo, just fetch all and check status
-            const data = await tripApi.getTrips();
+            setLoading(true);
+            // Fetch trips with date range filters
+            const data = await tripApi.getTrips({
+                startDate,
+                endDate
+            });
             setTrips(data);
         } catch (error) {
             console.error('Error loading trips', error);
@@ -53,9 +70,57 @@ export default function ReportsPage() {
     // Helper to see if report exists (in real app, backend query should include this)
     // Here we assume if status is completed, report might exist.
 
+    const handleShowAll = () => {
+        const date = new Date();
+        date.setFullYear(date.getFullYear() - 1); // Show last year
+        setStartDate(date.toISOString().split('T')[0]);
+        const today = new Date();
+        today.setDate(today.getDate() + 30); // Include future dates
+        setEndDate(today.toISOString().split('T')[0]);
+        setTimeout(loadTrips, 100);
+    };
+
     return (
         <Box sx={{ p: 4 }}>
             <Typography variant="h4" gutterBottom>Trip Reports</Typography>
+
+            {/* Date Range Filters */}
+            <Paper sx={{ p: 2, mb: 3 }}>
+                <Stack direction="row" spacing={2} alignItems="center">
+                    <TextField
+                        label="Start Date"
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                        size="small"
+                    />
+                    <TextField
+                        label="End Date"
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                        size="small"
+                    />
+                    <Button
+                        variant="contained"
+                        startIcon={<Refresh />}
+                        onClick={loadTrips}
+                    >
+                        Apply Filter
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        onClick={handleShowAll}
+                    >
+                        Show All
+                    </Button>
+                    <Typography variant="body2" color="text.secondary">
+                        {trips.length} trip(s) found
+                    </Typography>
+                </Stack>
+            </Paper>
 
             <TableContainer component={Paper}>
                 <Table>

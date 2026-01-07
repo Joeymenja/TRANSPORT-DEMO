@@ -5,7 +5,6 @@ import { Driver } from './entities/driver.entity';
 import { User } from './entities/user.entity';
 import { CreateDriverDto, UpdateDriverDto } from './dto/driver.dto';
 import { ActivityLogService } from './activity-log.service';
-import { NotificationService } from './notification.service';
 import { ActivityType } from './entities/activity-log.entity';
 
 @Injectable()
@@ -16,7 +15,6 @@ export class DriverService {
         @InjectRepository(User)
         private userRepository: Repository<User>,
         private activityLogService: ActivityLogService,
-        private notificationService: NotificationService,
     ) { }
 
     async createDriver(createDriverDto: CreateDriverDto, organizationId: string): Promise<Driver> {
