@@ -47,7 +47,6 @@ export default function DriverCreateTripPage() {
                 memberId: newMember.memberId || `TEMP-${Date.now()}`,
                 dateOfBirth: newMember.dateOfBirth, // Required field
                 mobilityRequirement: MobilityRequirement.AMBULATORY,
-                isActive: true
             });
         },
         onSuccess: (data) => {
