@@ -27,7 +27,8 @@ async function run() {
             ADD COLUMN IF NOT EXISTS medical_notes TEXT,
             ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true,
             ADD COLUMN IF NOT EXISTS consent_on_file BOOLEAN DEFAULT false,
-            ADD COLUMN IF NOT EXISTS report_type VARCHAR DEFAULT 'NATIVE';
+            ADD COLUMN IF NOT EXISTS report_type VARCHAR DEFAULT 'NATIVE',
+            ADD COLUMN IF NOT EXISTS phone VARCHAR;
         `);
         
         console.log('Columns added successfully.');

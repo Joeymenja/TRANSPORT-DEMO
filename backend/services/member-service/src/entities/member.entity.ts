@@ -39,8 +39,7 @@ export class Member {
     // Enhanced Fields
     @Column({
         name: 'mobility_requirement',
-        type: 'enum',
-        enum: MobilityRequirement,
+        type: 'varchar',
         default: MobilityRequirement.AMBULATORY,
         nullable: true,
     })
