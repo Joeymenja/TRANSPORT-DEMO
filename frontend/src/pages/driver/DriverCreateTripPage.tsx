@@ -21,6 +21,7 @@ export default function DriverCreateTripPage() {
         memberId: '', // insurance ID
         dateOfBirth: '',
     });
+    const [memberError, setMemberError] = useState<string | null>(null);
 
     const [formData, setFormData] = useState({
         memberId: '',
@@ -53,9 +54,12 @@ export default function DriverCreateTripPage() {
             queryClient.invalidateQueries({ queryKey: ['members'] });
             setFormData(prev => ({ ...prev, memberId: data.id }));
             setOpenMemberDialog(false);
+            setMemberError(null);
         },
         onError: (err: any) => {
-            alert('Failed to create member: ' + err.message);
+            console.error('Create member failed:', err);
+            const msg = err.response?.data?.message || err.message || 'Failed to create member';
+            setMemberError(Array.isArray(msg) ? msg.join(', ') : msg);
         }
     });
 
@@ -244,6 +248,11 @@ export default function DriverCreateTripPage() {
             <Dialog open={openMemberDialog} onClose={() => setOpenMemberDialog(false)}>
                 <DialogTitle>Add New Member</DialogTitle>
                 <DialogContent>
+                    {memberError && (
+                        <Alert severity="error" sx={{ mb: 2, mt: 1 }}>
+                            {memberError}
+                        </Alert>
+                    )}
                     <Grid container spacing={2} sx={{ mt: 1 }}>
                         <Grid item xs={12} sm={6}>
                             <TextField
