@@ -1,5 +1,5 @@
-import { Box, Button, IconButton, Typography, Paper, AppBar, Toolbar, Snackbar, Alert } from '@mui/material';
-import { Menu as MenuIcon, DirectionsCarOutlined, PersonOutline, MyLocation } from '@mui/icons-material'; // Outlined icons
+import { Box, Button, IconButton, Typography, Paper, AppBar, Toolbar, Snackbar, Alert, Fab } from '@mui/material';
+import { Menu as MenuIcon, DirectionsCarOutlined, PersonOutline, MyLocation, Add } from '@mui/icons-material'; // Outlined icons
 import ActiveTripCard from './ActiveTripCard';
 import DriverDrawer from '../navigation/DriverDrawer';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
@@ -99,7 +99,19 @@ export default function MobileDriverDashboard() {
     const handleStartTrip = (id: string) => navigate(`/driver/trips/${id}/execute`);
 
     return (
-        <Box sx={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', bgcolor: '#fff' }}>
+        <Box sx={{ 
+            height: '100vh', 
+            width: '100vw', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            bgcolor: '#fff',
+            // Desktop Responsive Tweaks
+            maxWidth: { md: 480 }, // Mobile width on desktop
+            mx: 'auto',
+            borderRight: { md: '1px solid #eee' },
+            borderLeft: { md: '1px solid #eee' },
+            boxShadow: { md: '0 0 40px rgba(0,0,0,0.1)' }
+        }}>
 
             {/* 1. Light Header (HEADER-LIGHT-001) */}
             <AppBar position="static" elevation={0} sx={{ bgcolor: 'white', borderBottom: '1px solid #f0f0f0' }}>
@@ -142,7 +154,9 @@ export default function MobileDriverDashboard() {
                     />
 
                     {/* Minimal Controls (MAP-LIGHT-002) */}
-                    <Box sx={{ position: 'absolute', bottom: 16, right: 16, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Box sx={{ position: 'absolute', bottom: 16, right: 16, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+
+
                         <Paper sx={{ borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
                             <MyLocation sx={{ color: '#333', fontSize: 20 }} />
                         </Paper>
@@ -163,9 +177,12 @@ export default function MobileDriverDashboard() {
                     mt: -1,
                     zIndex: 10,
                     boxShadow: '0 -4px 20px rgba(0,0,0,0.05)', // Custom top shadow
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    position: 'relative'
                 }}
             >
+
+
                 {/* Handle Bar */}
                 <Box sx={{ pt: 1.5, pb: 1, display: 'flex', justifyContent: 'center' }}>
                     <Box sx={{ width: 36, height: 4, bgcolor: '#E0E0E0', borderRadius: 2 }} />
@@ -239,6 +256,10 @@ export default function MobileDriverDashboard() {
                 </Box>
             </Paper>
 
+
+
+
+
             <Snackbar
                 open={notificationOpen}
                 autoHideDuration={6000}
@@ -249,6 +270,26 @@ export default function MobileDriverDashboard() {
                     New Trip Assigned!
                 </Alert>
             </Snackbar>
+
+            {/* Fixed New Trip FAB (Viewport Bottom Right) */}
+            <Fab
+                color="primary"
+                aria-label="new trip"
+                size="medium"
+                sx={{
+                    bottom: 80,
+                    right: 24,
+                    position: 'fixed',
+                    zIndex: 1300,
+                    boxShadow: '0 4px 20px rgba(0, 150, 214, 0.5)',
+                    bgcolor: '#0096D6', // Brand Primary
+                    color: 'white',
+                    '&:hover': { bgcolor: '#007bb0' }
+                }}
+                onClick={() => navigate('/driver/create-trip')}
+            >
+                <Add />
+            </Fab>
         </Box>
     );
 }

@@ -13,7 +13,7 @@ export default function ActivityFeed({ }: ActivityFeedProps) {
     const { data, isLoading } = useQuery({
         queryKey: ['activity-logs'],
         queryFn: () => activityApi.getLogs(20),
-        refetchInterval: 10000 // Poll every 10s for new activity
+        refetchInterval: 3000 // Poll every 3s for new activity
     });
     const logs = Array.isArray(data) ? data : [];
 
@@ -23,6 +23,9 @@ export default function ActivityFeed({ }: ActivityFeedProps) {
             case 'TRIP_COMPLETED': return <CheckCircle color="success" />;
             case 'DRIVER_REGISTERED': return <ContactMail color="warning" />;
             case 'REPORT_SUBMITTED': return <AssignmentInd color="primary" />;
+            case 'DRIVER_STATUS_CHANGED': return <LocalTaxi color="secondary" />; // Or toggle icon
+            case 'MEMBER_CREATED': return <AssignmentInd color="info" />;
+            case 'SYSTEM': return <ErrorOutline color="action" />;
             default: return <LocalTaxi />;
         }
     };

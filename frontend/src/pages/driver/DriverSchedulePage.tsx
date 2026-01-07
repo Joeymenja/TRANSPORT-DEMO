@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Box, Typography, Paper, List, ListItem, ListItemText, Divider, Tabs, Tab, CircularProgress, Chip, Snackbar, Alert } from '@mui/material';
 import { ChevronRight, History, CalendarMonth } from '@mui/icons-material';
+import ActiveTripCard from '../../components/dashboard/ActiveTripCard';
 import { format } from 'date-fns';
 import { useAuthStore } from '../../store/auth';
 import { driverApi } from '../../api/drivers';
@@ -102,8 +103,25 @@ export default function DriverSchedulePage() {
                 </Tabs>
             </Paper>
 
-            <Paper elevation={0} sx={{ borderRadius: 3, overflow: 'hidden', border: '1px solid #eee' }}>
-                {tabValue === 0 ? renderTripList(upcomingTrips) : renderTripList(pastTrips)}
+            <Paper elevation={0} sx={{ borderRadius: 3, overflow: 'hidden', border: tabValue === 1 ? '1px solid #eee' : 'none', bgcolor: 'transparent' }}>
+                {tabValue === 0 ? (
+                    upcomingTrips.length === 0 ? (
+                        <Box sx={{ p: 4, textAlign: 'center', color: 'text.secondary', bgcolor: 'white', borderRadius: 3, border: '1px solid #eee' }}>
+                            <Typography>No upcoming trips.</Typography>
+                        </Box>
+                    ) : (
+                        upcomingTrips.map((trip, index) => (
+                            <ActiveTripCard
+                                key={trip.id}
+                                trip={trip}
+                                isNext={index === 0}
+                                compact={true} // User requested smaller cards
+                                onViewDetails={() => navigate(`/driver/trips/${trip.id}`)}
+                                onStartTrip={() => navigate(`/driver/trips/${trip.id}/execute`)}
+                            />
+                        ))
+                    )
+                ) : renderTripList(pastTrips)}
             </Paper>
 
             <Snackbar

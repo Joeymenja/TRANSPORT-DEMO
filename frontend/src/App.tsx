@@ -96,6 +96,31 @@ const theme = createTheme({
                 },
             },
         },
+        MuiCssBaseline: {
+            styleOverrides: {
+                body: {
+                    scrollbarColor: '#0096D6 #f5f5f5',
+                    '&::-webkit-scrollbar, & *::-webkit-scrollbar': {
+                        backgroundColor: 'transparent',
+                        width: '8px',
+                        height: '8px',
+                    },
+                    '&::-webkit-scrollbar-thumb, & *::-webkit-scrollbar-thumb': {
+                        borderRadius: 8,
+                        backgroundColor: '#0096D6',
+                        minHeight: 24,
+                        border: '2px solid transparent',
+                        backgroundClip: 'content-box'
+                    },
+                    '&::-webkit-scrollbar-thumb:hover, & *::-webkit-scrollbar-thumb:hover': {
+                        backgroundColor: '#007bb0', // Darker shade
+                    },
+                    '&::-webkit-scrollbar-track, & *::-webkit-scrollbar-track': {
+                        backgroundColor: 'transparent',
+                    },
+                },
+            },
+        },
     },
 });
 

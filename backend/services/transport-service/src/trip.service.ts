@@ -85,7 +85,7 @@ export class TripService {
                 assignedVehicleId: assignedVehicleId,
                 tripType: (createTripDto.tripType as TripType) || TripType.DROP_OFF,
                 isCarpool: createTripDto.isCarpool !== undefined ? createTripDto.isCarpool : (createTripDto.members.length > 1),
-                status: TripStatus.PENDING_APPROVAL,
+                status: (createTripDto.status as TripStatus) || TripStatus.PENDING_APPROVAL,
                 reasonForVisit: createTripDto.reasonForVisit,
                 escortName: createTripDto.escortName,
                 escortRelationship: createTripDto.escortRelationship,
@@ -134,7 +134,8 @@ export class TripService {
             await this.activityLogService.log(
                 ActivityType.TRIP_CREATED,
                 `New trip #${savedTrip.id.slice(0, 8)} created`,
-                { tripId: savedTrip.id, createdBy: userId, organizationId }
+                organizationId,
+                { tripId: savedTrip.id, createdBy: userId }
             );
 
             return this.getTripById(savedTrip.id, organizationId);
@@ -344,7 +345,8 @@ export class TripService {
                  await this.activityLogService.log(
                     ActivityType.SYSTEM,
                     `Trip #${trip.id.slice(0, 8)} assigned to ${driver?.firstName} ${driver?.lastName}`,
-                    { tripId: trip.id, driverId: updateTripDto.assignedDriverId, organizationId }
+                    organizationId,
+                    { tripId: trip.id, driverId: updateTripDto.assignedDriverId }
                  );
             }
             // Update the ID to the real Driver ID
@@ -385,7 +387,8 @@ export class TripService {
         await this.activityLogService.log(
             ActivityType.TRIP_COMPLETED,
             `Trip #${tripId.slice(0, 8)} completed`,
-            { tripId, organizationId }
+            organizationId,
+            { tripId }
         );
 
         return result;
@@ -440,6 +443,13 @@ export class TripService {
         tripMember.proxyReason = signatureDto.proxyReason;
 
         await this.tripMemberRepository.save(tripMember);
+
+        await this.activityLogService.log(
+            ActivityType.REPORT_SUBMITTED,
+            `Report/Signature submitted for member ${tripMember.memberId} on Trip #${tripId.slice(0, 8)}`,
+            organizationId,
+            { tripId, memberId }
+        );
     }
 
     async completeStop(tripId: string, stopId: string, organizationId: string, odometerReading?: number): Promise<TripStop> {
@@ -460,7 +470,7 @@ export class TripService {
 
     private validateStatusTransition(currentStatus: TripStatus, newStatus: TripStatus): void {
         const validTransitions = {
-            [TripStatus.PENDING_APPROVAL]: [TripStatus.SCHEDULED, TripStatus.CANCELLED],
+            [TripStatus.PENDING_APPROVAL]: [TripStatus.SCHEDULED, TripStatus.IN_PROGRESS, TripStatus.CANCELLED],
             [TripStatus.SCHEDULED]: [TripStatus.IN_PROGRESS, TripStatus.CANCELLED],
             [TripStatus.IN_PROGRESS]: [TripStatus.WAITING_FOR_CLIENTS, TripStatus.COMPLETED, TripStatus.CANCELLED],
             [TripStatus.WAITING_FOR_CLIENTS]: [TripStatus.IN_PROGRESS, TripStatus.COMPLETED],

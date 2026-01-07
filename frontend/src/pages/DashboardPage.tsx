@@ -86,7 +86,7 @@ export default function DashboardPage() {
     const { data: trips = [], isLoading } = useQuery({
         queryKey: ['trips', today],
         queryFn: () => tripApi.getTrips({ date: today }),
-        refetchInterval: 10000
+        refetchInterval: 3000 // Poll every 3s for live updates
     });
 
     const { data: members = [] } = useQuery({
@@ -98,7 +98,7 @@ export default function DashboardPage() {
     const { data: drivers = [] } = useQuery({
         queryKey: ['drivers-live'],
         queryFn: () => driverApi.getAll(),
-        refetchInterval: 10000,
+        refetchInterval: 3000,
         enabled: !isSuspended
     });
 
@@ -258,10 +258,10 @@ export default function DashboardPage() {
             {/* Live Operations Section */}
             {!driver && (
                 <Grid container spacing={3} sx={{ mb: 4, height: 500 }}>
-                    <Grid item xs={12} md={3} sx={{ height: '100%' }}>
+                    <Grid item xs={12} md={4} sx={{ height: '100%' }}>
                         <UnassignedTripsList trips={trips} drivers={drivers} />
                     </Grid>
-                    <Grid item xs={12} md={9} sx={{ height: '100%' }}>
+                    <Grid item xs={12} md={8} sx={{ height: '100%' }}>
                         <Card sx={{ borderRadius: 2, height: '100%' }}>
                             <CardContent sx={{ p: '0 !important', height: '100%' }}>
                                 <Box sx={{ p: 2, borderBottom: '1px solid #eee' }}>
@@ -277,7 +277,7 @@ export default function DashboardPage() {
 
             {/* Main Content Area: Stats/List Left, Activity Feed Right */}
             <Grid container spacing={3}>
-                <Grid item xs={12} md={9}>
+                <Grid item xs={12} md={8} lg={9}>
                     {/* Stats Grid */}
                     <Grid container spacing={3} sx={{ mb: 4 }}>
                         <Grid item xs={12} sm={6} md={3}>
@@ -347,7 +347,7 @@ export default function DashboardPage() {
                                     </Typography>
                                 </Box>
                             ) : (
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 600, overflowY: 'auto', pr: 1 }}>
                                     {(trips || []).map((trip) => (
                                         <Card
                                             key={trip.id}
@@ -358,7 +358,9 @@ export default function DashboardPage() {
                                                     boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                                                 },
                                                 borderColor: trip.status === 'PENDING_APPROVAL' ? '#ef5350' : undefined,
-                                                borderWidth: trip.status === 'PENDING_APPROVAL' ? 2 : 1
+                                                borderWidth: trip.status === 'PENDING_APPROVAL' ? 2 : 1,
+                                                width: '100%',
+                                                flexShrink: 0
                                             }}
                                         >
                                             <CardContent>
@@ -514,7 +516,7 @@ export default function DashboardPage() {
                                                                                 primary={`${idx + 1}. ${(stop.stopType || 'STOP')}: ${(stop.address || '').split(',')[0]}`}
                                                                                 secondary={
                                                                                     stop.actualArrivalTime ?
-                                                                                        `Arrived: ${new Date(stop.actualArrivalTime).toLocaleTimeString()} ${stop.gpsLatitude ? `@ ${stop.gpsLatitude.toFixed(4)}, ${stop.gpsLongitude.toFixed(4)}` : '(No GPS)'}` :
+                                                                                        `Arrived: ${new Date(stop.actualArrivalTime).toLocaleTimeString()} ${stop.gpsLatitude ? `@ ${Number(stop.gpsLatitude).toFixed(4)}, ${Number(stop.gpsLongitude).toFixed(4)}` : '(No GPS)'}` :
                                                                                         'Pending'
                                                                                 }
                                                                                 primaryTypographyProps={{ variant: 'body2' }}
@@ -537,8 +539,10 @@ export default function DashboardPage() {
                 </Grid>
 
                 {/* Activity Feed Sidebar */}
-                <Grid item xs={12} md={3}>
-                    <ActivityFeed trips={trips} />
+                <Grid item xs={12} md={4} lg={3} order={{ xs: 2, md: 2 }}>
+                    <Box sx={{ height: 600 }}>
+                        <ActivityFeed trips={trips} />
+                    </Box>
                 </Grid>
             </Grid>
 

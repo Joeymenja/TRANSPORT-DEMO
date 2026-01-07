@@ -29,8 +29,46 @@ export class Member {
     @Column({ type: 'text', nullable: true })
     address: string;
 
+    @Column({
+        name: 'mobility_requirement',
+        type: 'varchar',
+        default: 'AMBULATORY',
+        nullable: true,
+    })
+    mobilityRequirement: string;
+
+    @Column({ name: 'insurance_provider', nullable: true })
+    insuranceProvider: string;
+
+    @Column({ name: 'insurance_id', nullable: true })
+    insuranceId: string;
+
+    @Column({ name: 'emergency_contact_name', nullable: true })
+    emergencyContactName: string;
+
+    @Column({ name: 'emergency_contact_phone', nullable: true })
+    emergencyContactPhone: string;
+
+    @Column({ name: 'special_notes', type: 'text', nullable: true })
+    specialNotes: string;
+
+    @Column({ nullable: true })
+    gender: string;
+
+    @Column({ name: 'consent_date', type: 'date', nullable: true })
+    consentDate: Date;
+
+    @Column({ name: 'medical_notes', type: 'text', nullable: true })
+    medicalNotes: string;
+
     @Column({ name: 'is_active', default: true })
     isActive: boolean;
+
+    @Column({ name: 'consent_on_file', default: false })
+    consentOnFile: boolean;
+
+    @Column({ name: 'report_type', default: 'NATIVE' })
+    reportType: 'NATIVE' | 'NON_NATIVE';
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;

@@ -4,6 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { MemberController } from './controllers/member.controller';
 import { MemberService } from './services/member.service';
 import { Member } from './entities/member.entity';
+import { ActivityLog } from './entities/activity-log.entity';
+import { ActivityLogService } from './services/activity-log.service';
 
 @Module({
     imports: [
@@ -19,15 +21,15 @@ import { Member } from './entities/member.entity';
                 username: configService.get('DB_USERNAME'),
                 password: configService.get('DB_PASSWORD'),
                 database: configService.get('DB_DATABASE'),
-                entities: [Member],
+                entities: [Member, ActivityLog],
                 synchronize: false,
                 logging: configService.get('NODE_ENV') === 'development',
             }),
             inject: [ConfigService],
         }),
-        TypeOrmModule.forFeature([Member]),
+        TypeOrmModule.forFeature([Member, ActivityLog]),
     ],
     controllers: [MemberController],
-    providers: [MemberService],
+    providers: [MemberService, ActivityLogService],
 })
 export class AppModule { }

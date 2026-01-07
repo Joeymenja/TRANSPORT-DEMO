@@ -58,6 +58,7 @@ export interface CreateTripData {
         vehicleType: string;
         isActive: boolean;
     };
+    status?: 'PENDING_APPROVAL' | 'SCHEDULED' | 'IN_PROGRESS' | 'WAITING_FOR_CLIENTS' | 'COMPLETED' | 'FINALIZED' | 'CANCELLED';
     tripType?: 'DROP_OFF' | 'PICK_UP' | 'ROUND_TRIP';
     isCarpool?: boolean;
     reasonForVisit?: string;

@@ -7,7 +7,7 @@ export enum ActivityType {
     REPORT_SUBMITTED = 'REPORT_SUBMITTED',
     MEMBER_CREATED = 'MEMBER_CREATED',
     DRIVER_STATUS_CHANGED = 'DRIVER_STATUS_CHANGED',
-    SYSTEM = 'SYSTEM'
+    SYSTEM = 'SYSTEM',
 }
 
 @Entity('activity_logs')
@@ -17,22 +17,21 @@ export class ActivityLog {
 
     @Column({
         type: 'varchar',
-        default: ActivityType.SYSTEM
     })
     type: ActivityType;
 
     @Column()
     message: string;
 
-    @Column({ type: 'jsonb', nullable: true })
+    @Column('jsonb', { nullable: true })
     metadata: any;
 
-    @CreateDateColumn({ name: 'created_at' })
-    createdAt: Date;
+    @Column({ name: 'organization_id', nullable: true })
+    organizationId: string;
 
     @Column({ name: 'is_read', default: false })
     isRead: boolean;
 
-    @Column({ name: 'organization_id', nullable: true })
-    organizationId: string;
+    @CreateDateColumn({ name: 'created_at' })
+    createdAt: Date;
 }

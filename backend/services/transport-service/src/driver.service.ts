@@ -47,6 +47,7 @@ export class DriverService {
         await this.activityLogService.log(
             ActivityType.DRIVER_REGISTERED,
             `New driver registered: ${user.firstName} ${user.lastName}`,
+            organizationId,
             { driverId: savedDriver.id, userId: user.id }
         );
         return savedDriver;
@@ -99,7 +100,16 @@ export class DriverService {
         if (lat !== undefined) driver.currentLatitude = lat;
         if (lng !== undefined) driver.currentLongitude = lng;
 
-        return this.driverRepository.save(driver);
+        const savedDriver = await this.driverRepository.save(driver);
+        
+        await this.activityLogService.log(
+            ActivityType.DRIVER_STATUS_CHANGED,
+            `Driver ${driver.user?.firstName} ${driver.user?.lastName} status changed to ${status}`,
+            driver.organizationId,
+            { driverId: driver.id, status, lat, lng }
+        );
+
+        return savedDriver;
     }
 
     async updateSignature(userId: string, signatureUrl: string): Promise<User> {
@@ -107,7 +117,23 @@ export class DriverService {
         if (!user) throw new NotFoundException('User not found');
 
         user.signatureUrl = signatureUrl;
-        return this.userRepository.save(user);
+        user.signatureUrl = signatureUrl;
+        const savedUser = await this.userRepository.save(user);
+
+        // We need organizationId but User entity might not have it loaded cleanly or we rely on the context.
+        // But here we only have userId. Let's fetch the driver profile to get Org ID, or use user.organizationId if we had it.
+        // The earlier findOne didn't load relations. Let's assume user.organizationId is present.
+        
+        if (user.organizationId) {
+             await this.activityLogService.log(
+                ActivityType.SYSTEM,
+                `Driver ${user.firstName} ${user.lastName} updated signature`,
+                user.organizationId,
+                { userId: user.id }
+            );
+        }
+        
+        return savedUser;
     }
 
     async remove(id: string): Promise<void> {

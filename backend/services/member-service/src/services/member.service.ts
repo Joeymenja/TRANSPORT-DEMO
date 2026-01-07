@@ -3,12 +3,15 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Member } from '../entities/member.entity';
 import { CreateMemberDto, UpdateMemberDto } from '../dto/member.dto';
+import { ActivityLogService } from './activity-log.service';
+import { ActivityType } from '../entities/activity-log.entity';
 
 @Injectable()
 export class MemberService {
     constructor(
         @InjectRepository(Member)
         private readonly memberRepository: Repository<Member>,
+        private readonly activityLogService: ActivityLogService,
     ) { }
 
     async createMember(createMemberDto: CreateMemberDto, organizationId: string): Promise<Member> {
@@ -16,7 +19,16 @@ export class MemberService {
             ...createMemberDto,
             organizationId,
         });
-        return this.memberRepository.save(member);
+        const savedMember = await this.memberRepository.save(member);
+        
+        await this.activityLogService.log(
+            ActivityType.MEMBER_CREATED,
+            `New member ${savedMember.firstName} ${savedMember.lastName} added`,
+            organizationId,
+            { memberId: savedMember.id }
+        );
+
+        return savedMember;
     }
 
     async findAll(organizationId: string): Promise<Member[]> {

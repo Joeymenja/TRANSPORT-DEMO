@@ -1,4 +1,4 @@
-import { Box, Typography, Container, CircularProgress, Paper, Button } from '@mui/material';
+import { Box, Container, CircularProgress, Paper, Button } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import { tripApi } from '../../api/trips';
@@ -9,7 +9,6 @@ import PickupWorkflow from '../../components/driver/execution/PickupWorkflow';
 import DropoffWorkflow from '../../components/driver/execution/DropoffWorkflow';
 import TripSummary from '../../components/driver/execution/TripSummary';
 import TripReportForm from '../../components/driver/TripReportForm';
-import { reportApi } from '../../api/reports';
 
 // Trip Execution States
 type ExecutionState = 'LOADING' | 'PRE_TRIP' | 'EN_ROUTE_PICKUP' | 'AT_PICKUP' | 'EN_ROUTE_DROPOFF' | 'AT_DROPOFF' | 'TRIP_REPORT' | 'COMPLETED';
@@ -35,12 +34,41 @@ export default function TripExecutionPage() {
         queryFn: () => tripApi.getTripById(tripId!),
         enabled: !!tripId,
     });
+    
+    // Sync view state with trip status
+    const [initialized, setInitialized] = useState(false);
+    
+    if (trip && !initialized) {
+        setInitialized(true);
+        if (trip.status === 'IN_PROGRESS') {
+             // Basic restoration logic
+             const pickup = trip.stops.find((s: any) => s.stopType === 'PICKUP');
+             const dropoff = trip.stops.find((s: any) => s.stopType === 'DROPOFF');
+             
+             if (pickup?.actualDepartureTime) {
+                 // Pickup done
+                 if (dropoff?.actualArrivalTime) {
+                     setViewState('AT_DROPOFF');
+                 } else {
+                     setViewState('EN_ROUTE_DROPOFF');
+                 }
+             } else if (pickup?.actualArrivalTime) {
+                 setViewState('AT_PICKUP');
+             } else {
+                 setViewState('EN_ROUTE_PICKUP');
+             }
+        }
+    }
 
     const startTripMutation = useMutation({
-        mutationFn: (data: { odometer: number }) => tripApi.startTrip(tripId!),
+        mutationFn: () => tripApi.startTrip(tripId!),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['trip', tripId] });
             setViewState('EN_ROUTE_PICKUP');
+        },
+        onError: (error) => {
+            console.error('Failed to start trip:', error);
+            alert('Failed to start trip. Please try again.');
         }
     });
 
@@ -102,7 +130,7 @@ export default function TripExecutionPage() {
         <Box sx={{ height: '100vh', width: '100vw', bgcolor: '#e5e3df', position: 'relative', overflow: 'hidden' }}>
 
             {/* Background Map Simulation */}
-            <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: '40%', opacity: 0.8 }}>
+            <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: '30%', opacity: 0.8 }}>
                 <img src="https://maps.googleapis.com/maps/api/staticmap?center=Phoenix,AZ&zoom=13&size=600x800&scale=2&key=YOUR_KEY"
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     alt="Map Background"
@@ -124,7 +152,7 @@ export default function TripExecutionPage() {
                 elevation={6}
                 sx={{
                     position: 'absolute',
-                    top: '40%', // Starts from map edge
+                    top: '30%', // Starts from map edge
                     left: 0,
                     right: 0,
                     bottom: 0,
@@ -134,18 +162,18 @@ export default function TripExecutionPage() {
                     zIndex: 10
                 }}
             >
-                <Container maxWidth="sm" sx={{ pt: 1, pb: 4 }}>
+                <Container maxWidth="sm" sx={{ pt: 1, pb: 12 }}>
                     {/* Drag Handle */}
                     <Box sx={{ width: 40, height: 4, bgcolor: '#e0e0e0', borderRadius: 2, mx: 'auto', my: 2 }} />
 
                     <Box sx={{ px: 2 }}>
                         {viewState === 'PRE_TRIP' && (
                             <PreTripChecklist
-                                lastOdometer={15000}
+                                lastOdometer={trip.assignedVehicle?.odometer || 0}
                                 onCancel={() => navigate('/driver')}
                                 onComplete={(data) => {
                                     setTripReport(prev => ({ ...prev, startOdometer: data.odometer }));
-                                    startTripMutation.mutate({ odometer: data.odometer });
+                                    startTripMutation.mutate();
                                 }}
                             />
                         )}
@@ -165,7 +193,7 @@ export default function TripExecutionPage() {
                         {viewState === 'AT_PICKUP' && (
                             <PickupWorkflow
                                 clientName={trip.members[0]?.member?.firstName + ' ' + trip.members[0]?.member?.lastName}
-                                onConfirmPickup={(data) => {
+                                onConfirmPickup={() => {
                                     // 1. Mark ready (optional) 
                                     // 2. Complete Pickup Stop
                                     completeStopMutation.mutate({ stopId: pickupStop?.id }, {
@@ -215,9 +243,40 @@ export default function TripExecutionPage() {
                                         odometer: data.odometer
                                         // notes: data.notes 
                                     }, {
-                                        onSuccess: () => setViewState('COMPLETED')
+                                        onSuccess: () => setViewState('TRIP_REPORT')
                                     });
                                 }}
+                            />
+                        )}
+
+                        {viewState === 'TRIP_REPORT' && (
+                            <TripReportForm
+                                tripData={{
+                                    id: trip.id,
+                                    memberId: trip.members[0]?.memberId,
+                                    memberName: `${trip.members[0]?.member?.firstName || ''} ${trip.members[0]?.member?.lastName || ''}`.trim() || 'Unknown Member',
+                                    memberAhcccsId: trip.members[0]?.member?.ahcccsId || '',
+                                    memberDOB: trip.members[0]?.member?.dob || '',
+                                    memberAddress: trip.members[0]?.member?.address || '',
+                                    pickupAddress: pickupStop?.address || '',
+                                    dropoffAddress: dropoffStop?.address || '',
+                                    vehicleId: trip.assignedVehicle?.vehicleNumber || 'FLEET-101',
+                                    vehicleMake: trip.assignedVehicle?.make || 'Toyota',
+                                    vehicleColor: trip.assignedVehicle?.color || 'White'
+                                }}
+                                driverInfo={{
+                                    id: 'DRIVER-001', // Mock
+                                    name: 'John Driver' // Mock
+                                }}
+                                startOdometer={tripReport.startOdometer}
+                                onSubmit={(data) => {
+                                    // Handle final submission including signature
+                                    handleSignatureSave({
+                                        signatureBase64: data.clientSignature
+                                    });
+                                    setViewState('COMPLETED');
+                                }}
+                                onCancel={() => setViewState('AT_DROPOFF')}
                             />
                         )}
 

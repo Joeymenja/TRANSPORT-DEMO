@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ActivityLog, ActivityType } from './entities/activity-log.entity';
+import { ActivityLog, ActivityType } from '../entities/activity-log.entity';
 
 @Injectable()
 export class ActivityLogService {
@@ -18,17 +18,5 @@ export class ActivityLogService {
             organizationId
         });
         return this.activityLogRepository.save(log);
-    }
-
-    async findAll(organizationId: string, limit: number = 20): Promise<ActivityLog[]> {
-        return this.activityLogRepository.find({
-            where: { organizationId }, // Filter by Org ID
-            order: { createdAt: 'DESC' },
-            take: limit,
-        });
-    }
-
-    async markAsRead(id: string): Promise<void> {
-        await this.activityLogRepository.update(id, { isRead: true });
     }
 }

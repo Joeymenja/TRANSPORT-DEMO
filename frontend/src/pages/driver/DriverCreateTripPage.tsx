@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Box, Container, Typography, Card, Button, TextField, Grid, MenuItem, Stepper, Step, StepLabel, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete } from '@mui/material';
+import { Box, Container, Typography, Card, Button, TextField, Grid, MenuItem, Stepper, Step, StepLabel, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, FormControlLabel, Switch } from '@mui/material';
+import { MobileDatePicker, MobileTimePicker } from '@mui/x-date-pickers';
+import { format } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { tripApi, CreateTripData } from '../../api/trips';
@@ -33,6 +35,7 @@ export default function DriverCreateTripPage() {
         reasonForVisit: '',
         escortName: '',
         escortRelationship: '',
+        startNow: true, // Default to true per user feedback
     });
 
     const steps = ['Trip Details', 'Route & Schedule'];
@@ -79,14 +82,19 @@ export default function DriverCreateTripPage() {
                 stops: [
                     { stopType: 'PICKUP', stopOrder: 1, address: formData.pickupAddress, scheduledTime: tripDate },
                     { stopType: 'DROPOFF', stopOrder: 2, address: formData.dropoffAddress, scheduledTime: new Date(tripDate.getTime() + 3600000) }
-                ]
+                ],
+                status: formData.startNow ? 'IN_PROGRESS' : 'PENDING_APPROVAL',
             };
 
             return tripApi.createTrip(tripData);
         },
-        onSuccess: () => {
+        onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['driver-trips'] });
-            navigate('/driver');
+            if (formData.startNow && data.id) {
+                navigate(`/driver/trips/${data.id}/execute`);
+            } else {
+                navigate('/driver/trips');
+            }
         },
         onError: (err: any) => {
             alert('Failed to schedule trip: ' + err.message);
@@ -192,23 +200,27 @@ export default function DriverCreateTripPage() {
                 {activeStep === 1 && (
                     <Grid container spacing={3}>
                         <Grid item xs={12} sm={6}>
-                            <TextField
+                            <MobileDatePicker
                                 label="Date"
-                                type="date"
-                                fullWidth
-                                InputLabelProps={{ shrink: true }}
-                                value={formData.date}
-                                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                value={new Date(formData.date + 'T00:00:00')}
+                                onChange={(newValue) => {
+                                    if (newValue) {
+                                        setFormData({ ...formData, date: format(newValue, 'yyyy-MM-dd') });
+                                    }
+                                }}
+                                slotProps={{ textField: { fullWidth: true } }}
                             />
                         </Grid>
                         <Grid item xs={12} sm={6}>
-                            <TextField
+                            <MobileTimePicker
                                 label="Time"
-                                type="time"
-                                fullWidth
-                                InputLabelProps={{ shrink: true }}
-                                value={formData.time}
-                                onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                                value={new Date(`2000-01-01T${formData.time}`)}
+                                onChange={(newValue) => {
+                                    if (newValue) {
+                                        setFormData({ ...formData, time: format(newValue, 'HH:mm') });
+                                    }
+                                }}
+                                slotProps={{ textField: { fullWidth: true } }}
                             />
                         </Grid>
                         <Grid item xs={12}>
@@ -227,6 +239,25 @@ export default function DriverCreateTripPage() {
                                 onChange={(e) => setFormData({ ...formData, dropoffAddress: e.target.value })}
                             />
                         </Grid>
+                        <Grid item xs={12}>
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={formData.startNow}
+                                        onChange={(e) => setFormData({ ...formData, startNow: e.target.checked })}
+                                        color="primary"
+                                    />
+                                }
+                                label={
+                                    <Box>
+                                        <Typography variant="body1" fontWeight={500}>Start Trip Immediately</Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            Trip will be created and properly started immediately.
+                                        </Typography>
+                                    </Box>
+                                }
+                            />
+                        </Grid>
                     </Grid>
                 )}
 
@@ -239,7 +270,7 @@ export default function DriverCreateTripPage() {
                         onClick={handleNext}
                         disabled={activeStep === 0 && !formData.memberId}
                     >
-                        {activeStep === steps.length - 1 ? (createMutation.isPending ? 'Scheduling...' : 'Schedule Trip') : 'Next'}
+                        {activeStep === steps.length - 1 ? (createMutation.isPending ? 'Starting...' : (formData.startNow ? 'Start Trip Now' : 'Schedule Trip')) : 'Next'}
                     </Button>
                 </Box>
             </Card>

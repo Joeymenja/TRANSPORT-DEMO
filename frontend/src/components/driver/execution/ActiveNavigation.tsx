@@ -1,5 +1,5 @@
-import { Box, Button, Card, CardContent, Grid, IconButton, LinearProgress, Typography, Container } from '@mui/material';
-import { Navigation, Phone, ReportProblem, Place, MyLocation, AccessTime, Speed, PlaceOutlined } from '@mui/icons-material';
+import { Box, Button, Card, CardContent, Typography } from '@mui/material';
+import { Navigation, ReportProblem, MyLocation, PersonOutline } from '@mui/icons-material';
 import { useEffect, useState } from 'react';
 
 // Mock ETA calculation
@@ -15,13 +15,13 @@ interface ActiveNavigationProps {
 
 export default function ActiveNavigation({ destinationAddress, destinationType, onArrive, onNavigate, clientName }: ActiveNavigationProps) {
     const [eta, setEta] = useState(MOCK_ETA_MINUTES);
-    const [distance, setDistance] = useState(5.2);
+    const [distance, setDistance] = useState(0.8);
     // Simulate getting closer
     useEffect(() => {
         const interval = setInterval(() => {
             setEta(prev => Math.max(0, prev - 1));
-            setDistance(prev => Math.max(0, parseFloat((prev - 0.1).toFixed(1))));
-        }, 10000); // Reduce ETA every 10 secs for demo
+            setDistance(prev => Math.max(0, parseFloat((prev - 0.2).toFixed(1))));
+        }, 1000); // Fast forward for demo
         return () => clearInterval(interval);
     }, []);
 

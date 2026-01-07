@@ -134,6 +134,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
                 {children}
             </Box>
+            <Box component="footer" sx={{ p: 3, textAlign: 'center', bgcolor: '#fff', borderTop: '1px solid #e0e0e0' }}>
+                <Typography variant="caption" color="text.secondary">
+                    © 2026 GVBH Transportation. All rights reserved.
+                </Typography>
+            </Box>
         </Box>
     );
 }
