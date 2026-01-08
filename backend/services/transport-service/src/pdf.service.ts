@@ -162,23 +162,9 @@ export class PdfService {
                         const imageBytes = Buffer.from(matches[2], 'base64');
                         const signatureImage = await pdfDoc.embedPng(imageBytes);
                         const sigDims = signatureImage.scale(0.3);
-                        // Member Sig: PDF Y=192
+                        // Member Sig: PDF Y=192 (positioned in signature field)
                         page2.drawImage(signatureImage, { x: 102, y: 192, width: sigDims.width, height: sigDims.height });
-                        /**
-     * Reads a PDF file from disk.
-     */
-    async readPdf(filePath: string): Promise<Buffer> {
-        if (!fs.existsSync(filePath)) {
-            // Try resolving relative to project root if absolute path fails
-            const absolutePath = path.join(process.cwd(), filePath);
-            if (fs.existsSync(absolutePath)) {
-                return fs.readFileSync(absolutePath);
-            }
-            throw new Error(`File not found: ${filePath}`);
-        }
-        return fs.readFileSync(filePath);
-    }
-}
+                    }
                 } catch (e) {
                     this.logger.error("Failed to embed member signature", e);
                 }
@@ -235,5 +221,20 @@ export class PdfService {
             this.logger.error("Failed to generate official PDF", error);
             throw error;
         }
+    }
+
+    /**
+     * Reads a PDF file from disk.
+     */
+    async readPdf(filePath: string): Promise<Buffer> {
+        if (!fs.existsSync(filePath)) {
+            // Try resolving relative to project root if absolute path fails
+            const absolutePath = path.join(process.cwd(), filePath);
+            if (fs.existsSync(absolutePath)) {
+                return fs.readFileSync(absolutePath);
+            }
+            throw new Error(`File not found: ${filePath}`);
+        }
+        return fs.readFileSync(filePath);
     }
 }

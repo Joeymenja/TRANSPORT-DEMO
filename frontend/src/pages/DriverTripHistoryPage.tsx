@@ -24,7 +24,10 @@ import {
     Search,
     Download,
     Visibility,
-    FilterList
+    FilterList,
+    Description,
+    Check,
+    Pending
 } from '@mui/icons-material';
 import { driverApi, Driver } from '../api/drivers';
 
@@ -35,6 +38,35 @@ export const DriverTripHistoryPage = () => {
     const [trips, setTrips] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+
+    const handleDownloadReport = async (tripId: string) => {
+        try {
+            // Call API to get report PDF
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/trips/${tripId}/report`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to download report');
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `trip_report_${tripId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error('Error downloading report:', error);
+            alert('Failed to download trip report. Please try again.');
+        }
+    };
 
     useEffect(() => {
         if (id) loadData(id);
@@ -114,6 +146,7 @@ export const DriverTripHistoryPage = () => {
                             <TableCell>Members</TableCell>
                             <TableCell>Stops</TableCell>
                             <TableCell>Status</TableCell>
+                            <TableCell>Report</TableCell>
                             <TableCell align="right">Actions</TableCell>
                         </TableRow>
                     </TableHead>
@@ -153,12 +186,60 @@ export const DriverTripHistoryPage = () => {
                                             variant="outlined"
                                         />
                                     </TableCell>
+                                    <TableCell>
+                                        {trip.reportStatus === 'VERIFIED' && (
+                                            <Chip
+                                                icon={<Check />}
+                                                label="Verified"
+                                                size="small"
+                                                color="success"
+                                                variant="filled"
+                                            />
+                                        )}
+                                        {trip.reportStatus === 'PENDING' && (
+                                            <Chip
+                                                icon={<Pending />}
+                                                label="Pending"
+                                                size="small"
+                                                color="warning"
+                                                variant="outlined"
+                                            />
+                                        )}
+                                        {trip.reportStatus === 'REJECTED' && (
+                                            <Chip
+                                                label="Rejected"
+                                                size="small"
+                                                color="error"
+                                                variant="outlined"
+                                            />
+                                        )}
+                                        {!trip.reportStatus && trip.status === 'COMPLETED' && (
+                                            <Chip
+                                                label="No Report"
+                                                size="small"
+                                                variant="outlined"
+                                            />
+                                        )}
+                                    </TableCell>
                                     <TableCell align="right">
-                                        <Tooltip title="View Trip Details">
-                                            <IconButton size="small">
-                                                <Visibility fontSize="small" />
-                                            </IconButton>
-                                        </Tooltip>
+                                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+                                            <Tooltip title="View Trip Details">
+                                                <IconButton size="small">
+                                                    <Visibility fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                            {trip.reportFilePath && (
+                                                <Tooltip title="Download Trip Report">
+                                                    <IconButton
+                                                        size="small"
+                                                        color="primary"
+                                                        onClick={() => handleDownloadReport(trip.id)}
+                                                    >
+                                                        <Description fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
+                                        </Box>
                                     </TableCell>
                                 </TableRow>
                             ))

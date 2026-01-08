@@ -102,16 +102,19 @@ export default function TripReportForm({
     const [differentLocations, setDifferentLocations] = useState(false);
 
     const [signatureData, setSignatureData] = useState<string | null>(null);
+    const [driverSignatureData, setDriverSignatureData] = useState<string | null>(null);
     const [memberUnableToSign, setMemberUnableToSign] = useState(false);
     const [proxySignerType, setProxySignerType] = useState('');
     const [refusalReason] = useState('');
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [driverSigned, setDriverSigned] = useState(false);
+    const driverCanvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
-    
+    const [isDrawingDriver, setIsDrawingDriver] = useState(false);
+
     // Document Viewer State
     const [viewerOpen, setViewerOpen] = useState(false);
     const [showSignaturePad, setShowSignaturePad] = useState(false);
+    const [showDriverSignaturePad, setShowDriverSignaturePad] = useState(false);
 
     // Set default times to now
     useEffect(() => {
@@ -174,6 +177,54 @@ export default function TripReportForm({
         }
     };
 
+    // Driver Signature Drawing Functions
+    const startDrawingDriver = (e: any) => {
+        const canvas = driverCanvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
+        const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
+
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        setIsDrawingDriver(true);
+    };
+
+    const drawDriver = (e: any) => {
+        if (!isDrawingDriver) return;
+        const canvas = driverCanvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
+        const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
+
+        ctx.lineTo(x, y);
+        ctx.stroke();
+    };
+
+    const stopDrawingDriver = () => {
+        if (!isDrawingDriver) return;
+        setIsDrawingDriver(false);
+        if (driverCanvasRef.current) {
+            setDriverSignatureData(driverCanvasRef.current.toDataURL());
+        }
+    };
+
+    const clearDriverSignature = () => {
+        const canvas = driverCanvasRef.current;
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            ctx?.clearRect(0, 0, canvas.width, canvas.height);
+            setDriverSignatureData(null);
+        }
+    };
+
     // Submit Handler
     const handleSubmit = () => {
         if (!endOdometer || !pickupTime || !dropoffTime) {
@@ -183,6 +234,11 @@ export default function TripReportForm({
 
         if (!signatureData && !memberUnableToSign) {
             alert('Please obtain client signature or indicate they are unable to sign');
+            return;
+        }
+
+        if (!driverSignatureData) {
+            alert('Driver signature is required to submit the trip report');
             return;
         }
 
@@ -245,7 +301,8 @@ export default function TripReportForm({
              tripData,
              signatureData: {
                  member: signatureData,
-                 driver: driverSigned ? driverInfo.name : null
+                 driver: driverSignatureData, // Now sending actual signature image
+                 driverName: driverInfo.name // Include name for PDF text fallback
              }
         });
     };
@@ -612,17 +669,17 @@ export default function TripReportForm({
                                 Please obtain signatures below.
                             </Typography>
                             {/* Signature Status Overlay - Moved to Top */}
-                            <Paper 
+                            <Paper
                                 elevation={2}
-                                sx={{ 
-                                    position: 'absolute', 
-                                    top: 10, 
-                                    left: '50%', 
+                                sx={{
+                                    position: 'absolute',
+                                    top: 10,
+                                    left: '50%',
                                     transform: 'translateX(-50%)',
-                                    p: 1.5, 
+                                    p: 1.5,
                                     borderRadius: 3,
-                                    display: 'flex', 
-                                    alignItems: 'center', 
+                                    display: 'flex',
+                                    alignItems: 'center',
                                     gap: 2,
                                     bgcolor: 'rgba(255, 255, 255, 0.95)',
                                     backdropFilter: 'blur(4px)',
@@ -630,24 +687,29 @@ export default function TripReportForm({
                                     border: '1px solid #e0e0e0'
                                 }}
                             >
-                                <Box>
-                                    <Typography variant="caption" fontWeight={700} display="block">
-                                        {driverSigned ? 'DRIVER SIGNED' : 'DRIVER SIGNATURE REQUIRED'}
-                                    </Typography>
-                                    <Typography variant="caption" color={driverSigned ? 'success.main' : 'error'}>
-                                        {driverSigned ? 'Ready to Submit' : 'Please sign before completion'}
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                    <Box>
+                                        <Typography variant="caption" fontWeight={700} display="block">
+                                            {signatureData || memberUnableToSign ? '✓ Member' : 'Member Pending'}
+                                        </Typography>
+                                        <Typography variant="caption" fontWeight={700} display="block">
+                                            {driverSignatureData ? '✓ Driver' : 'Driver Pending'}
+                                        </Typography>
+                                    </Box>
+                                    <Typography variant="caption" color={signatureData && driverSignatureData ? 'success.main' : 'error'}>
+                                        {(signatureData || memberUnableToSign) && driverSignatureData ? 'Ready to Submit' : 'Signatures Required'}
                                     </Typography>
                                 </Box>
-                                
-                                {!driverSigned && (
-                                     <Button 
-                                        variant="contained" 
+
+                                {!driverSignatureData && (
+                                     <Button
+                                        variant="contained"
                                         color="primary"
-                                        onClick={() => setDriverSigned(true)}
+                                        onClick={() => setShowDriverSignaturePad(true)}
                                         startIcon={<Create />}
                                         size="small"
                                      >
-                                         Sign
+                                         Sign as Driver
                                      </Button>
                                 )}
                             </Paper>
@@ -692,32 +754,65 @@ export default function TripReportForm({
                                         Adopt Signature
                                     </Button>
                                 </Box>
-                           </Paper> 
+                           </Paper>
                         )}
-                        
+
+                        {/* Driver Signature Pad Bottom Sheet */}
+                        {showDriverSignaturePad && (
+                           <Paper sx={{ position: 'absolute', bottom: 0, left: 0, right: 0, p: 3, borderTopLeftRadius: 24, borderTopRightRadius: 24, zIndex: 2000 }}>
+                                <Typography variant="h6" gutterBottom>Driver Signature</Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                    I certify that the information provided is true and accurate.
+                                </Typography>
+                                 <Box
+                                    sx={{
+                                        border: '2px dashed #0096D6',
+                                        borderRadius: 2,
+                                        bgcolor: '#f5f5f5',
+                                        touchAction: 'none',
+                                        mb: 2,
+                                        height: 200
+                                    }}
+                                >
+                                    <canvas
+                                        ref={driverCanvasRef}
+                                        width={window.innerWidth - 60}
+                                        height={200}
+                                        onMouseDown={startDrawingDriver}
+                                        onMouseMove={drawDriver}
+                                        onMouseUp={stopDrawingDriver}
+                                        onMouseLeave={stopDrawingDriver}
+                                        onTouchStart={startDrawingDriver}
+                                        onTouchMove={drawDriver}
+                                        onTouchEnd={stopDrawingDriver}
+                                        style={{ display: 'block', width: '100%' }}
+                                    />
+                                </Box>
+                                <Box sx={{ display: 'flex', gap: 2 }}>
+                                    <Button variant="outlined" onClick={clearDriverSignature} fullWidth>Clear</Button>
+                                    <Button
+                                        variant="contained"
+                                        fullWidth
+                                        onClick={() => { setShowDriverSignaturePad(false); }}
+                                        disabled={!driverSignatureData}
+                                    >
+                                        Adopt Signature
+                                    </Button>
+                                </Box>
+                           </Paper>
+                        )}
+
                         {/* Footer Actions */}
-                        {!showSignaturePad && (
+                        {!showSignaturePad && !showDriverSignaturePad && (
                              <Box sx={{ p: 2, bgcolor: 'white', borderTop: '1px solid #ddd' }}>
-                                {!driverSigned && (
-                                     <Button 
-                                        fullWidth 
-                                        variant="contained" 
-                                        color="secondary"
-                                        onClick={() => setDriverSigned(true)}
-                                        sx={{ mb: 1, py: 1.5, fontWeight: 'bold' }}
-                                        startIcon={<Create />}
-                                     >
-                                         Sign All My Pending Sections
-                                     </Button>
-                                )}
                                 <Box sx={{ display: 'flex', gap: 2 }}>
                                     <Button fullWidth variant="outlined" onClick={() => setViewerOpen(false)} startIcon={<Edit />}>
                                         Edit Report Details
                                     </Button>
-                                    <Button 
-                                        fullWidth 
-                                        variant="contained" 
-                                        disabled={(!signatureData && !memberUnableToSign) || !driverSigned} 
+                                    <Button
+                                        fullWidth
+                                        variant="contained"
+                                        disabled={(!signatureData && !memberUnableToSign) || !driverSignatureData}
                                         onClick={() => setViewerOpen(false)}
                                     >
                                         Complete
@@ -756,7 +851,7 @@ export default function TripReportForm({
                     variant="contained"
                     size="large"
                     onClick={handleSubmit}
-                    disabled={!endOdometer || !pickupTime || !dropoffTime || (!signatureData && !memberUnableToSign) || !driverSigned}
+                    disabled={!endOdometer || !pickupTime || !dropoffTime || (!signatureData && !memberUnableToSign) || !driverSignatureData}
                     startIcon={<CheckCircle />}
                     sx={{
                         borderRadius: 3,
