@@ -61,7 +61,7 @@ export default function ActiveNavigation({ destinationAddress, destinationType, 
                     <Card elevation={0} sx={{ mt: 1, borderRadius: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', bgcolor: 'rgba(255,255,255,0.95)' }}>
                         <CardContent sx={{ p: '12px !important', display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <PersonOutline sx={{ color: '#666' }} />
-                            <Typography variant="subtitle2" fontWeight={600}>Passenger: {clientName}</Typography>
+                            <Typography variant="subtitle2" fontWeight={600}>Member: {clientName}</Typography>
                         </CardContent>
                     </Card>
                 )}

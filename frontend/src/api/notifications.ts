@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_URL = 'http://localhost:8082'; // Transport Service
+import api from '../lib/api';
 
 export interface Notification {
     id: string;
@@ -23,21 +21,21 @@ export interface Notification {
 
 export const notificationApi = {
     getAll: async (): Promise<Notification[]> => {
-        const response = await axios.get(`${API_URL}/notifications`);
+        const response = await api.get('/notifications');
         return response.data;
     },
 
     getUnread: async (): Promise<Notification[]> => {
-        const response = await axios.get(`${API_URL}/notifications/unread`);
+        const response = await api.get('/notifications/unread');
         return response.data;
     },
 
     markAsRead: async (id: string): Promise<Notification> => {
-        const response = await axios.patch(`${API_URL}/notifications/${id}/read`);
+        const response = await api.patch(`/notifications/${id}/read`);
         return response.data;
     },
 
     markAllAsRead: async (): Promise<void> => {
-        await axios.patch(`${API_URL}/notifications/read-all`);
+        await api.patch('/notifications/read-all');
     },
 };

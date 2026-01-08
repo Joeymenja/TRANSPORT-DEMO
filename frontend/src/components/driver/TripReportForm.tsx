@@ -121,95 +121,10 @@ export default function TripReportForm({
         if (!dropoffTime) setDropoffTime(timeString);
     }, []);
 
-    // PDF Generation State
-    const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+    // PDF Generation State - REMOVED (Moved to Backend)
+    // const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+    // const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
 
-    useEffect(() => {
-        const generatePdf = async () => {
-            if (!viewerOpen) return;
-            
-            try {
-                // Dynamic import for pdf-lib
-                const { PDFDocument } = await import('pdf-lib');
-                
-                // Fetch the instrumented official template
-                const existingPdfBytes = await fetch('/OFFICIAL_AHCCCS_FILLABLE.pdf').then(res => res.arrayBuffer());
-                
-                // Load a PDFDocument from the official PDF bytes
-                const pdfDoc = await PDFDocument.load(existingPdfBytes);
-                const form = pdfDoc.getForm();
-                
-                // --- FILL FIELDS NATIVELY (AcroForms - Bank-Grade) ---
-                
-                // Provider Info (Implicitly from Org)
-                form.getTextField('provider_name').setText('Great Valley Behavioral Homes');
-                form.getTextField('provider_id').setText('201337');
-                form.getTextField('provider_address').setText('6241 N 19th Ave, Phoenix, AZ 85015');
-                form.getTextField('provider_phone').setText('(602) 283-5154');
-
-                // Driver & Vehicle
-                form.getTextField('driver_name').setText(driverInfo.name);
-                form.getTextField('service_date').setText(new Date().toLocaleDateString());
-                form.getTextField('vehicle_id').setText(tripData.vehicleId);
-                form.getTextField('vehicle_make').setText(`${tripData.vehicleColor || ''} ${tripData.vehicleMake || ''}`);
-                form.getTextField('vehicle_type').setText(tripData.vehicleType || 'VAN');
-
-                // Member Info
-                form.getTextField('member_name').setText(tripData.memberName);
-                form.getTextField('member_id').setText(tripData.memberAhcccsId || 'A12345678');
-                form.getTextField('member_dob').setText(tripData.memberDOB || '01/01/1980');
-                form.getTextField('member_address').setText(tripData.memberAddress || '');
-
-                // Trip 1
-                form.getTextField('pickup_1').setText(tripData.pickupAddress);
-                form.getTextField('pickup_time_1').setText(pickupTime);
-                form.getTextField('odo_start_1').setText(startOdometer.toString());
-                form.getTextField('dropoff_1').setText(tripData.dropoffAddress);
-                form.getTextField('dropoff_time_1').setText(dropoffTime);
-                form.getTextField('odo_end_1').setText(endOdometer || '----');
-                form.getTextField('visit_reason_1').setText(reasonForVisit);
-
-                // Page 2 Repeating Header
-                form.getTextField('pg2_member_name').setText(tripData.memberName);
-                form.getTextField('pg2_member_id').setText(tripData.memberAhcccsId || 'A12345678');
-
-                // Signature Metadata
-                if (signatureData) {
-                    form.getTextField('member_sig_date').setText(new Date().toLocaleDateString());
-                    
-                    const pages = pdfDoc.getPages();
-                    const page2 = pages[1];
-                    const signatureImage = await pdfDoc.embedPng(signatureData);
-                    const sigDims = signatureImage.scale(0.35);
-                    page2.drawImage(signatureImage, {
-                        x: 100,
-                        y: page2.getSize().height - 540,
-                        width: sigDims.width,
-                        height: sigDims.height,
-                    });
-                }
-                
-                if (driverSigned) {
-                    form.getTextField('driver_sig_date').setText(new Date().toLocaleDateString());
-                }
-
-                // Flatten to prevent editing (Industry Standard)
-                form.flatten();
-
-                // Finalize PDF
-                const pdfBytes = await pdfDoc.save();
-                const blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
-                const url = URL.createObjectURL(blob);
-                setPdfUrl(url);
-                
-            } catch (err) {
-                console.error("Error generating official PDF:", err);
-                setPdfUrl('/AHCCCS_Daily_Trip_Report_Final.pdf');
-            }
-        };
-
-        generatePdf();
-    }, [viewerOpen, driverSigned, signatureData, tripData, driverInfo, endOdometer, pickupTime, dropoffTime, reasonForVisit]);
 
 
     const startDrawing = (e: any) => {
@@ -259,6 +174,7 @@ export default function TripReportForm({
         }
     };
 
+    // Submit Handler
     const handleSubmit = () => {
         if (!endOdometer || !pickupTime || !dropoffTime) {
             alert('Please fill in all required fields');
@@ -272,7 +188,9 @@ export default function TripReportForm({
 
         const totalMiles = parseFloat(endOdometer) - startOdometer;
 
-        onSubmit({
+        // Prepare Payload
+        const tripData = {
+            id: tripData.id, // Ensure ID is passed if needed, or parent handles it
             driverId: driverInfo.id,
             startOdometer,
             endOdometer: parseFloat(endOdometer),
@@ -290,10 +208,45 @@ export default function TripReportForm({
             incidentDescription: incidentReported ? incidentDescription : null,
             multipleMembers,
             differentLocations: multipleMembers ? differentLocations : null,
-            clientSignature: signatureData,
             refusedSignature: memberUnableToSign,
             refusalReason: memberUnableToSign ? (proxySignerType || refusalReason) : null,
             notes: additionalInfo,
+            // Pass flat data needed for PDF generation on backend
+            driverName: driverInfo.name,
+            vehicleId: tripData.vehicleId,
+            vehicleColor: tripData.vehicleColor,
+            vehicleMake: tripData.vehicleMake,
+            vehicleType: tripData.vehicleType,
+            memberAhcccsId: tripData.memberAhcccsId,
+            memberDOB: tripData.memberDOB,
+            memberName: tripData.memberName,
+            memberAddress: tripData.memberAddress,
+            pickupAddress: tripData.pickupAddress,
+            dropoffAddress: tripData.dropoffAddress,
+        };
+
+        const signaturePayload = {
+            member: signatureData, // Base64
+            driver: driverSigned ? `data:image/png;base64,DRIVER_SIGNED_ON_FILE` : null, // Backend can handle placeholder or we can use signatureData if driver signs too. 
+            // Current UI only has member signature pad?
+            // "Driver optionally view/download... Driver signs (canvas)"
+            // The current UI has logic for `driverSigned` checkbox/button but not a canvas for driver?
+            // "const [driverSigned, setDriverSigned] = useState(false);"
+            // "const [showSignaturePad, setShowSignaturePad] = useState(false);" (used for member)
+            // If the user wants driver signature, we should probably add a pad for them or just use the boolean for now and let backend stamp name.
+            // Backend `PdfService` supports text fallback.
+        };
+        
+        // Actually, let's just pass `driverInfo.name` as signature if only boolean is checked, or handle it in backend.
+        // My backend code: if signatureData.driver starts with "data:image", embed it. Else draw text.
+        // So sending the name fits "draw text".
+        
+        onSubmit({
+             tripData,
+             signatureData: {
+                 member: signatureData,
+                 driver: driverSigned ? driverInfo.name : null
+             }
         });
     };
 
@@ -608,7 +561,7 @@ export default function TripReportForm({
                                 <Button
                                     fullWidth
                                     variant="outlined"
-                                    onClick={() => { setViewerOpen(true); setShowSignaturePad(false); }}
+                                    onClick={() => { setViewerOpen(true); setShowSignaturePad(true); }}
                                     startIcon={<Description />}
                                     sx={{ height: 60, borderRadius: 2, borderStyle: 'dashed', borderWidth: 2 }}
                                 >
@@ -654,49 +607,47 @@ export default function TripReportForm({
                             </IconButton>
                         </Box>
                         
-                        <Box sx={{ flex: 1, overflow: 'hidden', position: 'relative', bgcolor: '#525659' }}>
-                            <iframe 
-                                src={pdfUrl || "/AHCCCS_Daily_Trip_Report_Final.pdf"}
-                                style={{ width: '100%', height: '100%', border: 'none' }}
-                                title="Trip Report PDF"
-                            />
-                            
-                            {/* Floating Signature Status Overlay */}
+                        <Box sx={{ flex: 1, overflow: 'hidden', position: 'relative', bgcolor: '#f5f5f5', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                            <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
+                                Please obtain signatures below.
+                            </Typography>
+                            {/* Signature Status Overlay - Moved to Top */}
                             <Paper 
-                                elevation={4}
+                                elevation={2}
                                 sx={{ 
                                     position: 'absolute', 
-                                    bottom: 20, 
+                                    top: 10, 
                                     left: '50%', 
                                     transform: 'translateX(-50%)',
-                                    p: 2, 
+                                    p: 1.5, 
                                     borderRadius: 3,
                                     display: 'flex', 
                                     alignItems: 'center', 
                                     gap: 2,
                                     bgcolor: 'rgba(255, 255, 255, 0.95)',
                                     backdropFilter: 'blur(4px)',
-                                    maxWidth: '90%'
+                                    zIndex: 10,
+                                    border: '1px solid #e0e0e0'
                                 }}
                             >
                                 <Box>
-                                    <Typography variant="subtitle2" fontWeight={700}>
-                                        {driverSigned ? 'Driver Signed' : 'Signature Required'}
+                                    <Typography variant="caption" fontWeight={700} display="block">
+                                        {driverSigned ? 'DRIVER SIGNED' : 'DRIVER SIGNATURE REQUIRED'}
                                     </Typography>
                                     <Typography variant="caption" color={driverSigned ? 'success.main' : 'error'}>
-                                        {driverSigned ? `${driverInfo.name} • ${new Date().toLocaleDateString()}` : 'Please sign to complete'}
+                                        {driverSigned ? 'Ready to Submit' : 'Please sign before completion'}
                                     </Typography>
                                 </Box>
                                 
                                 {!driverSigned && (
                                      <Button 
                                         variant="contained" 
-                                        color="secondary"
+                                        color="primary"
                                         onClick={() => setDriverSigned(true)}
                                         startIcon={<Create />}
-                                        size="medium"
+                                        size="small"
                                      >
-                                         Sign Document
+                                         Sign
                                      </Button>
                                 )}
                             </Paper>

@@ -11,6 +11,8 @@ import { User } from './entities/user.entity';
 import { CreateTripDto, UpdateTripDto, TripResponseDto, MemberSignatureDto, CancelTripDto, MarkNoShowDto } from './dto/trip.dto';
 import { ActivityLogService } from './activity-log.service';
 import { ActivityType } from './entities/activity-log.entity';
+import { PdfService } from './pdf.service';
+import { NotificationService } from './notification.service';
 
 @Injectable()
 export class TripService {
@@ -28,6 +30,8 @@ export class TripService {
         private readonly activityLogService: ActivityLogService,
         @InjectRepository(Member)
         private readonly memberRepository: Repository<Member>,
+        private readonly pdfService: PdfService,
+        private readonly notificationService: NotificationService,
     ) { }
 
     async createTrip(createTripDto: CreateTripDto, organizationId: string, userId: string): Promise<TripResponseDto> {
@@ -167,7 +171,7 @@ export class TripService {
     async getTripById(tripId: string, organizationId: string): Promise<TripResponseDto> {
         const trip = await this.tripRepository.findOne({
             where: { id: tripId, organizationId },
-            relations: ['tripMembers', 'tripStops', 'tripReports'],
+            relations: ['tripMembers', 'tripMembers.member', 'tripStops', 'tripReports'],
         });
 
         if (!trip) {
@@ -654,5 +658,91 @@ export class TripService {
         };
 
         return this.createTrip(demoTripDto, organizationId, driverId);
+    }
+
+    async submitReport(
+        tripId: string, 
+        organizationId: string, 
+        userId: string, 
+        reportPayload: { tripData: any, signatureData: any }
+    ): Promise<TripResponseDto> {
+        const trip = await this.tripRepository.findOne({ where: { id: tripId, organizationId } });
+        if (!trip) throw new NotFoundException('Trip not found');
+
+        // 1. Generate PDF
+        const pdfPath = await this.pdfService.generateOfficialReport(reportPayload.tripData, reportPayload.signatureData);
+
+        // 2. Create/Update TripReport Entity
+        let report = await this.tripReportRepository.findOne({ where: { trip: { id: tripId } } });
+        const data = reportPayload.tripData;
+
+        if (!report) {
+            report = this.tripReportRepository.create({
+                trip,
+                pickupTime: data.pickupTime ? new Date(data.pickupTime) : undefined,
+                dropoffTime: data.dropoffTime ? new Date(data.dropoffTime) : undefined,
+                startOdometer: data.startOdometer,
+                endOdometer: data.endOdometer,
+                totalMiles: data.totalMiles,
+                serviceVerified: data.serviceVerified,
+                clientArrived: data.clientArrived,
+                incidentReported: data.incidentReported,
+                incidentDescription: data.incidentDescription,
+                notes: data.notes,
+                status: TripReportStatus.SUBMITTED,
+                submissionMethod: 'APP',
+                submittedAt: new Date(),
+                submittedBy: userId
+            });
+        } else {
+            // Update existing
+            report.pickupTime = data.pickupTime ? new Date(data.pickupTime) : undefined;
+            report.dropoffTime = data.dropoffTime ? new Date(data.dropoffTime) : undefined;
+            report.startOdometer = data.startOdometer;
+            report.endOdometer = data.endOdometer;
+            report.totalMiles = data.totalMiles;
+            report.serviceVerified = data.serviceVerified;
+            report.clientArrived = data.clientArrived;
+            report.incidentReported = data.incidentReported;
+            report.incidentDescription = data.incidentDescription;
+            report.notes = data.notes;
+            report.status = TripReportStatus.SUBMITTED;
+            report.submissionMethod = 'APP';
+            report.submittedAt = new Date();
+            report.submittedBy = userId;
+        }
+
+        await this.tripReportRepository.save(report);
+
+        // 3. Update Trip
+        trip.reportStatus = ReportStatus.PENDING;
+        trip.reportFilePath = pdfPath;
+        trip.status = TripStatus.COMPLETED;
+        if (!trip.completedAt) trip.completedAt = new Date();
+
+        await this.tripRepository.save(trip);
+
+        // 4. Log Activity
+        await this.activityLogService.log(
+            ActivityType.REPORT_SUBMITTED,
+            `Trip Report submitted for Trip #${trip.id.slice(0, 8)}`,
+            organizationId,
+            { tripId: trip.id, userId }
+        );
+
+        // 5. Notify Admin
+        try {
+            await this.notificationService.createTripReportSubmittedNotification({
+                organizationId,
+                tripId: trip.id,
+                reportId: report.id,
+                driverId: trip.assignedDriverId,
+                driverName: trip.assignedDriver?.user ? `${trip.assignedDriver.user.firstName} ${trip.assignedDriver.user.lastName}` : 'Unassigned',
+            });
+        } catch (e) {
+            console.error("Failed to send notification", e);
+        }
+
+        return this.getTripById(trip.id, organizationId);
     }
 }

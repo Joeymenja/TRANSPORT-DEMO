@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Container, Typography, Card, Button, TextField, Grid, MenuItem, Stepper, Step, StepLabel, Checkbox, FormControlLabel, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Container, Typography, Card, Button, TextField, Grid, MenuItem, Stepper, Step, StepLabel, Checkbox, FormControlLabel, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { tripApi, CreateTripData } from '../api/trips';
@@ -7,10 +7,13 @@ import { driverApi } from '../api/drivers';
 import { memberApi, MobilityRequirement } from '../api/members';
 import { vehicleApi } from '../api/vehicles';
 import { ALL_TRIP_REASONS } from '../constants/trip-reasons';
+import { locationApi } from '../api/locations';
+import { useAuthStore } from '../store/auth';
 
 export default function CreateTripPage() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const user = useAuthStore((state) => state.user);
     const [activeStep, setActiveStep] = useState(0);
     const [openMemberDialog, setOpenMemberDialog] = useState(false);
     
@@ -45,6 +48,7 @@ export default function CreateTripPage() {
     const { data: members } = useQuery({ queryKey: ['members'], queryFn: () => memberApi.getMembers() });
     const { data: drivers } = useQuery({ queryKey: ['drivers'], queryFn: () => driverApi.getAll() });
     const { data: vehicles } = useQuery({ queryKey: ['vehicles'], queryFn: () => vehicleApi.getAll() });
+    const { data: locations } = useQuery({ queryKey: ['locations'], queryFn: () => locationApi.getAll() });
 
     const createMemberMutation = useMutation({
         mutationFn: async () => {
@@ -258,19 +262,37 @@ export default function CreateTripPage() {
                             </Grid>
                         )}
                         <Grid item xs={12}>
-                            <TextField
-                                label="Pickup Address"
-                                fullWidth
+                            <Autocomplete
+                                freeSolo
+                                options={locations?.map((l: any) => l.address) || []}
                                 value={formData.pickupAddress}
-                                onChange={(e) => setFormData({ ...formData, pickupAddress: e.target.value })}
+                                onChange={(_, newValue) => setFormData({ ...formData, pickupAddress: newValue || '' })}
+                                onInputChange={(_, newInputValue) => setFormData({ ...formData, pickupAddress: newInputValue })}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Pickup Address"
+                                        fullWidth
+                                        helperText="Select a GVBH location or type a custom address"
+                                    />
+                                )}
                             />
                         </Grid>
                         <Grid item xs={12}>
-                            <TextField
-                                label="Drop-off Address"
-                                fullWidth
+                            <Autocomplete
+                                freeSolo
+                                options={locations?.map((l: any) => l.address) || []}
                                 value={formData.dropoffAddress}
-                                onChange={(e) => setFormData({ ...formData, dropoffAddress: e.target.value })}
+                                onChange={(_, newValue) => setFormData({ ...formData, dropoffAddress: newValue || '' })}
+                                onInputChange={(_, newInputValue) => setFormData({ ...formData, dropoffAddress: newInputValue })}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Drop-off Address"
+                                        fullWidth
+                                        helperText="Select a GVBH location or type a custom address"
+                                    />
+                                )}
                             />
                         </Grid>
                     </Grid>
@@ -284,20 +306,38 @@ export default function CreateTripPage() {
                             </Alert>
                         </Grid>
                         <Grid item xs={12} sm={6}>
-                            <TextField
-                                select
-                                label="Assign Driver"
-                                fullWidth
-                                value={formData.driverId}
-                                onChange={(e) => setFormData({ ...formData, driverId: e.target.value })}
-                            >
-                                <MenuItem value="">Unassigned</MenuItem>
-                                {drivers?.map((d: any) => (
-                                    <MenuItem key={d.id} value={d.user.id}>
-                                        {d.user.lastName}, {d.user.firstName}
-                                    </MenuItem>
-                                ))}
-                            </TextField>
+                            <Box display="flex" alignItems="center" gap={1}>
+                                <TextField
+                                    select
+                                    label="Assign Driver"
+                                    fullWidth
+                                    value={formData.driverId}
+                                    onChange={(e) => setFormData({ ...formData, driverId: e.target.value })}
+                                >
+                                    <MenuItem value="">Unassigned</MenuItem>
+                                    {drivers?.map((d: any) => (
+                                        <MenuItem key={d.id} value={d.user.id}>
+                                            {d.user.lastName}, {d.user.firstName}
+                                        </MenuItem>
+                                    ))}
+                                </TextField>
+                            </Box>
+                            {/* Self Assign Option */}
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={formData.driverId === (user?.id || '')}
+                                        onChange={(e) => {
+                                             if (e.target.checked && user?.id) {
+                                                 setFormData({ ...formData, driverId: user.id });
+                                             } else {
+                                                 setFormData({ ...formData, driverId: '' });
+                                             }
+                                        }}
+                                    />
+                                }
+                                label="I will drive this trip (Take It Now)"
+                            />
                         </Grid>
                         <Grid item xs={12} sm={6}>
                             <TextField

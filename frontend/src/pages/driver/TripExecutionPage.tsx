@@ -73,7 +73,26 @@ export default function TripExecutionPage() {
     });
 
     const arriveStopMutation = useMutation({
-        mutationFn: (stopId: string) => tripApi.arriveAtStop(tripId!, stopId, { lat: 33.4, lng: -112.0 }), // Mock GPS
+        mutationFn: async (stopId: string) => {
+            return new Promise((resolve, reject) => {
+                if ('geolocation' in navigator) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                             resolve(tripApi.arriveAtStop(tripId!, stopId, { 
+                                 lat: position.coords.latitude, 
+                                 lng: position.coords.longitude 
+                             }));
+                        },
+                        (error) => {
+                             console.warn("Geolocation failed, using mock:", error);
+                             resolve(tripApi.arriveAtStop(tripId!, stopId, { lat: 33.4, lng: -112.0 }));
+                        }
+                    );
+                } else {
+                     resolve(tripApi.arriveAtStop(tripId!, stopId, { lat: 33.4, lng: -112.0 }));
+                }
+            });
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['trip', tripId] });
             // Auto-transition based on current state (could be improved with explicit state from backend)
@@ -103,6 +122,19 @@ export default function TripExecutionPage() {
         onSuccess: () => navigate('/driver')
     });
 
+    const submitReportMutation = useMutation({
+        mutationFn: ({ reportData, pdfBlob }: { reportData: any, pdfBlob: Blob }) =>
+            tripApi.submitReport(tripId!, reportData, pdfBlob),
+        onSuccess: () => {
+             setViewState('COMPLETED');
+             queryClient.invalidateQueries({ queryKey: ['trip', tripId] });
+        },
+        onError: (err) => {
+            console.error('Failed to submit report', err);
+            alert('Failed to save report. Please try again.');
+        }
+    });
+
     if (isLoading || !trip) return <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>;
 
     // Helper to get stop IDs
@@ -128,23 +160,20 @@ export default function TripExecutionPage() {
 
     return (
         <Box sx={{ height: '100vh', width: '100vw', bgcolor: '#e5e3df', position: 'relative', overflow: 'hidden' }}>
+            {/* Back Button Overlay - Hoisted for visibility */}
+            <Box sx={{ position: 'absolute', top: 48, left: 16, zIndex: 9999 }}>
+                <Button
+                    onClick={() => navigate('/driver')}
+                    variant="contained"
+                    sx={{ bgcolor: 'white', color: '#111', borderRadius: '50px', '&:hover': { bgcolor: '#f5f5f5' }, boxShadow: 2 }}
+                >
+                    Back
+                </Button>
+            </Box>
 
-            {/* Background Map Simulation */}
-            <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: '30%', opacity: 0.8 }}>
-                <img src="https://maps.googleapis.com/maps/api/staticmap?center=Phoenix,AZ&zoom=13&size=600x800&scale=2&key=YOUR_KEY"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    alt="Map Background"
-                />
-                {/* Back Button Overlay */}
-                <Box sx={{ position: 'absolute', top: 48, left: 16 }}>
-                    <Button
-                        onClick={() => navigate('/driver')}
-                        variant="contained"
-                        sx={{ bgcolor: 'white', color: '#111', borderRadius: '50px', '&:hover': { bgcolor: '#f5f5f5' } }}
-                    >
-                        Back
-                    </Button>
-                </Box>
+            {/* Background Map Simulation - Placeholder Pattern */}
+            <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: '30%', bgcolor: '#e3f2fd', opacity: 1, backgroundImage: 'radial-gradient(#2196F3 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
+
             </Box>
 
             {/* Bottom Sheet Container */}
@@ -162,7 +191,7 @@ export default function TripExecutionPage() {
                     zIndex: 10
                 }}
             >
-                <Container maxWidth="sm" sx={{ pt: 1, pb: 12 }}>
+                <Container maxWidth="sm" sx={{ pt: 1, pb: 24 }}>
                     {/* Drag Handle */}
                     <Box sx={{ width: 40, height: 4, bgcolor: '#e0e0e0', borderRadius: 2, mx: 'auto', my: 2 }} />
 
@@ -270,11 +299,16 @@ export default function TripExecutionPage() {
                                 }}
                                 startOdometer={tripReport.startOdometer}
                                 onSubmit={(data) => {
-                                    // Handle final submission including signature
-                                    handleSignatureSave({
-                                        signatureBase64: data.clientSignature
-                                    });
-                                    setViewState('COMPLETED');
+                                    if (data.pdfBlob) {
+                                        submitReportMutation.mutate({
+                                            reportData: data,
+                                            pdfBlob: data.pdfBlob
+                                        });
+                                    } else {
+                                        // Should satisfy TS type of pdfBlob being optionally present in data, 
+                                        // or we cast/check. The form guarantees it for submit now.
+                                        alert("PDF not generated");
+                                    }
                                 }}
                                 onCancel={() => setViewState('AT_DROPOFF')}
                             />

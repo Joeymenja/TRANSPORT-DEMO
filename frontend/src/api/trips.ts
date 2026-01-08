@@ -142,6 +142,11 @@ export const tripApi = {
         return data;
     },
 
+    submitReport: async (tripId: string, reportPayload: { tripData: any, signatureData: any }): Promise<Trip> => {
+        const { data } = await api.post(`/trips/${tripId}/report/submit`, reportPayload);
+        return data;
+    },
+
     arriveAtStop: async (tripId: string, stopId: string, gps?: { lat: number, lng: number }): Promise<any> => {
         const { data } = await api.post(`/trips/${tripId}/stops/${stopId}/arrive`, {
             gpsLatitude: gps?.lat,

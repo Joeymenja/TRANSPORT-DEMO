@@ -3,6 +3,7 @@ import { Logout } from '@mui/icons-material';
 import React, { useState } from 'react';
 import { useAuthStore } from '../store/auth';
 import { useNavigate } from 'react-router-dom';
+import NotificationBell from './NotificationBell';
 
 interface AppLayoutProps {
     children: React.ReactNode;
@@ -82,6 +83,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
                                 {user?.role?.replace('_', ' ') || ''}
                             </Typography>
                         </Box>
+
+                        <NotificationBell />
 
                         <IconButton onClick={handleMenu} size="large">
                             <Avatar sx={{ bgcolor: '#0096D6', width: 36, height: 36 }}>

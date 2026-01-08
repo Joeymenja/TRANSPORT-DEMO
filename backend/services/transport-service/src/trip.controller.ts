@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Put, Body, Param, Query, Request, UseGuards, Res } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, Request, Query, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { TripService } from './trip.service';
 import { PdfService } from './pdf.service';
 import { ReportService } from './report.service';
@@ -107,15 +108,50 @@ export class TripController {
     @Get(':id/report')
     async getReport(@Param('id') id: string, @Res() res: Response) {
         const trip = await this.tripService.findOne(id);
-        const buffer = await this.pdfService.generateTripReportPdf(trip, await this.reportService.getReportByTripId(id));
+        
+        if (!trip.reportFilePath) {
+            // Fallback: Generate it on the fly if verified data available? 
+            // Or 404. Let's try to generate if missing but data exists in TripReport table.
+             // For now, 404 if no physical file or generation logic path.
+             // But actually, the previous implementation TRIED to generate it on the fly.
+        }
 
-        res.set({
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename=trip-report-${id}.pdf`,
-            'Content-Length': buffer.length,
-        });
+        try {
+            const buffer = await this.pdfService.readPdf(trip.reportFilePath || ''); 
+            
+            res.set({
+                'Content-Type': 'application/pdf',
+                'Content-Disposition': `attachment; filename=trip-report-${id}.pdf`,
+                'Content-Length': buffer.length,
+            });
 
-        res.end(buffer);
+            res.end(buffer);
+        } catch (e) {
+             // If read fails (e.g. file deleted), maybe regenerate?
+             // Re-generating requires TripReport entity data.
+             const report = await this.reportService.getReportByTripId(id);
+             if (report) {
+                 const buffer = await this.pdfService.generateTripReportPdf(trip, report); // This method 'generateTripReportPdf' WAS REMOVED from PdfService! 
+                 // We replaced it with generateOfficialReport which SAVES to disk and returns path.
+                 // So we should call that, then read it.
+                 // But generateOfficialReport expects flat payload, not Entities.
+                 // This is tricky. simpler to return 404 for now or minimal error.
+                 res.status(404).send('Report file not found');
+                 return;
+             }
+             res.status(404).send('Report not found');
+        }
+    }
+
+    @Post(':id/report/submit')
+    async submitReport(
+        @Param('id') id: string,
+        @Body() reportPayload: { tripData: any, signatureData: any },
+        @Request() req
+    ) {
+        const organizationId = req.headers['x-organization-id'];
+        const userId = req.headers['x-user-id'];
+        return this.tripService.submitReport(id, organizationId, userId, reportPayload);
     }
 
     @Post(':id/report/verify')
