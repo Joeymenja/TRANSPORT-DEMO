@@ -162,13 +162,18 @@ export class VehicleService {
     ) { }
 
     async createVehicle(createVehicleDto: CreateVehicleDto, organizationId: string): Promise<Vehicle> {
-        const vehicle = this.vehicleRepository.create({
-            ...createVehicleDto,
-            organizationId,
-            capacity: createVehicleDto.capacity || 4,
-        });
+        try {
+            const vehicle = this.vehicleRepository.create({
+                ...createVehicleDto,
+                organizationId,
+                capacity: createVehicleDto.capacity || 4,
+            });
 
-        return this.vehicleRepository.save(vehicle);
+            return await this.vehicleRepository.save(vehicle);
+        } catch (error) {
+            console.error('[VehicleService] createVehicle error:', error);
+            throw error;
+        }
     }
 
     async getVehicles(organizationId: string): Promise<Vehicle[]> {

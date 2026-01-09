@@ -1,4 +1,7 @@
+
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { useSocket } from '../../context/SocketContext';
+import { useEffect, useState } from 'react';
 import 'leaflet/dist/leaflet.css'; // Import Leaflet CSS
 import { Box, Paper, Typography, Chip, Avatar } from '@mui/material';
 import { Driver } from '../../api/drivers';
@@ -30,7 +33,42 @@ interface LiveMapProps {
     height?: string | number;
 }
 
-export default function LiveMap({ drivers, height = 500 }: LiveMapProps) {
+
+
+export default function LiveMap({ drivers: initialDrivers, height = 500 }: LiveMapProps) {
+    const socket = useSocket();
+    const [drivers, setDrivers] = useState<Driver[]>(initialDrivers);
+    
+    useEffect(() => {
+        setDrivers(initialDrivers);
+    }, [initialDrivers]);
+
+    useEffect(() => {
+        if (!socket) return;
+
+        socket.emit('join_room', 'admin');
+
+        socket.on('driver_location_updated', (data: { driverId: string, lat: number, lng: number, status: string }) => {
+            setDrivers(prev => prev.map(d => {
+                if (d.id === data.driverId) {
+                    return {
+                        ...d,
+                        currentLatitude: data.lat,
+                        currentLongitude: data.lng,
+                        currentStatus: data.status as any,
+                        lastStatusUpdate: new Date().toISOString()
+                    };
+                }
+                return d;
+            }));
+        });
+
+        return () => {
+            socket.off('driver_location_updated');
+            socket.emit('leave_room', 'admin');
+        };
+    }, [socket]);
+
     // Center map on Phoenix/Mesa area for demo
     const defaultCenter: [number, number] = [33.4152, -111.8315];
 

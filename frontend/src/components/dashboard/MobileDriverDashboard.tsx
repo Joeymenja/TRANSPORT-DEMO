@@ -1,12 +1,14 @@
-import { Box, Button, IconButton, Typography, Paper, AppBar, Toolbar, Snackbar, Alert, Fab } from '@mui/material';
+import { Box, Button, IconButton, Typography, Paper, AppBar, Toolbar, Snackbar, Alert, Fab, Chip } from '@mui/material';
 import { Menu as MenuIcon, DirectionsCarOutlined, PersonOutline, MyLocation, Add } from '@mui/icons-material'; // Outlined icons
 import ActiveTripCard from './ActiveTripCard';
+import DriverMap from './DriverMap'; // IMPORTED MAP
 import DriverDrawer from '../navigation/DriverDrawer';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { driverApi } from '../../api/drivers';
 import { tripApi } from '../../api/trips';
 import { memberApi } from '../../api/members';
 import { useAuthStore } from '../../store/auth';
+import { useSocket } from '../../context/SocketContext';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
@@ -19,12 +21,45 @@ export default function MobileDriverDashboard() {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [notificationOpen, setNotificationOpen] = useState(false);
     const prevTripsLength = useRef(0);
+    const socket = useSocket();
 
     const { data: driver } = useQuery({
         queryKey: ['driver-profile', user?.id],
         queryFn: () => user?.id ? driverApi.getByUserId(user.id) : null,
         enabled: !!user,
     });
+
+    // Real-time Location Tracking
+    useEffect(() => {
+        if (!socket || !driver) return;
+
+        // Determine if we should be tracking
+        // For demo: Track if 'ON_DUTY' or 'ON_TRIP'
+        const shouldTrack = driver.currentStatus === 'AVAILABLE' || driver.currentStatus === 'ON_TRIP';
+
+        if (!shouldTrack) return;
+
+        console.log('Starting location tracking...');
+        const interval = setInterval(() => {
+            // Simulate GPS movement for demo (jitter)
+            // In a real app, use Geolocation API
+            const baseLat = 33.4152; 
+            const baseLng = -111.8315;
+            
+            // Add some random movement
+            const lat = baseLat + (Math.random() - 0.5) * 0.01;
+            const lng = baseLng + (Math.random() - 0.5) * 0.01;
+
+            socket.emit('update_location', {
+                driverId: driver.id,
+                lat,
+                lng,
+                status: driver.currentStatus
+            });
+        }, 3000); // Emit every 3 seconds
+
+        return () => clearInterval(interval);
+    }, [socket, driver]);
 
     const { data: trips = [] } = useQuery({
         queryKey: ['trips', today],
@@ -76,12 +111,16 @@ export default function MobileDriverDashboard() {
                         stopType: 'PICKUP',
                         stopOrder: 1,
                         address: '1 Main St, Mesa, AZ 85201',
+                        gpsLatitude: 33.41518,
+                        gpsLongitude: -111.83147,
                         scheduledTime: pickupTime
                     },
                     {
                         stopType: 'DROPOFF',
                         stopOrder: 2,
                         address: 'Phoenix Sky Harbor, Phoenix, AZ 85034',
+                        gpsLatitude: 33.4352,
+                        gpsLongitude: -112.0101,
                         scheduledTime: new Date(pickupTime.getTime() + 3600000)
                     }
                 ]
@@ -134,127 +173,138 @@ export default function MobileDriverDashboard() {
                 driver={driver}
             />
 
-            {/* 2. Map Area (MAP-LIGHT-001) */}
-            <Box sx={{ flex: 1.2, p: 2, bgcolor: '#fff' }}>
-                <Paper
-                    elevation={0}
-                    sx={{
-                        width: '100%', height: '100%',
-                        borderRadius: 4,
-                        overflow: 'hidden',
-                        position: 'relative',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.08)', // Soft shadow
-                        bgcolor: '#f0f0f0' // Placeholder for map load
-                    }}
-                >
-                    <img
-                        src="https://maps.googleapis.com/maps/api/staticmap?center=Phoenix,AZ&zoom=14&size=600x800&scale=2&style=feature:all|element:labels|visibility:on&key=YOUR_KEY"
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        alt="Map Preview"
-                    />
-
-                    {/* Minimal Controls (MAP-LIGHT-002) */}
-                    <Box sx={{ position: 'absolute', bottom: 16, right: 16, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-
-
-                        <Paper sx={{ borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-                            <MyLocation sx={{ color: '#333', fontSize: 20 }} />
-                        </Paper>
-                    </Box>
-                </Paper>
-            </Box>
-
-            {/* 3. Bottom Sheet (SHEET-LIGHT-001) */}
-            <Paper
-                component="div"
-                elevation={3} // Top shadow only effect handled by elevation logic usually
-                sx={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    borderRadius: '20px 20px 0 0',
-                    bgcolor: 'white',
-                    mt: -1,
-                    zIndex: 10,
-                    boxShadow: '0 -4px 20px rgba(0,0,0,0.05)', // Custom top shadow
-                    overflow: 'hidden',
-                    position: 'relative'
-                }}
-            >
-
-
-                {/* Handle Bar */}
-                <Box sx={{ pt: 1.5, pb: 1, display: 'flex', justifyContent: 'center' }}>
-                    <Box sx={{ width: 36, height: 4, bgcolor: '#E0E0E0', borderRadius: 2 }} />
+            {/* 2. Map & Active Trip Area (FACTORY-Mode) */}
+            <Box sx={{ flex: 1.5, position: 'relative', overflow: 'hidden' }}>
+                {/* LIVE MAP BACKGROUND */}
+                <Box sx={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 0 }}>
+                     <DriverMap activeTrip={activeTrip} />
                 </Box>
 
-                {/* Section Header (SHEET-LIGHT-002) */}
-                <Box sx={{ px: 3, pb: 2 }}>
-                    <Typography variant="h6" fontWeight={600} sx={{ color: '#333' }}>
-                        Upcoming Trips ({trips.length})
+                {/* Status Overlay Card (Floating over Map) */}
+                <Box sx={{ 
+                    position: 'absolute', 
+                    bottom: 0, 
+                    left: 0, 
+                    right: 0, 
+                    zIndex: 10,
+                    p: 2,
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%)',
+                    display: 'flex',
+                    alignItems: 'flex-end'
+                }}>
+                    <Paper 
+                        elevation={6}
+                        sx={{ 
+                            width: '100%', 
+                            borderRadius: 4, 
+                            bgcolor: '#212121', 
+                            color: 'white',
+                            p: 2,
+                            mb: 1
+                        }}
+                    >
+                        {activeTrip ? (
+                            <Box>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                                    <Chip 
+                                        label="ON DUTY" 
+                                        size="small" 
+                                        sx={{ bgcolor: '#4CAF50', color: 'white', fontWeight: 700 }} 
+                                    />
+                                    <Typography variant="h5" fontWeight={700} sx={{ color: '#4FC3F7' }}>
+                                        {format(new Date(activeTrip.stops[0].scheduledTime), 'h:mm a')}
+                                    </Typography>
+                                </Box>
+                                
+                                <Typography variant="h6" fontWeight={600} noWrap>
+                                    {activeTrip.tripType === 'PICK_UP' ? 'Pick Up: ' : 'Drop Off: '}
+                                    {activeTrip.members?.[0]?.member?.firstName}
+                                </Typography>
+                                <Typography variant="body2" sx={{ opacity: 0.8, mb: 2 }} noWrap>
+                                    {activeTrip.stops[0].address}
+                                </Typography>
+
+                                <Button 
+                                    variant="contained" 
+                                    fullWidth 
+                                    size="large"
+                                    onClick={() => handleStartTrip(activeTrip.id)}
+                                    sx={{ 
+                                        bgcolor: '#00C853', 
+                                        color: 'white', 
+                                        fontWeight: 700,
+                                        '&:hover': { bgcolor: '#009624' }
+                                    }}
+                                >
+                                    {activeTrip.status === 'SCHEDULED' ? 'START TRIP' : 'CONTINUE'}
+                                </Button>
+                            </Box>
+                        ) : (
+                            <Box sx={{ textAlign: 'center', py: 2 }}>
+                                <Typography variant="h6" color="text.secondary" sx={{ color: '#aaa' }}>
+                                    No Active Trip
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: '#666' }}>
+                                    Standing by for dispatch...
+                                </Typography>
+                            </Box>
+                        )}
+                    </Paper>
+                </Box>
+            </Box>
+
+            {/* List Header */}
+                <Box sx={{ px: 2, py: 1.5, bgcolor: '#fff', borderBottom: '1px solid #f0f0f0' }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#888', letterSpacing: 1 }}>
+                        UPCOMING ({otherTrips.length})
                     </Typography>
                 </Box>
 
-                {/* Content Area (SHEET-LIGHT-003) */}
-                <Box sx={{ flex: 1, overflowY: 'auto', p: 2, bgcolor: '#FAFAFA' }}>
-                    {activeTrip ? (
-                        <>
-                            <ActiveTripCard
-                                trip={activeTrip}
-                                isNext={true}
-                                onViewDetails={() => navigate(`/driver/trips/${activeTrip.id}`)}
-                                onStartTrip={handleStartTrip}
-                            />
-                            {otherTrips.map(trip => (
-                                <ActiveTripCard
-                                    key={trip.id}
-                                    trip={trip}
-                                    isNext={false}
-                                    onViewDetails={() => navigate(`/driver/trips/${trip.id}`)}
-                                    onStartTrip={handleStartTrip}
-                                />
-                            ))}
-                            <Box sx={{ mt: 3, mb: 5, textAlign: 'center' }}>
-                                <Button
-                                    variant="outlined"
-                                    onClick={() => createDemoTripMutation.mutate()}
-                                    sx={{ borderRadius: 20, textTransform: 'none' }}
-                                >
-                                    Create Demo Trip
-                                </Button>
-                                <Button
-                                    variant="contained"
-                                    onClick={() => navigate('/driver/create-trip')}
-                                    sx={{ ml: 2, borderRadius: 20, textTransform: 'none' }}
-                                >
-                                    Schedule New Trip
-                                </Button>
-                            </Box>
-                        </>
-                    ) : (
-                        <Box sx={{ textAlign: 'center', py: 6 }}>
-                            <Box sx={{
-                                width: 64, height: 64, mx: 'auto', mb: 2,
-                                borderRadius: '50%', bgcolor: '#f0f4f8',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                            }}>
-                                <DirectionsCarOutlined sx={{ fontSize: 32, color: 'primary.main' }} />
-                            </Box>
-                            <Typography variant="h6" fontWeight={600} gutterBottom sx={{ color: '#333' }}>No trips scheduled</Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                                You're all set for now. Set your availability to receive new trips.
-                            </Typography>
-                            <Button
-                                variant="contained"
-                                onClick={() => navigate('/driver/create-trip')}
-                                sx={{ borderRadius: 20, textTransform: 'none' }}
+                {/* Content Area (Factory List) */}
+                <Box sx={{ flex: 1, p: 0, bgcolor: '#fff' }}>
+                    {otherTrips.length > 0 ? (
+                        otherTrips.map(trip => (
+                            <Box 
+                                key={trip.id}
+                                onClick={() => navigate(`/driver/trips/${trip.id}`)}
+                                sx={{ 
+                                    p: 2, 
+                                    borderBottom: '1px solid #eee', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'space-between',
+                                    '&:active': { bgcolor: '#f9f9f9' }
+                                }}
                             >
-                                Schedule New Trip
+                                <Box>
+                                    <Typography variant="h6" sx={{ fontWeight: 600, color: '#333' }}>
+                                        {format(new Date(trip.stops[0].scheduledTime), 'h:mm a')}
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ color: '#666' }}>
+                                        {trip.tripType === 'PICK_UP' ? 'Pick Up' : 'Drop Off'} • {trip.members?.[0]?.member?.firstName}
+                                    </Typography>
+                                </Box>
+                                <Typography variant="caption" sx={{ bgcolor: '#eee', px: 1, py: 0.5, borderRadius: 1, fontWeight: 600 }}>
+                                    #{trip.id.slice(0, 4)}
+                                </Typography>
+                            </Box>
+                        ))
+                    ) : (
+                         <Box sx={{ textAlign: 'center', py: 4, px: 2 }}>
+                            <Typography variant="body1" color="text.secondary">
+                                No other trips scheduled.
+                            </Typography>
+                             <Button
+                                variant="text"
+                                color="primary"
+                                onClick={() => createDemoTripMutation.mutate()}
+                                sx={{ mt: 1 }}
+                            >
+                                (+ Demo Trip)
                             </Button>
                         </Box>
                     )}
                 </Box>
-            </Paper>
 
 
 

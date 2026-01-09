@@ -3,10 +3,12 @@ import { Box, Container, Typography, Card, Button, Table, TableBody, TableCell, 
 import { Add, Edit, Delete, Groups, AutoFixHigh, Assignment, AssignmentTurnedIn } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { useNotification } from '../context/NotificationContext';
 import { memberApi, MobilityRequirement, CreateMemberData } from '../api/members';
 
 export default function MembersPage() {
     const navigate = useNavigate();
+    const { showNotification } = useNotification();
     const queryClient = useQueryClient();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -44,7 +46,7 @@ export default function MembersPage() {
         onError: (error: any) => {
             console.error('Failed to create member:', error);
             const msg = error.response?.data?.message;
-            alert(`Failed to create member: ${Array.isArray(msg) ? msg.join(', ') : msg || error.message}`);
+            showNotification(`Failed to create member: ${Array.isArray(msg) ? msg.join(', ') : msg || error.message}`, 'error');
         }
     });
 

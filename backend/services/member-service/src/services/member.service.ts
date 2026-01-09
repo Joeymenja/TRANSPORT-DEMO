@@ -15,20 +15,25 @@ export class MemberService {
     ) { }
 
     async createMember(createMemberDto: CreateMemberDto, organizationId: string): Promise<Member> {
-        const member = this.memberRepository.create({
-            ...createMemberDto,
-            organizationId,
-        });
-        const savedMember = await this.memberRepository.save(member);
-        
-        await this.activityLogService.log(
-            ActivityType.MEMBER_CREATED,
-            `New member ${savedMember.firstName} ${savedMember.lastName} added`,
-            organizationId,
-            { memberId: savedMember.id }
-        );
+        try {
+            const member = this.memberRepository.create({
+                ...createMemberDto,
+                organizationId,
+            });
+            const savedMember = await this.memberRepository.save(member);
+            
+            await this.activityLogService.log(
+                ActivityType.MEMBER_CREATED,
+                `New member ${savedMember.firstName} ${savedMember.lastName} added`,
+                organizationId,
+                { memberId: savedMember.id }
+            );
 
-        return savedMember;
+            return savedMember;
+        } catch (error) {
+            console.error('[MemberService] createMember error:', error);
+            throw error;
+        }
     }
 
     async findAll(organizationId: string): Promise<Member[]> {

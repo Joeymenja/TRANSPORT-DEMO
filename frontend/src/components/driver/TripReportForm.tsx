@@ -244,8 +244,8 @@ export default function TripReportForm({
 
         const totalMiles = parseFloat(endOdometer) - startOdometer;
 
-        // Prepare Payload
-        const tripData = {
+        // Prepare Payload for submission
+        const reportData = {
             id: tripData.id, // Ensure ID is passed if needed, or parent handles it
             driverId: driverInfo.id,
             startOdometer,
@@ -281,24 +281,9 @@ export default function TripReportForm({
             dropoffAddress: tripData.dropoffAddress,
         };
 
-        const signaturePayload = {
-            member: signatureData, // Base64
-            driver: driverSigned ? `data:image/png;base64,DRIVER_SIGNED_ON_FILE` : null, // Backend can handle placeholder or we can use signatureData if driver signs too. 
-            // Current UI only has member signature pad?
-            // "Driver optionally view/download... Driver signs (canvas)"
-            // The current UI has logic for `driverSigned` checkbox/button but not a canvas for driver?
-            // "const [driverSigned, setDriverSigned] = useState(false);"
-            // "const [showSignaturePad, setShowSignaturePad] = useState(false);" (used for member)
-            // If the user wants driver signature, we should probably add a pad for them or just use the boolean for now and let backend stamp name.
-            // Backend `PdfService` supports text fallback.
-        };
-        
-        // Actually, let's just pass `driverInfo.name` as signature if only boolean is checked, or handle it in backend.
-        // My backend code: if signatureData.driver starts with "data:image", embed it. Else draw text.
-        // So sending the name fits "draw text".
-        
+        // Submit the trip report with both trip data and signatures
         onSubmit({
-             tripData,
+             tripData: reportData,
              signatureData: {
                  member: signatureData,
                  driver: driverSignatureData, // Now sending actual signature image

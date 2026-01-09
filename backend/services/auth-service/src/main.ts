@@ -6,6 +6,20 @@ import { AuthModule } from './auth.module';
 async function bootstrap() {
     const app = await NestFactory.create(AuthModule);
     const configService = app.get(ConfigService);
+    
+    // Critical Environment Validation
+    const requiredEnv = ['JWT_SECRET', 'DB_PASSWORD', 'DB_HOST', 'DB_DATABASE'];
+    const missingEnv = requiredEnv.filter(env => !configService.get(env));
+    
+    if (missingEnv.length > 0) {
+        console.error('----------------------------------------');
+        console.error('CRITICAL ERROR: Missing Environment Variables');
+        console.error(`Missing: ${missingEnv.join(', ')}`);
+        console.error('The application cannot start without these variables.');
+        console.error('----------------------------------------');
+        process.exit(1);
+    }
+
     console.log('----------------------------------------');
     console.log('ACTIVE DB CONFIG:');
     console.log('HOST:', configService.get('DB_HOST'));

@@ -1,4 +1,4 @@
-import { Box, Container, CircularProgress, Paper, Button } from '@mui/material';
+import { Box, Container, CircularProgress, Paper, Button, Typography } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import { tripApi } from '../../api/trips';
@@ -12,6 +12,37 @@ import TripReportForm from '../../components/driver/TripReportForm';
 
 // Trip Execution States
 type ExecutionState = 'LOADING' | 'PRE_TRIP' | 'EN_ROUTE_PICKUP' | 'AT_PICKUP' | 'EN_ROUTE_DROPOFF' | 'AT_DROPOFF' | 'TRIP_REPORT' | 'COMPLETED';
+
+// Factory Step Component
+const TripStep = ({ label, status, onClick }: { label: string, status: 'PENDING' | 'ACTIVE' | 'COMPLETED', onClick?: () => void }) => (
+    <Box 
+        onClick={onClick}
+        sx={{ 
+            flex: 1, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            opacity: status === 'PENDING' ? 0.3 : 1,
+            position: 'relative'
+        }}
+    >
+        <Box sx={{ 
+            width: 32, 
+            height: 32, 
+            borderRadius: '50%', 
+            bgcolor: status === 'COMPLETED' ? '#4CAF50' : status === 'ACTIVE' ? '#2196F3' : '#9E9E9E',
+            color: 'white',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            mb: 0.5,
+            fontWeight: 700
+        }}>
+           {status === 'COMPLETED' ? '✓' : ''}
+        </Box>
+        <Typography variant="caption" sx={{ fontWeight: 700, color: status === 'ACTIVE' ? '#2196F3' : '#666' }}>
+            {label}
+        </Typography>
+    </Box>
+);
 
 export default function TripExecutionPage() {
     const { tripId } = useParams();
@@ -138,9 +169,16 @@ export default function TripExecutionPage() {
     if (isLoading || !trip) return <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>;
 
     // Helper to get stop IDs
-    const pickupStop = trip.stops.find((s: any) => s.stopType === 'PICKUP');
-    const dropoffStop = trip.stops.find((s: any) => s.stopType === 'DROPOFF');
-    const signingMemberId = trip.members[0]?.memberId;
+    const pickupStop = trip.stops?.find((s: any) => s.stopType === 'PICKUP');
+    const dropoffStop = trip.stops?.find((s: any) => s.stopType === 'DROPOFF');
+    const firstMember = trip.members?.[0]?.member;
+    const signingMemberId = trip.members?.[0]?.memberId;
+    
+    // Derived values
+    const clientName = firstMember ? `${firstMember.firstName} ${firstMember.lastName}` : 'Unknown Client';
+    const clientAhcccsId = firstMember?.ahcccsId || '';
+    const clientDob = firstMember?.dob || '';
+    const clientAddress = firstMember?.address || '';
 
 
     const handleSignatureSave = (data: { signatureBase64: string; isProxy?: boolean; proxySignerName?: string; proxyRelationship?: string; proxyReason?: string }) => {
@@ -192,8 +230,16 @@ export default function TripExecutionPage() {
                 }}
             >
                 <Container maxWidth="sm" sx={{ pt: 1, pb: 24 }}>
-                    {/* Drag Handle */}
-                    <Box sx={{ width: 40, height: 4, bgcolor: '#e0e0e0', borderRadius: 2, mx: 'auto', my: 2 }} />
+                    {/* Stepped Progress Indicator (Factory-Mode) */}
+                    <Box sx={{ px: 2, display: 'flex', justifyContent: 'space-between', mb: 4, position: 'relative' }}>
+                        {/* Connecting Line */}
+                        <Box sx={{ position: 'absolute', top: 16, left: 40, right: 40, height: 2, bgcolor: '#e0e0e0', zIndex: -1 }} />
+                        
+                        <TripStep label="START" status={viewState === 'PRE_TRIP' ? 'ACTIVE' : 'COMPLETED'} />
+                        <TripStep label="PICKUP" status={['PRE_TRIP', 'EN_ROUTE_PICKUP'].includes(viewState) ? 'PENDING' : viewState === 'AT_PICKUP' ? 'ACTIVE' : 'COMPLETED'} />
+                        <TripStep label="DROPOFF" status={['PRE_TRIP', 'EN_ROUTE_PICKUP', 'AT_PICKUP', 'EN_ROUTE_DROPOFF'].includes(viewState) ? 'PENDING' : viewState === 'AT_DROPOFF' ? 'ACTIVE' : 'COMPLETED'} />
+                        <TripStep label="FINISH" status={viewState === 'COMPLETED' ? 'COMPLETED' : ['TRIP_REPORT', 'COMPLETED'].includes(viewState) ? 'ACTIVE' : 'PENDING'} />
+                    </Box>
 
                     <Box sx={{ px: 2 }}>
                         {viewState === 'PRE_TRIP' && (
@@ -211,9 +257,9 @@ export default function TripExecutionPage() {
                             <ActiveNavigation
                                 destinationAddress={pickupStop?.address || 'Unknown'}
                                 destinationType="PICKUP"
-                                clientName={trip.members[0]?.member?.firstName + ' ' + trip.members[0]?.member?.lastName}
+                                clientName={clientName}
                                 onNavigate={() => {
-                                    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(pickupStop?.address)}`, '_blank');
+                                    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(pickupStop?.address || '')}`, '_blank');
                                 }}
                                 onArrive={() => arriveStopMutation.mutate(pickupStop?.id)}
                             />
@@ -221,7 +267,7 @@ export default function TripExecutionPage() {
 
                         {viewState === 'AT_PICKUP' && (
                             <PickupWorkflow
-                                clientName={trip.members[0]?.member?.firstName + ' ' + trip.members[0]?.member?.lastName}
+                                clientName={clientName}
                                 onConfirmPickup={() => {
                                     // 1. Mark ready (optional) 
                                     // 2. Complete Pickup Stop
@@ -241,9 +287,9 @@ export default function TripExecutionPage() {
                             <ActiveNavigation
                                 destinationAddress={dropoffStop?.address || 'Unknown'}
                                 destinationType="DROPOFF"
-                                clientName={trip.members[0]?.member?.firstName + ' ' + trip.members[0]?.member?.lastName}
+                                clientName={clientName}
                                 onNavigate={() => {
-                                    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dropoffStop?.address)}`, '_blank');
+                                    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dropoffStop?.address || '')}`, '_blank');
                                 }}
                                 onArrive={() => arriveStopMutation.mutate(dropoffStop?.id)}
                             />
@@ -282,11 +328,11 @@ export default function TripExecutionPage() {
                             <TripReportForm
                                 tripData={{
                                     id: trip.id,
-                                    memberId: trip.members[0]?.memberId,
-                                    memberName: `${trip.members[0]?.member?.firstName || ''} ${trip.members[0]?.member?.lastName || ''}`.trim() || 'Unknown Member',
-                                    memberAhcccsId: trip.members[0]?.member?.ahcccsId || '',
-                                    memberDOB: trip.members[0]?.member?.dob || '',
-                                    memberAddress: trip.members[0]?.member?.address || '',
+                                    memberId: signingMemberId,
+                                    memberName: clientName,
+                                    memberAhcccsId: clientAhcccsId,
+                                    memberDOB: clientDob,
+                                    memberAddress: clientAddress,
                                     pickupAddress: pickupStop?.address || '',
                                     dropoffAddress: dropoffStop?.address || '',
                                     vehicleId: trip.assignedVehicle?.vehicleNumber || 'FLEET-101',

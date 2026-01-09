@@ -3,6 +3,7 @@ import { Box, Card, CardContent, Typography, Container, Button, IconButton, Dial
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
 import { useNavigate } from 'react-router-dom';
+import { useNotification } from '../context/NotificationContext';
 import LoadingOverlay from '../components/LoadingOverlay';
 import { Add, Delete, Commute, LocalShipping, Build, CheckCircle, Accessible, AutoFixHigh, GppGood } from '@mui/icons-material';
 
@@ -28,6 +29,7 @@ interface Vehicle {
 
 export default function VehiclesPage() {
     const navigate = useNavigate();
+    const { showNotification } = useNotification();
     const queryClient = useQueryClient();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [formData, setFormData] = useState({
@@ -70,6 +72,7 @@ export default function VehiclesPage() {
         },
         onError: (error: any) => {
             console.error('Failed to create vehicle:', error);
+            showNotification('Failed to create vehicle', 'error');
         }
     });
 

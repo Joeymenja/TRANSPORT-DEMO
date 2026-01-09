@@ -8,6 +8,8 @@ import '@fontsource/inter/600.css';
 import '@fontsource/inter/700.css';
 
 
+console.log('Main.tsx is executing');
+
 createRoot(document.getElementById('root')!).render(
     <StrictMode>
         <App />

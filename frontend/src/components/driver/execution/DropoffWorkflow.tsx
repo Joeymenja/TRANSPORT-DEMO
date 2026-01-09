@@ -15,17 +15,31 @@ export default function DropoffWorkflow({ onComplete, startOdometer = 0 }: Dropo
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
 
-    // Signature Pad Logic
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    // Signature Pad Logic & Resize
     useEffect(() => {
-        if (tab === 0 && canvasRef.current) {
-            const canvas = canvasRef.current;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-                ctx.lineWidth = 2;
-                ctx.lineCap = 'round';
-                ctx.strokeStyle = '#000';
+        const resizeCanvas = () => {
+             if (tab === 0 && canvasRef.current && containerRef.current) {
+                const canvas = canvasRef.current;
+                const container = containerRef.current;
+                // Save current content? (Too complex for MVP refactor, just clear or keep size)
+                // Ideally we set internal dimensions to match clientWidth
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight;
+                
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.lineWidth = 3;
+                    ctx.lineCap = 'round';
+                    ctx.strokeStyle = '#000';
+                }
             }
-        }
+        };
+
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        return () => window.removeEventListener('resize', resizeCanvas);
     }, [tab]);
 
     const startDrawing = (e: any) => {
@@ -132,12 +146,21 @@ export default function DropoffWorkflow({ onComplete, startOdometer = 0 }: Dropo
                     {tab === 0 ? (
                         <>
                             <Box
-                                sx={{ border: '2px dashed #ccc', borderRadius: 2, bgcolor: '#fff', touchAction: 'none' }}
+                                ref={containerRef}
+                                sx={{ 
+                                    border: '2px dashed #bbb', 
+                                    borderRadius: 3, 
+                                    bgcolor: '#fff', 
+                                    touchAction: 'none',
+                                    width: '100%',
+                                    height: 200,
+                                    position: 'relative',
+                                    overflow: 'hidden'
+                                }}
                             >
                                 <canvas
                                     ref={canvasRef}
-                                    width={300}
-                                    height={150}
+                                    style={{ width: '100%', height: '100%' }}
                                     onMouseDown={startDrawing}
                                     onMouseMove={draw}
                                     onMouseUp={stopDrawing}

@@ -33,7 +33,7 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: false,
 
             login: async (email: string, password: string) => {
-                const response = await fetch('http://localhost:8081/auth/login', { // Using correct Auth Service port
+                const response = await fetch('/api/auth/login', { // Using correct Auth Service port
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password }),
@@ -65,7 +65,7 @@ export const useAuthStore = create<AuthState>()(
                 if (!token) return;
 
                 try {
-                    const response = await fetch('http://localhost:8081/auth/profile', {
+                    const response = await fetch('/api/auth/profile', {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                     if (response.ok) {

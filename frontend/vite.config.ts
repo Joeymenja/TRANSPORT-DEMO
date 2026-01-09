@@ -1,8 +1,14 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import path from 'path'
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-    plugins: [react()],
+    plugins: [
+        react(),
+    ],
     server: {
         port: 3000,
         proxy: {
@@ -12,22 +18,37 @@ export default defineConfig({
                 rewrite: (path) => path.replace(/^\/api/, ''),
             },
             '/api/trips': {
-                target: 'http://localhost:3003',
+                target: 'http://localhost:8082',
                 changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/api/, ''),
             },
             '/api/vehicles': {
-                target: 'http://localhost:3003',
+                target: 'http://localhost:8082',
                 changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/api/, ''),
             },
             '/api/drivers': {
-                target: 'http://localhost:3003',
+                target: 'http://localhost:8082',
                 changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/api/, ''),
             },
             '/api/notifications': {
-                target: 'http://localhost:3003',
+                target: 'http://localhost:8082',
+                changeOrigin: true,
+                rewrite: (path) => path.replace(/^\/api/, ''),
+            },
+            '/api/locations': {
+                target: 'http://localhost:8082',
+                changeOrigin: true,
+                rewrite: (path) => path.replace(/^\/api/, ''),
+            },
+            '/api/billing': {
+                target: 'http://localhost:8082',
+                changeOrigin: true,
+                rewrite: (path) => path.replace(/^\/api/, ''),
+            },
+            '/api/reports': {
+                target: 'http://localhost:8082',
                 changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/api/, ''),
             },
@@ -36,6 +57,11 @@ export default defineConfig({
                 changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/api/, ''),
             },
+        },
+    },
+    resolve: {
+        alias: {
+            // Alias removed to rely on npm resolution
         },
     },
 })

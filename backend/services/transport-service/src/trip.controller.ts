@@ -127,18 +127,7 @@ export class TripController {
 
             res.end(buffer);
         } catch (e) {
-             // If read fails (e.g. file deleted), maybe regenerate?
-             // Re-generating requires TripReport entity data.
-             const report = await this.reportService.getReportByTripId(id);
-             if (report) {
-                 const buffer = await this.pdfService.generateTripReportPdf(trip, report); // This method 'generateTripReportPdf' WAS REMOVED from PdfService! 
-                 // We replaced it with generateOfficialReport which SAVES to disk and returns path.
-                 // So we should call that, then read it.
-                 // But generateOfficialReport expects flat payload, not Entities.
-                 // This is tricky. simpler to return 404 for now or minimal error.
-                 res.status(404).send('Report file not found');
-                 return;
-             }
+             // If read fails (e.g. file deleted), return 404
              res.status(404).send('Report not found');
         }
     }

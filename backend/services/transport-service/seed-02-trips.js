@@ -25,7 +25,10 @@ async function seedTrips() {
         const adminRes = await client.query("SELECT id FROM users WHERE email = 'admin@gvbh-demo.com'");
         const adminId = adminRes.rows[0].id;
 
-        const driverRes = await client.query("SELECT id FROM users WHERE email = 'driver@gvbh-demo.com'");
+        const driverUserRes = await client.query("SELECT id FROM users WHERE email = 'driver@gvbh-demo.com'");
+        const driverUserId = driverUserRes.rows[0].id;
+        
+        const driverRes = await client.query("SELECT id FROM drivers WHERE user_id = $1", [driverUserId]);
         const driverId = driverRes.rows[0].id;
 
         // Vehicle (V-001)
@@ -39,16 +42,38 @@ async function seedTrips() {
 
         console.log('Dependencies:', { orgId, adminId, driverId, vehicleId, memberAId });
 
+const fs = require('fs');
+const path = require('path');
+
+// ... (existing imports)
+
         // 2. Create Trip 1 (Completed)
         const todayDate = new Date().toISOString().split('T')[0];
-        const trip1Id = uuidv4();
+        // Fixed UUID for easy verification
+        const trip1Id = '50125c11-9258-4504-98C0-2921a4f00001'; 
+        const reportPath = 'reports/seeded-report.pdf';
 
         console.log('Inserting Trip 1...');
         await client.query(
-            `INSERT INTO trips (id, organization_id, trip_date, created_by_id, assigned_driver_id, assigned_vehicle_id, trip_type, status) 
-             VALUES ($1, $2, $3, $4, $5, $6, 'PICK_UP', 'COMPLETED')`,
-            [trip1Id, orgId, todayDate, adminId, driverId, vehicleId]
+            `INSERT INTO trips (id, organization_id, trip_date, created_by_id, assigned_driver_id, assigned_vehicle_id, trip_type, status, report_file_path) 
+             VALUES ($1, $2, $3, $4, $5, $6, 'PICK_UP', 'COMPLETED', $7)`,
+            [trip1Id, orgId, todayDate, adminId, driverId, vehicleId, reportPath]
         );
+
+        // Create dummy report file
+        const fullReportPath = path.join(process.cwd(), '../../../', reportPath); // Adjust for cwd being in services/transport-service
+        // Actually process.cwd() when running "node seed-02.js" is the dir.
+        // We want it in project root/reports usually? 
+        // PdfService uses path.join(process.cwd(), 'reports') where process.cwd() is project root.
+        // If we run `npm run dev` from root, cwd is root.
+        // If we run `node seed...` from `backend/services/transport-service`, cwd is different.
+        // Let's assume verifying uses the running api which runs from root (usually).
+        // So reportPath 'reports/seeded-report.pdf' means <root>/reports/seeded-report.pdf.
+        // So we should write to <root>/reports/seeded-report.pdf.
+        const reportsDir = path.join(__dirname, 'reports');
+        if (!fs.existsSync(reportsDir)) fs.mkdirSync(reportsDir, { recursive: true });
+        fs.writeFileSync(path.join(reportsDir, 'seeded-report.pdf'), 'Dummy PDF Content');
+
 
         // Stops
         // Use exact confirmed query structure from test

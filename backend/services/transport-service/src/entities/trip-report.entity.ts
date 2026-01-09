@@ -74,6 +74,12 @@ export class TripReport {
     @Column({ name: 'submitted_at', nullable: true })
     submittedAt: Date;
 
+    @Column({ name: 'submitted_by', nullable: true })
+    submittedBy: string;
+
+    @Column({ name: 'submission_method', nullable: true })
+    submissionMethod: string;
+
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
 

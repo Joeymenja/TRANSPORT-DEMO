@@ -23,7 +23,7 @@ async function seedDrivers() {
 
         // 2. Clear existing demo drivers
         console.log('Clearing existing demo drivers...');
-        await client.query('DELETE FROM drivers');
+        await client.query('DELETE FROM drivers WHERE organization_id = $1', [orgId]);
 
         // 3. Setup Demo Drivers
         const demoDrivers = [
@@ -71,6 +71,9 @@ async function seedDrivers() {
             }
 
             // Create Driver Profile
+            // Ensure no existing driver profile for this user
+            await client.query('DELETE FROM drivers WHERE user_id = $1', [userId]);
+
             const driverId = uuidv4();
             await client.query(
                 `INSERT INTO drivers (

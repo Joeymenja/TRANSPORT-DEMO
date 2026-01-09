@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import api from '../lib/api';
 
 export interface Location {
     id: string;
@@ -10,29 +8,13 @@ export interface Location {
 }
 
 export const locationApi = {
-    getAll: async () => {
-        const token = localStorage.getItem('token');
-        const organizationId = localStorage.getItem('organizationId');
-        
-        const response = await axios.get(`${API_URL}/locations`, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'x-organization-id': organizationId
-            }
-        });
-        return response.data;
+    getAll: async (): Promise<Location[]> => {
+        const { data } = await api.get('/locations');
+        return data;
     },
 
-    create: async (data: Partial<Location>) => {
-        const token = localStorage.getItem('token');
-        const organizationId = localStorage.getItem('organizationId');
-        
-        const response = await axios.post(`${API_URL}/locations`, data, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'x-organization-id': organizationId
-            }
-        });
-        return response.data;
+    create: async (locationData: Partial<Location>): Promise<Location> => {
+        const { data } = await api.post('/locations', locationData);
+        return data;
     }
 };

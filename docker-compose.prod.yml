@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespw
+      POSTGRES_DB: gvbh_transport
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: node services/auth-service/dist/main
+    environment:
+      PORT: 8081
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgrespw
+      DB_DATABASE: gvbh_transport
+      JWT_SECRET: ${JWT_SECRET:-production_secret_key_change_me}
+      JWT_EXPIRATION: 24h
+      TRANSPORT_SERVICE_URL: http://transport-service:8082
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  member-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: node services/member-service/dist/main
+    environment:
+      PORT: 8083
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgrespw
+      DB_DATABASE: gvbh_transport
+      JWT_SECRET: ${JWT_SECRET:-production_secret_key_change_me}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  transport-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: node services/transport-service/dist/main
+    environment:
+      PORT: 8082
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgrespw
+      DB_DATABASE: gvbh_transport
+      JWT_SECRET: ${JWT_SECRET:-production_secret_key_change_me}
+      AUTH_SERVICE_URL: http://auth-service:8081/auth
+      MEMBER_SERVICE_URL: http://member-service:8083/members
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8082:8082" # Expose for direct API access if needed, or rely on frontend proxy
+    networks:
+      - app-network
+    volumes:
+      - ./backend/services/transport-service/uploads:/app/services/transport-service/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - transport-service
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

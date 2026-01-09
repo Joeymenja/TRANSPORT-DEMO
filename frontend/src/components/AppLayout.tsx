@@ -58,6 +58,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
                         <Button color="inherit" onClick={() => navigate('/archives')} sx={{ color: '#212121' }}>
                             Archives
                         </Button>
+                        <Button color="inherit" onClick={() => navigate('/trips')} sx={{ color: '#212121' }}>
+                            Trips
+                        </Button>
+                        <Button color="inherit" onClick={() => navigate('/billing')} sx={{ color: '#212121' }}>
+                            Billing
+                        </Button>
                         <Button color="inherit" onClick={() => navigate('/members')} sx={{ color: '#212121' }}>
                             Members
                         </Button>
@@ -101,6 +107,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                                 horizontal: 'right',
                             }}
                         >
+
                             <MenuItem onClick={handleLogout}>
                                 <Logout fontSize="small" sx={{ mr: 1 }} />
                                 Logout

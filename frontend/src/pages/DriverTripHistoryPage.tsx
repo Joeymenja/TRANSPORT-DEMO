@@ -42,7 +42,8 @@ export const DriverTripHistoryPage = () => {
     const handleDownloadReport = async (tripId: string) => {
         try {
             // Call API to get report PDF
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/trips/${tripId}/report`, {
+            const apiUrl = 'http://localhost:3003'; // Fallback to default
+            const response = await fetch(`${apiUrl}/trips/${tripId}/report`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`

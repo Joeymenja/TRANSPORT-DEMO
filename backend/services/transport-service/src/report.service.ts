@@ -84,14 +84,49 @@ export class ReportService {
         // Generate PDF
         let pdfFilePath = null;
         try {
-            const pdfBuffer = await this.pdfService.generateTripReportPdf(trip, report);
-            // Save PDF to disk with organized folder structure
-            pdfFilePath = await this.pdfService.savePdfToDisk(pdfBuffer, trip.tripDate, trip.id);
+            // Map entities to flat data for PDF
+            const tripMember = trip.tripMembers?.[0]?.member;
+            const driverUser = trip.assignedDriver?.user;
+            const vehicle = trip.assignedDriver?.assignedVehicle || trip.assignedVehicle; 
+            
+            // Extract stop data
+            const pickupStop = trip.tripStops?.find(s => s.stopType === 'PICKUP') || trip.tripStops?.[0];
+            const dropoffStop = trip.tripStops?.find(s => s.stopType === 'DROPOFF') || trip.tripStops?.[trip.tripStops?.length - 1];
+
+            const tripData = {
+                id: trip.id,
+                driverId: trip.assignedDriverId,
+                driverName: driverUser ? `${driverUser.firstName} ${driverUser.lastName}` : '',
+                vehicleId: vehicle?.vehicleNumber || 'N/A',
+                vehicleColor: vehicle?.color || '',
+                vehicleMake: vehicle?.make || '',
+                vehicleType: vehicle?.vehicleType || 'Wheelchair Van',
+                memberAhcccsId: tripMember?.memberId || '', // memberId IS the AHCCCS ID
+                memberDOB: tripMember?.dateOfBirth ? new Date(tripMember.dateOfBirth).toLocaleDateString() : '',
+                memberName: tripMember ? `${tripMember.firstName} ${tripMember.lastName}` : '',
+                memberAddress: tripMember?.address || '',
+                pickupAddress: pickupStop?.address || '',
+                pickupTime: report.pickupTime ? new Date(report.pickupTime).toISOString() : pickupStop?.scheduledTime?.toISOString(),
+                startOdometer: report.startOdometer,
+                dropoffAddress: dropoffStop?.address || '',
+                dropoffTime: report.dropoffTime ? new Date(report.dropoffTime).toISOString() : dropoffStop?.scheduledTime?.toISOString(),
+                endOdometer: report.endOdometer,
+                reasonForVisit: trip.reasonForVisit || 'Medical',
+                additionalInfo: report.notes || ''
+            };
+
+            const signatureData = {
+                member: report.passengerSignature,
+                // Driver signature might be stored in a separate column or relation in future, 
+                // but for now relying on what's available. If it's not in report, pass empty.
+                driver: undefined // Update this if driver signature is stored in report entity
+            };
+
+            // generateOfficialReport saves to disk and returns path
+            pdfFilePath = await this.pdfService.generateOfficialReport(tripData, signatureData);
+            
         } catch (error) {
             console.error(`[ReportService] Error generating PDF for trip ${trip.id}:`, error);
-            // We continue even if PDF fails? Or throw?
-            // If PDF fails, we probably shouldn't mark as submitted fully or should note it.
-            // For now, let's allow it but log error.
         }
 
         // Store PDF path in report
@@ -101,10 +136,10 @@ export class ReportService {
 
         const savedReport = await this.tripReportRepository.save(report);
 
-        // Log activity
         await this.activityLogService.log(
             ActivityType.REPORT_SUBMITTED,
             `Report submitted for Trip #${report.tripId.slice(0, 8)}`,
+            trip.organizationId,
             { tripId: report.tripId, reportId: report.id, pdfPath: pdfFilePath }
         );
 
@@ -174,6 +209,6 @@ export class ReportService {
 
         const report = await this.getReportByTripId(tripId);
 
-        return this.pdfService.generateTripReportPdf(trip, report);
+        return this.pdfService.readPdf(report.pdfFilePath);
     }
 }

@@ -10,6 +10,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ReportsPage from './pages/admin/ReportsPage';
 import ReportDetailPage from './pages/admin/ReportDetailPage';
+import BillingPage from './pages/admin/BillingPage';
 import ArchivePage from './pages/ArchivePage';
 import MembersPage from './pages/MembersPage';
 import MemberDetailsPage from './pages/MemberDetailsPage';
@@ -41,6 +42,8 @@ import DriverCreateTripPage from './pages/driver/DriverCreateTripPage';
 import AppLayout from './components/AppLayout';
 import { KeyboardNavigation } from './components/KeyboardNavigation';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { SocketProvider } from './context/SocketContext';
+import { NotificationProvider } from './context/NotificationContext';
 
 
 const queryClient = new QueryClient();
@@ -129,6 +132,22 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
     return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
 }
 
+function RootRedirect() {
+    const user = useAuthStore((state) => state.user);
+    if (user?.role === 'DRIVER') {
+        return <Navigate to="/driver/dashboard" replace />;
+    }
+    return <Navigate to="/dashboard" replace />;
+}
+
+function AdminGuard({ children }: { children: React.ReactNode }) {
+    const user = useAuthStore((state) => state.user);
+    if (user?.role === 'DRIVER') {
+        return <Navigate to="/driver/dashboard" replace />;
+    }
+    return <>{children}</>;
+}
+
 function AppRoutes() {
     useAutoLogout();
 
@@ -177,28 +196,31 @@ function AppRoutes() {
                 path="/*"
                 element={
                     <PrivateRoute>
-                        <AppLayout>
-                            <Routes>
-                                <Route path="/dashboard" element={
-                                    <ErrorBoundary>
-                                        <DashboardPage />
-                                    </ErrorBoundary>
-                                } />
-                                <Route path="/archives" element={<ArchivePage />} />
-                                <Route path="/members" element={<MembersPage />} />
-                                <Route path="/members/:id" element={<MemberDetailsPage />} />
-                                <Route path="/drivers" element={<DriversPage />} />
-                                <Route path="/drivers/:id" element={<DriverDetailsPage />} />
-                                <Route path="/drivers/:id/trips" element={<DriverTripHistoryPage />} />
-                                <Route path="/vehicles" element={<VehiclesPage />} />
-                                <Route path="/vehicles/:id" element={<VehicleDetailsPage />} />
-                                <Route path="/trips" element={<TripsPage />} />
-                                <Route path="/trips/new" element={<CreateTripPage />} />
-                                <Route path="/trips/:id" element={<TripDetailsPage />} />
-                                <Route path="/reports" element={<ReportsPage />} />
-                                <Route path="/" element={<Navigate to="/dashboard" />} />
-                            </Routes>
-                        </AppLayout>
+                        <AdminGuard>
+                            <AppLayout>
+                                <Routes>
+                                    <Route path="/dashboard" element={
+                                        <ErrorBoundary>
+                                            <DashboardPage />
+                                        </ErrorBoundary>
+                                    } />
+                                    <Route path="/archives" element={<ArchivePage />} />
+                                    <Route path="/members" element={<MembersPage />} />
+                                    <Route path="/members/:id" element={<MemberDetailsPage />} />
+                                    <Route path="/drivers" element={<DriversPage />} />
+                                    <Route path="/drivers/:id" element={<DriverDetailsPage />} />
+                                    <Route path="/drivers/:id/trips" element={<DriverTripHistoryPage />} />
+                                    <Route path="/vehicles" element={<VehiclesPage />} />
+                                    <Route path="/vehicles/:id" element={<VehicleDetailsPage />} />
+                                    <Route path="/trips" element={<TripsPage />} />
+                                    <Route path="/trips/new" element={<CreateTripPage />} />
+                                    <Route path="/trips/:id" element={<TripDetailsPage />} />
+                                    <Route path="/reports" element={<ReportsPage />} />
+                                    <Route path="/billing" element={<BillingPage />} />
+                                    <Route path="/" element={<RootRedirect />} />
+                                </Routes>
+                            </AppLayout>
+                        </AdminGuard>
                     </PrivateRoute>
                 }
             />
@@ -207,17 +229,22 @@ function AppRoutes() {
 }
 
 function App() {
+    console.log('App.tsx rendering');
     return (
         <QueryClientProvider client={queryClient}>
-            <ThemeProvider theme={theme}>
-                <LocalizationProvider dateAdapter={AdapterDateFns}>
-                    <CssBaseline />
-                    <BrowserRouter>
-                        <KeyboardNavigation />
-                        <AppRoutes />
-                    </BrowserRouter>
-                </LocalizationProvider>
-            </ThemeProvider>
+            <SocketProvider>
+                <NotificationProvider>
+                    <ThemeProvider theme={theme}>
+                        <LocalizationProvider dateAdapter={AdapterDateFns}>
+                            <CssBaseline />
+                            <BrowserRouter>
+                                <KeyboardNavigation />
+                                <AppRoutes />
+                            </BrowserRouter>
+                        </LocalizationProvider>
+                    </ThemeProvider>
+                </NotificationProvider>
+            </SocketProvider>
         </QueryClientProvider>
     );
 }
