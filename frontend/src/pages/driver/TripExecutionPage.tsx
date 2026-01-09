@@ -44,6 +44,18 @@ const TripStep = ({ label, status, onClick }: { label: string, status: 'PENDING'
     </Box>
 );
 
+// Helper for Smart Map Launch (iOS vs Google)
+const openMapApp = (address: string) => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const destination = encodeURIComponent(address);
+    
+    if (isIOS) {
+        window.location.href = `maps://?daddr=${destination}`;
+    } else {
+        window.open(`https://www.google.com/maps/dir/?api=1&destination=${destination}`, '_blank');
+    }
+};
+
 export default function TripExecutionPage() {
     const { tripId } = useParams();
     const navigate = useNavigate();
@@ -259,7 +271,7 @@ export default function TripExecutionPage() {
                                 destinationType="PICKUP"
                                 clientName={clientName}
                                 onNavigate={() => {
-                                    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(pickupStop?.address || '')}`, '_blank');
+                                    openMapApp(pickupStop?.address || '');
                                 }}
                                 onArrive={() => arriveStopMutation.mutate(pickupStop?.id)}
                             />
@@ -289,7 +301,7 @@ export default function TripExecutionPage() {
                                 destinationType="DROPOFF"
                                 clientName={clientName}
                                 onNavigate={() => {
-                                    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dropoffStop?.address || '')}`, '_blank');
+                                    openMapApp(dropoffStop?.address || '');
                                 }}
                                 onArrive={() => arriveStopMutation.mutate(dropoffStop?.id)}
                             />

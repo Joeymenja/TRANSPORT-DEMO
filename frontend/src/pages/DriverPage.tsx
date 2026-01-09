@@ -1,273 +1,185 @@
-import { Box, Container, Typography, Card, CardContent, Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Avatar, Chip, IconButton } from '@mui/material';
-import { DirectionsCar, LocationOn, Schedule, Speed, CheckCircle, Groups, Edit, Map } from '@mui/icons-material';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { tripApi } from '../api/trips';
-import { useState } from 'react';
-import SignaturePad from '../components/SignaturePad';
-import { useAuthStore } from '../store/auth';
+import { useState, useEffect } from 'react';
+import { Box, Container, Typography, Card, CardContent, Button, Accordion, AccordionSummary, AccordionDetails, Chip, IconButton } from '@mui/material';
+import { ExpandMore, DirectionsCar, AccessTime, LocationOn, PlayArrow, CalendarMonth } from '@mui/icons-material';
+import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { tripApi, Trip, TripStatus } from '../../api/trips';
+import { useAuthStore } from '../../store/auth';
+import LoadingOverlay from '../../components/LoadingOverlay';
 
 export default function DriverPage() {
-    const queryClient = useQueryClient();
-    const [odoValue, setOdoValue] = useState<string>('');
-    const [isOdoDialogOpen, setIsOdoDialogOpen] = useState(false);
-    const [currentStopId, setCurrentStopId] = useState<string | null>(null);
-    const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
-    const [signatureMemberId, setSignatureMemberId] = useState<string | null>(null);
-
+    const navigate = useNavigate();
     const { user } = useAuthStore();
-    const { data: trips, isLoading } = useQuery({
-        queryKey: ['driver-trips'],
-        queryFn: () => tripApi.getTrips(),
-    });
+    const [currentTime, setCurrentTime] = useState(new Date());
 
-    // Filter trips for the current driver in the frontend for now
-    const driverTrips = trips?.filter(t => t.assignedDriverId === user?.id) || [];
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+        return () => clearInterval(timer);
+    }, []);
 
-    const arriveMutation = useMutation({
-        mutationFn: ({ tripId, stopId, gps }: { tripId: string, stopId: string, gps?: { lat: number, lng: number } }) =>
-            tripApi.arriveAtStop(tripId, stopId, gps),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['driver-trips'] }),
-    });
-
-    const signatureMutation = useMutation({
-        mutationFn: ({ tripId, memberId, signature }: { tripId: string, memberId: string, signature: string }) =>
-            tripApi.saveSignature(tripId, memberId, signature),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['driver-trips'] });
-            setIsSignatureDialogOpen(false);
-            setSignatureMemberId(null);
+    const { data: trips = [], isLoading } = useQuery({
+    const { data: driverTrips = [], isLoading } = useQuery({
+        queryKey: ['driver-trips', user?.id],
+        queryFn: () => {
+            if (!user?.id) return [];
+            return tripApi.getDriverTrips(user.id);
         },
+        enabled: !!user?.id
     });
 
-    const completeMutation = useMutation({
-        mutationFn: ({ tripId, stopId, odo }: { tripId: string, stopId: string, odo?: number }) =>
-            tripApi.completeStop(tripId, stopId, odo),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['driver-trips'] });
-            setIsOdoDialogOpen(false);
-            setOdoValue('');
-        },
-    });
+    const sortedTrips = [...driverTrips].sort((a, b) => new Date(a.tripDate).getTime() - new Date(b.tripDate).getTime());
 
-    const activeTrip = driverTrips.find(t => t.status === 'IN_PROGRESS' || t.status === 'SCHEDULED');
+    // Find "Next" trip (first IN_PROGRESS, or first SCHEDULED)
+    const activeTrip = sortedTrips.find(t => t.status === 'IN_PROGRESS');
+    const nextScheduledTrip = sortedTrips.find(t => t.status === 'SCHEDULED' || t.status === 'PENDING_APPROVAL');
 
-    const handleArrive = (stopId: string) => {
-        if (!activeTrip) return;
+    const heroTrip = activeTrip || nextScheduledTrip;
+    
+    // Remaining trips are anything after the hero trip
+    const remainingTrips = heroTrip 
+        ? sortedTrips.filter(t => t.id !== heroTrip.id && new Date(t.tripDate) > new Date(heroTrip.tripDate))
+        : [];
 
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition((position) => {
-                arriveMutation.mutate({
-                    tripId: activeTrip.id,
-                    stopId,
-                    gps: { lat: position.coords.latitude, lng: position.coords.longitude }
-                });
-            }, () => {
-                // Fallback if GPS fails
-                arriveMutation.mutate({ tripId: activeTrip.id, stopId });
-            });
-        } else {
-            arriveMutation.mutate({ tripId: activeTrip.id, stopId });
-        }
-    };
-
-    const handleCompleteStop = () => {
-        if (activeTrip && currentStopId) {
-            completeMutation.mutate({
-                tripId: activeTrip.id,
-                stopId: currentStopId,
-                odo: odoValue ? parseInt(odoValue, 10) : undefined
-            });
-        }
-    };
-
-    if (isLoading) return <Typography sx={{ p: 4 }}>Loading Trips...</Typography>;
+    if (isLoading) return <LoadingOverlay open={true} />;
 
     return (
-        <Container maxWidth="sm" sx={{ mt: 2, mb: 4 }}>
-            <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-                <DirectionsCar color="primary" />
-                <Typography variant="h5" fontWeight="600">Driver Console</Typography>
+        <Container maxWidth="sm" sx={{ py: 4, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+            {/* 1. Status Header */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+                <Box>
+                    <Typography variant="h6" fontWeight="700" color="primary">
+                        On Duty
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        {user?.firstName} {user?.lastName} • {user?.role?.replace('_', ' ')}
+                    </Typography>
+                </Box>
+                <Typography variant="h4" fontWeight="300" color="text.primary">
+                    {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </Typography>
             </Box>
 
-            {!activeTrip ? (
-                <Card sx={{ textAlign: 'center', py: 4 }}>
-                    <Typography color="textSecondary">No active trips assigned for today.</Typography>
-                </Card>
-            ) : (
-                <Box>
-                    <Card sx={{ mb: 3, borderLeft: '6px solid #0096D6' }}>
-                        <CardContent>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                                <Typography variant="h6">Active Trip</Typography>
-                                <Chip label={activeTrip.status} size="small" color="primary" />
-                            </Box>
-
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                <LocationOn fontSize="small" color="action" />
-                                <Typography variant="body2">{activeTrip.tripType.replace('_', ' ')}</Typography>
-                            </Box>
-
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                <DirectionsCar fontSize="small" color="action" />
-                                <Typography variant="body2">
-                                    {activeTrip.assignedVehicle ?
-                                        `${activeTrip.assignedVehicle.make} ${activeTrip.assignedVehicle.model} (${activeTrip.assignedVehicle.licensePlate})` :
-                                        'No Vehicle Assigned'}
+            {/* 2. Hero Card */}
+            {heroTrip ? (
+                <Box sx={{ mb: 4 }}>
+                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, textTransform: 'uppercase', letterSpacing: 1 }}>
+                        {activeTrip ? 'Current Trip' : 'Up Next'}
+                    </Typography>
+                    <Card 
+                        elevation={4}
+                        sx={{ 
+                            borderRadius: 4, 
+                            borderLeft: `8px solid ${activeTrip ? '#00C853' : '#0096D6'}`,
+                            cursor: 'pointer',
+                            position: 'relative',
+                            overflow: 'visible'
+                        }}
+                        onClick={() => navigate(`/driver/trips/${heroTrip.id}/execute`)}
+                    >
+                        <CardContent sx={{ p: 3 }}>
+                            {activeTrip && (
+                                <Chip 
+                                    label="IN PROGRESS" 
+                                    color="success" 
+                                    size="small" 
+                                    sx={{ position: 'absolute', top: 16, right: 16, fontWeight: 700 }} 
+                                />
+                            )}
+                            
+                            <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 3 }}>
+                                <AccessTime sx={{ color: 'text.secondary', mr: 1, mt: 0.5 }} />
+                                <Typography variant="h2" fontWeight="700" color="text.primary" sx={{ lineHeight: 1 }}>
+                                    {new Date(heroTrip.tripDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </Typography>
                             </Box>
 
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Groups fontSize="small" color="action" />
-                                <Typography variant="body2">{activeTrip.members.length} Members</Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 3 }}>
+                                <LocationOn sx={{ color: 'primary.main', mr: 1, mt: 0.5 }} />
+                                <Box>
+                                    <Typography variant="h6" fontWeight="600">
+                                        {heroTrip.stops?.[0]?.address || 'Unknown Pickup'}
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Pickup Location
+                                    </Typography>
+                                </Box>
                             </Box>
+                            
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                <Chip 
+                                    icon={<DirectionsCar />} 
+                                    label={heroTrip.tripType.replace('_', ' ')} 
+                                    variant="outlined" 
+                                    size="small" 
+                                />
+                                <Chip 
+                                    label={`${heroTrip.members.length} Rider${heroTrip.members.length > 1 ? 's' : ''}`} 
+                                    variant="outlined" 
+                                    size="small" 
+                                />
+                            </Box>
+
+                            <Button 
+                                variant="contained" 
+                                fullWidth 
+                                size="large"
+                                sx={{ 
+                                    mt: 3, 
+                                    py: 2, 
+                                    bgcolor: activeTrip ? '#00C853' : '#0096D6',
+                                    fontSize: '1.2rem',
+                                    fontWeight: 700,
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                                }}
+                                endIcon={<PlayArrow />}
+                            >
+                                {activeTrip ? 'Continue Trip' : 'Start Trip'}
+                            </Button>
                         </CardContent>
                     </Card>
-
-                    <Typography variant="subtitle1" fontWeight="600" sx={{ mb: 2 }}>Trip Progress</Typography>
-
-                    <Box sx={{ position: 'relative' }}>
-                        {(activeTrip.stops || []).map((stop: any, index: number) => {
-                            const isArrived = !!stop.actualArrivalTime;
-                            const isCompleted = !!stop.actualDepartureTime;
-
-                            return (
-                                <Card key={stop.id} sx={{ mb: 2, opacity: isCompleted ? 0.6 : 1 }}>
-                                    <CardContent sx={{ p: '16px !important' }}>
-                                        <Box sx={{ display: 'flex', gap: 2 }}>
-                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                                <Avatar sx={{ width: 32, height: 32, bgcolor: isCompleted ? '#00C853' : '#0096D6', fontSize: 14 }}>
-                                                    {index + 1}
-                                                </Avatar>
-                                                {index < activeTrip.stops.length - 1 && (
-                                                    <Box sx={{ width: '2px', flexGrow: 1, bgcolor: '#e0e0e0', my: 1 }} />
-                                                )}
-                                            </Box>
-
-                                            <Box sx={{ flexGrow: 1 }}>
-                                                <Typography variant="subtitle2" color="primary">{stop.stopType}</Typography>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                                    <Typography variant="body2">{stop.address}</Typography>
-                                                    <IconButton
-                                                        size="small"
-                                                        color="primary"
-                                                        onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(stop.address)}`, '_blank')}
-                                                    >
-                                                        <Map fontSize="small" />
-                                                    </IconButton>
-                                                </Box>
-
-                                                <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                                                    {stop.scheduledTime && (
-                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                            <Schedule sx={{ fontSize: 14 }} color="action" />
-                                                            <Typography variant="caption">
-                                                                {new Date(stop.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                            </Typography>
-                                                        </Box>
-                                                    )}
-                                                    {stop.odometerReading && (
-                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                            <Speed sx={{ fontSize: 14 }} color="action" />
-                                                            <Typography variant="caption">{stop.odometerReading} mi</Typography>
-                                                        </Box>
-                                                    )}
-                                                </Box>
-
-                                                {!isArrived ? (
-                                                    <Button
-                                                        variant="contained"
-                                                        fullWidth
-                                                        onClick={() => handleArrive(stop.id)}
-                                                    >
-                                                        Arrive at Stop
-                                                    </Button>
-                                                ) : !isCompleted ? (
-                                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                                        {activeTrip.members.map((member: any) => {
-                                                            const isRelevant = member.pickupStopId === stop.id || member.dropoffStopId === stop.id;
-                                                            if (!isRelevant) return null;
-
-                                                            return (
-                                                                <Button
-                                                                    key={member.id}
-                                                                    variant="outlined"
-                                                                    size="small"
-                                                                    startIcon={member.memberSignatureBase64 ? <CheckCircle /> : <Edit />}
-                                                                    color={member.memberSignatureBase64 ? 'success' : 'primary'}
-                                                                    onClick={() => {
-                                                                        setSignatureMemberId(member.id);
-                                                                        setIsSignatureDialogOpen(true);
-                                                                    }}
-                                                                >
-                                                                    {member.memberSignatureBase64 ? 'Signed' : `Sign: ${member.firstName}`}
-                                                                </Button>
-                                                            );
-                                                        })}
-                                                        <Button
-                                                            variant="outlined"
-                                                            color="success"
-                                                            fullWidth
-                                                            onClick={() => {
-                                                                setCurrentStopId(stop.id);
-                                                                setIsOdoDialogOpen(true);
-                                                            }}
-                                                        >
-                                                            Depart / Complete
-                                                        </Button>
-                                                    </Box>
-                                                ) : (
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#00C853' }}>
-                                                        <CheckCircle fontSize="small" />
-                                                        <Typography variant="caption" fontWeight="600">Completed</Typography>
-                                                    </Box>
-                                                )}
-                                            </Box>
-                                        </Box>
-                                    </CardContent>
-                                </Card>
-                            );
-                        })}
-                    </Box>
                 </Box>
+            ) : (
+                <Card sx={{ py: 6, textAlign: 'center', mb: 4, borderRadius: 4, border: '2px dashed #e0e0e0' }} elevation={0}>
+                    <CalendarMonth sx={{ fontSize: 64, color: '#e0e0e0', mb: 2 }} />
+                    <Typography variant="h6" color="text.secondary">
+                        All clear! No pending trips.
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        Enjoy your break.
+                    </Typography>
+                </Card>
             )}
 
-            <Dialog open={isOdoDialogOpen} onClose={() => setIsOdoDialogOpen(false)}>
-                <DialogTitle>Stop Completion</DialogTitle>
-                <DialogContent>
-                    <Typography variant="body2" sx={{ mb: 2 }}>Enter current odometer reading to complete this stop.</Typography>
-                    <TextField
-                        autoFocus
-                        label="Odometer (miles)"
-                        type="number"
-                        fullWidth
-                        variant="outlined"
-                        value={odoValue}
-                        onChange={(e) => setOdoValue(e.target.value)}
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setIsOdoDialogOpen(false)}>Cancel</Button>
-                    <Button onClick={handleCompleteStop} variant="contained" color="success">Submit & Complete</Button>
-                </DialogActions>
-            </Dialog>
-
-            {signatureMemberId && (
-                <SignaturePad
-                    open={isSignatureDialogOpen}
-                    onClose={() => setIsSignatureDialogOpen(false)}
-                    title="Member Signature"
-                    onSave={(sig) => {
-                        if (activeTrip && signatureMemberId) {
-                            signatureMutation.mutate({
-                                tripId: activeTrip.id,
-                                memberId: signatureMemberId,
-                                signature: sig
-                            });
-                        }
-                    }}
-                />
+            {/* 3. Remaining Trips */}
+            {remainingTrips.length > 0 && (
+                <Box>
+                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, textTransform: 'uppercase', letterSpacing: 1 }}>
+                        Later Today ({remainingTrips.length})
+                    </Typography>
+                    {remainingTrips.map((trip) => (
+                        <Card key={trip.id} sx={{ mb: 2, borderRadius: 2 }} variant="outlined">
+                            <CardContent sx={{ py: 2, '&:last-child': { pb: 2 } }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                                        <Typography variant="h6" fontWeight="600" color="text.secondary">
+                                            {new Date(trip.tripDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </Typography>
+                                        <Box>
+                                            <Typography variant="body2" fontWeight="600">
+                                                {trip.tripType.replace('_', ' ')}
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', maxWidth: 200 }} noWrap>
+                                                {trip.stops?.[0]?.address}
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                    <Chip label={trip.status.replace('_', ' ')} size="small" />
+                                </Box>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </Box>
             )}
         </Container>
     );
 }
-

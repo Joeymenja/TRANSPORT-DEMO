@@ -1,18 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
-import { Trip, TripStatus, TripType, ReportStatus, MobilityRequirement } from './entities/trip.entity';
-import { Member } from './entities/member.entity';
-import { Driver } from './entities/driver.entity';
-import { TripReport, TripReportStatus } from './entities/trip-report.entity';
-import { TripMember, MemberStatus } from './entities/trip-member.entity';
-import { TripStop, StopType } from './entities/trip-stop.entity';
-import { User } from './entities/user.entity';
-import { CreateTripDto, UpdateTripDto, TripResponseDto, MemberSignatureDto, CancelTripDto, MarkNoShowDto } from './dto/trip.dto';
-import { ActivityLogService } from './activity-log.service';
-import { ActivityType } from './entities/activity-log.entity';
-import { PdfService } from './pdf.service';
-import { NotificationService } from './notification.service';
+import { BillingService } from './billing.service';
 
 @Injectable()
 export class TripService {
@@ -32,7 +18,36 @@ export class TripService {
         private readonly memberRepository: Repository<Member>,
         private readonly pdfService: PdfService,
         private readonly notificationService: NotificationService,
+        private readonly billingService: BillingService,
     ) { }
+
+// ... existing methods ...
+
+    async verifyReport(tripId: string, userId: string, organizationId: string): Promise<TripResponseDto> {
+        const trip = await this.findOne(tripId);
+        if (trip.organizationId !== organizationId) throw new ForbiddenException();
+
+        trip.reportStatus = ReportStatus.VERIFIED;
+        trip.reportVerifiedAt = new Date();
+        trip.reportVerifiedBy = userId;
+        await this.tripRepository.save(trip);
+
+        // Auto-generate billing claim
+        try {
+            await this.billingService.generateClaimsForTrips([tripId]);
+            await this.activityLogService.log(
+                ActivityType.SYSTEM,
+                `Billing claim auto-generated for verified trip #${tripId.slice(0, 8)}`,
+                organizationId,
+                { tripId }
+            );
+        } catch (error) {
+            console.error('Failed to auto-generate claim:', error);
+            // Don't fail the verification if billing fails, but log it
+        }
+
+        return this.getTripById(tripId, organizationId);
+    }
 
     async createTrip(createTripDto: CreateTripDto, organizationId: string, userId: string): Promise<TripResponseDto> {
         try {

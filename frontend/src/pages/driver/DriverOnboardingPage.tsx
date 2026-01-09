@@ -44,7 +44,12 @@ export default function DriverOnboardingPage() {
     const renderStepContent = (step: number) => {
         switch (step) {
             case 0:
-                return <PersonalInfoStep onNext={handleNext} />;
+                return (
+                    <PersonalInfoStep 
+                        onNext={handleNext} 
+                        // onBack removed to hide "Sign Out" button as requested
+                    />
+                );
             case 1:
                 return <DocumentUploadStep onNext={handleNext} onBack={handleBack} />;
             case 2:
@@ -71,8 +76,8 @@ export default function DriverOnboardingPage() {
                 </Box>
 
                 <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
-                    {STEPS.map((label) => (
-                        <Step key={label}>
+                    {STEPS.map((label, index) => (
+                        <Step key={label} onClick={() => setActiveStep(index)} sx={{ cursor: 'pointer' }}>
                             <StepLabel>{label}</StepLabel>
                         </Step>
                     ))}

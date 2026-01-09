@@ -6,9 +6,10 @@ import { authApi } from '../../../api/auth';
 
 interface Props {
     onNext: () => void;
+    onBack?: () => void;
 }
 
-export default function PersonalInfoStep({ onNext }: Props) {
+export default function PersonalInfoStep({ onNext, onBack }: Props) {
     const user = useAuthStore((state) => state.user);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -140,7 +141,14 @@ export default function PersonalInfoStep({ onNext }: Props) {
                 </Grid>
             </Grid>
 
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
+                {onBack && (
+                    <Button variant="outlined" size="large" onClick={onBack}>
+                        Sign Out
+                    </Button>
+                )}
+                {!onBack && <Box />} {/* Spacer if no back button */}
+                
                 <Button type="submit" variant="contained" size="large" disabled={loading}>
                     {loading ? 'Saving...' : 'NEXT →'}
                 </Button>

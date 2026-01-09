@@ -1,10 +1,37 @@
-import { Box, Typography, Paper, Avatar, Button, Container, Grid } from '@mui/material';
-import { Star, VerifiedUser, DriveEta } from '@mui/icons-material';
+import { Box, Typography, Paper, Avatar, Button, Container, Grid, Chip } from '@mui/material';
+import { Star, VerifiedUser, DriveEta, Draw, CheckCircle, Warning } from '@mui/icons-material';
 import { useAuthStore } from '../../store/auth';
 import MobileHeader from '../../components/layout/MobileHeader';
+import { useState } from 'react';
+import SignaturePad from '../../components/SignaturePad';
+import { useMutation } from '@tanstack/react-query';
+import api from '../../lib/api';
 
 export default function DriverProfilePage() {
     const user = useAuthStore((state) => state.user);
+    const setUser = useAuthStore((state) => state.setUser); // To update local store after save
+    const [signOpen, setSignOpen] = useState(false);
+
+    const signatureMutation = useMutation({
+        mutationFn: async (signatureBase64: string) => {
+            if (!user?.id) return;
+            const res = await api.patch('/drivers/profile/signature', {
+                userId: user.id,
+                signatureUrl: signatureBase64
+            });
+            return res.data;
+        },
+        onSuccess: (updatedUser) => {
+            // Update local user state if returned, or merge
+             if (updatedUser) {
+                 setUser({ ...user, ...updatedUser } as any);
+             }
+        }
+    });
+
+    const handleSaveSignature = (data: { signatureBase64: string }) => {
+        signatureMutation.mutate(data.signatureBase64);
+    };
 
     return (
         <Box sx={{ bgcolor: '#fff', minHeight: '100vh', pb: 8 }}>
@@ -39,6 +66,36 @@ export default function DriverProfilePage() {
                     </Grid>
                 </Grid>
 
+                <Typography variant="h6" fontWeight={700} gutterBottom>Compliance</Typography>
+                <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid #eee', mb: 3, overflow: 'hidden' }}>
+                    <Box sx={{ p: 2, borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center' }}>
+                         <Box sx={{ mr: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: '50%', bgcolor: user?.signatureUrl ? '#E8F5E9' : '#FFEBEE' }}>
+                            {user?.signatureUrl ? <CheckCircle color="success" /> : <Warning color="error" />}
+                         </Box>
+                        <Box>
+                            <Typography fontWeight={600}>Driver Signature</Typography>
+                            <Typography variant="caption" color={user?.signatureUrl ? 'success.main' : 'error.main'}>
+                                {user?.signatureUrl ? 'On File' : 'Start compliance now'}
+                            </Typography>
+                        </Box>
+                        <Box sx={{ ml: 'auto' }}>
+                            <Button 
+                                size="small" 
+                                variant={user?.signatureUrl ? 'text' : 'contained'} 
+                                color={user?.signatureUrl ? 'primary' : 'error'}
+                                onClick={() => setSignOpen(true)}
+                            >
+                                {user?.signatureUrl ? 'Update' : 'Sign Now'}
+                            </Button>
+                        </Box>
+                    </Box>
+                    {user?.signatureUrl && (
+                        <Box sx={{ p: 2, display: 'flex', justifyContent: 'center', bgcolor: '#f9f9f9' }}>
+                            <Box component="img" src={user.signatureUrl} sx={{ maxHeight: 60, opacity: 0.8 }} alt="Signature" />
+                        </Box>
+                    )}
+                </Paper>
+
                 <Typography variant="h6" fontWeight={700} gutterBottom>Account</Typography>
                 <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid #eee', overflow: 'hidden' }}>
                     <Box sx={{ p: 2, borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center' }}>
@@ -72,6 +129,13 @@ export default function DriverProfilePage() {
                 >
                     Log Out
                 </Button>
+
+                <SignaturePad 
+                    open={signOpen} 
+                    onClose={() => setSignOpen(false)} 
+                    onSave={handleSaveSignature}
+                    title="Driver Signature"
+                />
             </Container>
         </Box>
     );

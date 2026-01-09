@@ -119,8 +119,8 @@ import { EventsGateway } from './events.gateway';
             }),
         }),
     ],
-    controllers: [TripController, VehicleController, DriverController, ReportController, ActivityLogController, NotificationController, LocationController, BillingController],
-    providers: [TripService, VehicleService, PdfService, DriverService, ReportService, ActivityLogService, NotificationService, JwtStrategy, LocationService, BillingService, EventsGateway],
+    controllers: [TripController, VehicleController, DriverController, ReportController, ActivityLogController, NotificationController, LocationController, BillingController, PayrollController],
+    providers: [TripService, VehicleService, PdfService, DriverService, ReportService, ActivityLogService, NotificationService, JwtStrategy, LocationService, BillingService, PayrollService, EventsGateway],
     exports: [TripService, VehicleService, ActivityLogService, BillingService],
 })
 export class TransportModule { }

@@ -12,7 +12,9 @@ import {
     ErrorOutline,
     Add,
     AssignmentInd,
-    Warning
+    AssignmentInd,
+    Warning,
+    Tune
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tripApi, CreateTripData } from '../api/trips';
@@ -48,7 +50,9 @@ export default function DashboardPage() {
         proxyRelationship?: string,
         proxyReason?: string
     } | null>(null);
+    } | null>(null);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [customizeOpen, setCustomizeOpen] = useState(false);
 
     // Fetch Driver Profile
     const { data: driver } = useQuery({
@@ -224,13 +228,25 @@ export default function DashboardPage() {
 
     return (
         <Container maxWidth="xl" sx={{ py: 4 }}>
-            <Box sx={{ mb: 4 }}>
-                <Typography variant="h4" sx={{ fontWeight: 600, color: '#212121', mb: 1 }}>
-                    Dashboard
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                    {format(new Date(), 'EEEE, MMMM d, yyyy')}
-                </Typography>
+            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                    <Typography variant="h4" sx={{ fontWeight: 600, color: '#212121', mb: 1 }}>
+                        Dashboard
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary">
+                        {format(new Date(), 'EEEE, MMMM d, yyyy')}
+                    </Typography>
+                </Box>
+                {!driver && (
+                    <Button 
+                        startIcon={<Tune />} 
+                        variant="outlined" 
+                        onClick={() => setCustomizeOpen(true)}
+                        sx={{ borderRadius: 2 }}
+                    >
+                        Customize
+                    </Button>
+                )}
             </Box>
 
             {/* Driver Status Section */}
@@ -704,6 +720,27 @@ export default function DashboardPage() {
                     dispatchMutation.mutate({ tripId: dispatchTripId!, driverId, vehicleId });
                 }}
             />
+
+            <Dialog open={customizeOpen} onClose={() => setCustomizeOpen(false)}>
+                <DialogTitle>Dashboard Customization</DialogTitle>
+                <DialogContent>
+                    <Box sx={{ py: 2, textAlign: 'center' }}>
+                         <Tune sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+                         <Typography variant="h6" gutterBottom>Coming Soon</Typography>
+                         <Typography variant="body2" color="text.secondary">
+                             We're building the ability to:
+                         </Typography>
+                         <Box sx={{ textAlign: 'left', mt: 2, display: 'inline-block' }}>
+                             <Typography variant="body2">• Toggle widgets on/off</Typography>
+                             <Typography variant="body2">• Drag & drop to reorder</Typography>
+                             <Typography variant="body2">• Switch layout modes</Typography>
+                         </Box>
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setCustomizeOpen(false)}>Close</Button>
+                </DialogActions>
+            </Dialog>
         </Container>
     );
 }

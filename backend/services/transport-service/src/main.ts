@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TransportModule } from './transport.module';
+import { AllExceptionsFilter } from './all-exceptions.filter';
 
 async function bootstrap() {
     const app = await NestFactory.create(TransportModule);
@@ -27,6 +28,9 @@ async function bootstrap() {
             transform: true,
         }),
     );
+    
+    // Global Exception Filter
+    app.useGlobalFilters(new AllExceptionsFilter());
 
     const port = configService.get('PORT') || 8082;
     await app.listen(port);

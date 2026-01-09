@@ -25,6 +25,7 @@ import TripDetailsPage from './pages/TripDetailsPage';
 import DriverLayout from './components/DriverLayout';
 // import AdminLayout from './components/layout/AdminLayout'; // Not used in this iteration
 import DriverTripsPage from './pages/driver/DriverTripsPage';
+import DriverUpdatesPage from './pages/driver/DriverUpdatesPage';
 import TripExecutionPage from './pages/driver/TripExecutionPage';
 import TripReportPage from './pages/driver/report/TripReportPage';
 import TripDetailScreen from './pages/driver/TripDetailScreen';
@@ -35,7 +36,7 @@ import DriverWelcomePage from './pages/driver/DriverWelcomePage';
 import DriverOnboardingPage from './pages/driver/DriverOnboardingPage';
 import CompliancePage from './pages/driver/CompliancePage';
 import DriverSchedulePage from './pages/driver/DriverSchedulePage';
-import DriverMessagesPage from './pages/driver/DriverMessagesPage';
+
 import DriverProfilePage from './pages/driver/DriverProfilePage';
 import DriverSettingsPage from './pages/driver/DriverSettingsPage';
 import DriverCreateTripPage from './pages/driver/DriverCreateTripPage';
@@ -175,12 +176,13 @@ function AppRoutes() {
                             <Routes>
                                 <Route path="/" element={<MobileDriverDashboard />} />
                                 <Route path="dashboard" element={<MobileDriverDashboard />} />
+                                <Route path="updates" element={<DriverUpdatesPage />} />
                                 <Route path="trips" element={<DriverTripsPage />} />
                                 <Route path="trips/:tripId" element={<TripDetailScreen />} />
                                 <Route path="trips/:tripId/execute" element={<TripExecutionPage />} />
                                 <Route path="trips/:tripId/report" element={<TripReportPage />} />
                                 <Route path="schedule" element={<DriverSchedulePage />} />
-                                <Route path="messages" element={<DriverMessagesPage />} />
+
                                 <Route path="profile" element={<DriverProfilePage />} />
                                 <Route path="settings" element={<DriverSettingsPage />} />
                                 <Route path="compliance" element={<CompliancePage />} />

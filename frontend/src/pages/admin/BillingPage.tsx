@@ -16,7 +16,7 @@ import {
     Alert,
     CircularProgress
 } from '@mui/material';
-import axios from 'axios';
+import api from '../../lib/api';
 
 // Basic type for Claim (match backend entity)
 interface Claim {
@@ -49,9 +49,8 @@ const BillingPage: React.FC = () => {
         setLoading(true);
         setError(null);
         try {
-            // Adjust API URL as needed (assumes proxy or CORS set up)
-            const response = await axios.get('http://localhost:3003/billing/unbilled');
-            setClaims(response.data);
+            const { data } = await api.get('/billing/unbilled');
+            setClaims(data);
         } catch (err) {
             console.error('Failed to fetch claims', err);
             setError('Failed to load unbilled claims.');
@@ -65,24 +64,9 @@ const BillingPage: React.FC = () => {
         setSuccessMsg(null);
         setError(null);
         try {
-            // For MVP, we might want to generate for specific trips, 
-            // but the backend currently takes a list of tripIds.
-            // A "Generate All" feature would need a backend endpoint that finds all eligible trips.
-            // OR we can fetch eligible trips here and send them.
-            // Let's assume for now the user wants to process "All Completed Trips".
-            // Since we don't have that endpoint yet, let's create a temporary UI to just "Simulate" or 
-            // maybe we DO need that endpoint.
-            // Wait, the backend verification script generated a trip then claimed it.
-            // We need a "Find Billable Trips" endpoint really.
-            
-            // Re-reading implementation: BillingController has `generateClaims(tripIds)`.
-            // It does NOT have "findBillableTrips".
-            // However, we can use the `GET /trips` endpoint to find COMPLETED trips without claims? No easy way to filter 'no claims' yet.
-            
-            // IMPROVEMENT: Let's fetch COMPLETED trips, and try to generate for them. 
-            // This is heavy but works for MVP.
-            const tripsResponse = await axios.get('http://localhost:3003/trips?status=COMPLETED');
-            const completedTrips = tripsResponse.data;
+            // Fetch COMPLETED trips to simulate "Batch Generation"
+            // In a real app, the backend would handle "find all billable" logic
+            const { data: completedTrips } = await api.get('/trips?status=COMPLETED');
             const tripIds = completedTrips.map((t: any) => t.id);
 
             if (tripIds.length === 0) {
@@ -90,8 +74,8 @@ const BillingPage: React.FC = () => {
                 return;
             }
 
-            const response = await axios.post('http://localhost:3003/billing/generate', { tripIds });
-            const generatedCount = response.data.length;
+            const { data } = await api.post('/billing/generate', { tripIds });
+            const generatedCount = data.length;
             setSuccessMsg(`Successfully generated ${generatedCount} new claims.`);
             fetchClaims(); // Refresh list
         } catch (err) {

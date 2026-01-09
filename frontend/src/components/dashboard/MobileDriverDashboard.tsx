@@ -161,9 +161,7 @@ export default function MobileDriverDashboard() {
                     <Typography variant="h6" component="div" sx={{ flexGrow: 1, textAlign: 'center', fontWeight: 600, color: '#333' }}>
                         Dashboard
                     </Typography>
-                    <IconButton sx={{ color: '#333' }} onClick={() => navigate('/driver/profile')}>
-                        <PersonOutline />
-                    </IconButton>
+                    <Box sx={{ width: 40 }} />
                 </Toolbar>
             </AppBar>
 

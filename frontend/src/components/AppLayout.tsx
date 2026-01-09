@@ -1,9 +1,11 @@
-import { Box, AppBar, Toolbar, Typography, IconButton, Menu, MenuItem, Avatar, Button } from '@mui/material';
+import { Box, AppBar, Toolbar, Typography, IconButton, Menu, MenuItem, Avatar, Button, Badge } from '@mui/material';
 import { Logout } from '@mui/icons-material';
 import React, { useState } from 'react';
 import { useAuthStore } from '../store/auth';
 import { useNavigate } from 'react-router-dom';
 import NotificationBell from './NotificationBell';
+import api from '../lib/api';
+import { useQuery } from '@tanstack/react-query';
 
 interface AppLayoutProps {
     children: React.ReactNode;
@@ -22,6 +24,21 @@ export default function AppLayout({ children }: AppLayoutProps) {
     const handleClose = () => {
         setAnchorEl(null);
     };
+
+    const { data: unreadNotifications = [] } = useQuery({
+        queryKey: ['notifications-unread'],
+        queryFn: async () => {
+            if (!user) return [];
+            try {
+                const { data } = await api.get('/notifications/unread');
+                return data;
+            } catch (e) { return []; }
+        },
+        enabled: !!user,
+        refetchInterval: 30000
+    });
+    
+    const unreadCount = unreadNotifications.length;
 
     const handleLogout = () => {
         logout();
@@ -52,32 +69,70 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     </Typography>
 
                     <Box sx={{ display: 'flex', gap: 3, mr: 4 }}>
-                        <Button color="inherit" onClick={() => navigate('/dashboard')} sx={{ color: '#212121' }}>
-                            Dashboard
-                        </Button>
-                        <Button color="inherit" onClick={() => navigate('/archives')} sx={{ color: '#212121' }}>
-                            Archives
-                        </Button>
-                        <Button color="inherit" onClick={() => navigate('/trips')} sx={{ color: '#212121' }}>
-                            Trips
-                        </Button>
-                        <Button color="inherit" onClick={() => navigate('/billing')} sx={{ color: '#212121' }}>
-                            Billing
-                        </Button>
-                        <Button color="inherit" onClick={() => navigate('/members')} sx={{ color: '#212121' }}>
-                            Members
-                        </Button>
-                        {user?.role !== 'DRIVER' && (
-                            <Button color="inherit" onClick={() => navigate('/drivers')} sx={{ color: '#212121' }}>
-                                Drivers
-                            </Button>
+                        {user?.role === 'DRIVER' ? (
+                            <>
+                                <Button 
+                                    color="inherit" 
+                                    onClick={() => navigate('/driver')} 
+                                    sx={{ color: '#212121', fontWeight: 600 }}
+                                >
+                                    Today
+                                </Button>
+                                <Button 
+                                    color="inherit" 
+                                    onClick={() => navigate('/driver/updates')} 
+                                    sx={{ color: '#212121' }}
+                                >
+                                    <Badge badgeContent={unreadCount} color="error">
+                                        Updates
+                                    </Badge>
+                                </Button>
+                                <Button 
+                                    color="inherit" 
+                                    onClick={() => navigate('/driver/trips')} 
+                                    sx={{ color: '#212121' }}
+                                >
+                                    History
+                                </Button>
+                                <Button 
+                                    color="inherit" 
+                                    onClick={() => navigate('/driver/profile')} 
+                                    sx={{ color: '#212121' }}
+                                >
+                                    Profile
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <Button color="inherit" onClick={() => navigate('/dashboard')} sx={{ color: '#212121' }}>
+                                    Dashboard
+                                </Button>
+                                <Button color="inherit" onClick={() => navigate('/archives')} sx={{ color: '#212121' }}>
+                                    Archives
+                                </Button>
+                                <Button color="inherit" onClick={() => navigate('/trips')} sx={{ color: '#212121' }}>
+                                    Trips
+                                </Button>
+                                <Button color="inherit" onClick={() => navigate('/billing')} sx={{ color: '#212121' }}>
+                                    Billing
+                                </Button>
+                                <Button color="inherit" onClick={() => navigate('/members')} sx={{ color: '#212121' }}>
+                                    Members
+                                </Button>
+                                <Button color="inherit" onClick={() => navigate('/payroll')} sx={{ color: '#212121' }}>
+                                    Payroll
+                                </Button>
+                                <Button color="inherit" onClick={() => navigate('/drivers')} sx={{ color: '#212121' }}>
+                                    Drivers
+                                </Button>
+                                <Button color="inherit" onClick={() => navigate('/vehicles')} sx={{ color: '#212121' }}>
+                                    Vehicles
+                                </Button>
+                                <Button color="inherit" onClick={() => navigate('/driver')} sx={{ color: '#212121' }}>
+                                    Driver View
+                                </Button>
+                            </>
                         )}
-                        <Button color="inherit" onClick={() => navigate('/vehicles')} sx={{ color: '#212121' }}>
-                            Vehicles
-                        </Button>
-                        <Button color="inherit" onClick={() => navigate('/driver')} sx={{ color: '#212121' }}>
-                            Driver
-                        </Button>
                     </Box>
 
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -90,35 +145,38 @@ export default function AppLayout({ children }: AppLayoutProps) {
                             </Typography>
                         </Box>
 
-                        <NotificationBell />
+                        {user?.role !== 'DRIVER' && <NotificationBell />}
 
-                        <IconButton onClick={handleMenu} size="large">
-                            <Avatar sx={{ bgcolor: '#0096D6', width: 36, height: 36 }}>
-                                {user?.firstName?.[0] || '?'}
-                            </Avatar>
-                        </IconButton>
+                        {user?.role !== 'DRIVER' && (
+                            <>
+                                <IconButton onClick={handleMenu} size="large">
+                                    <Avatar sx={{ bgcolor: '#0096D6', width: 36, height: 36 }}>
+                                        {user?.firstName?.[0] || '?'}
+                                    </Avatar>
+                                </IconButton>
 
-                        <Menu
-                            anchorEl={anchorEl}
-                            open={Boolean(anchorEl)}
-                            onClose={handleClose}
-                            anchorOrigin={{
-                                vertical: 'bottom',
-                                horizontal: 'right',
-                            }}
-                        >
-
-                            <MenuItem onClick={handleLogout}>
-                                <Logout fontSize="small" sx={{ mr: 1 }} />
-                                Logout
-                            </MenuItem>
-                        </Menu>
+                                <Menu
+                                    anchorEl={anchorEl}
+                                    open={Boolean(anchorEl)}
+                                    onClose={handleClose}
+                                    anchorOrigin={{
+                                        vertical: 'bottom',
+                                        horizontal: 'right',
+                                    }}
+                                >
+                                    <MenuItem onClick={handleLogout}>
+                                        <Logout fontSize="small" sx={{ mr: 1 }} />
+                                        Logout
+                                    </MenuItem>
+                                </Menu>
+                            </>
+                        )}
                     </Box>
                 </Toolbar>
             </AppBar>
 
             {/* Main Content */}
-            <Box component="main" sx={{ flexGrow: 1, bgcolor: '#f8f9fa' }}>
+            <Box component="main" sx={{ flexGrow: 1, bgcolor: '#f0f4f8' }}>
                 {children}
             </Box>
         </Box>
