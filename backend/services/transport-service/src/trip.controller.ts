@@ -110,14 +110,26 @@ export class TripController {
         const trip = await this.tripService.findOne(id);
         
         if (!trip.reportFilePath) {
-            // Fallback: Generate it on the fly if verified data available? 
-            // Or 404. Let's try to generate if missing but data exists in TripReport table.
-             // For now, 404 if no physical file or generation logic path.
-             // But actually, the previous implementation TRIED to generate it on the fly.
+             return res.status(404).send('Report not generated yet');
         }
 
         try {
-            const buffer = await this.pdfService.readPdf(trip.reportFilePath || ''); 
+            // Resolve path: trip.reportFilePath might be relative to root
+            let filePath = trip.reportFilePath;
+            if (!filePath.startsWith('/')) {
+                filePath =  require('path').join(process.cwd(), filePath);
+            }
+            
+            if (!require('fs').existsSync(filePath)) {
+                 // Try relative to dist if running there
+                 filePath = require('path').join(__dirname, '..', '..', trip.reportFilePath);
+            }
+
+            if (!require('fs').existsSync(filePath)) {
+                return res.status(404).send('Report file not found on server');
+            }
+
+            const buffer = require('fs').readFileSync(filePath);
             
             res.set({
                 'Content-Type': 'application/pdf',
@@ -127,8 +139,8 @@ export class TripController {
 
             res.end(buffer);
         } catch (e) {
-             // If read fails (e.g. file deleted), return 404
-             res.status(404).send('Report not found');
+             console.error('Error serving report:', e);
+             res.status(500).send('Error serving report');
         }
     }
 
