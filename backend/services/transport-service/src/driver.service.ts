@@ -56,8 +56,8 @@ export class DriverService {
     async findAll(organizationId: string): Promise<Driver[]> {
         // Query drivers and join with User to get names
         return this.driverRepository.find({
+            where: { organizationId },
             relations: ['user', 'assignedVehicle'],
-            // In a real app, filter by organizationId
         });
     }
 

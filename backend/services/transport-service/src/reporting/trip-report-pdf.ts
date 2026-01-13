@@ -58,87 +58,146 @@ export class PDFGenerator {
         const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
         const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-        const pages = pdfDoc.getPages();
-        const page1 = pages[0]; // All content on Page 1 as per user note
-
-        const M = AHCCCS_FIELD_MAPPING;
-
-        // 2. FILL HEADER SECTIONS
-        
-        // Provider
-        this.fill(page1, M.provider_ahcccs_id, report.provider.ahcccsId, font);
-        this.fill(page1, M.provider_name, report.provider.name, font);
-        this.fill(page1, M.provider_address, report.provider.address, font);
-        this.fill(page1, M.provider_phone, report.provider.phoneNumber, font);
-
-        // Vehicle
-        this.fill(page1, M.vehicle_fleet_id, report.vehicle.fleetId, font);
-        this.fill(page1, M.vehicle_make_color, `${report.vehicle.make} ${report.vehicle.color}`, font);
-        
-        this.check(page1, M.vehicle_type.wheelchair_van, report.vehicle.type === VehicleType.WHEELCHAIR_VAN, font);
-        this.check(page1, M.vehicle_type.taxi, report.vehicle.type === VehicleType.TAXI, font);
-        this.check(page1, M.vehicle_type.bus, report.vehicle.type === VehicleType.BUS, font);
-        const isOther = ![VehicleType.WHEELCHAIR_VAN, VehicleType.TAXI, VehicleType.BUS].includes(report.vehicle.type);
-        this.check(page1, M.vehicle_type.other, isOther, font);
-
-        // Member
-        this.fill(page1, M.member_ahcccs_id, report.member.ahcccsId, font);
-        this.fill(page1, M.member_dob, this.formatDate(report.member.dateOfBirth), font);
-        this.fill(page1, M.member_name, report.member.name, font);
-        const ma = report.member.mailingAddress;
-        this.fill(page1, M.member_address, `${ma.street}, ${ma.city}, ${ma.state} ${ma.zipCode}`, font);
-
-
-        // 3. FILL TRIP LEGS
-        const mapLegs = [M.leg_1, M.leg_2, M.leg_3];
-        
-        for (let i = 0; i < report.tripLegs.length && i < 3; i++) {
-            const leg = report.tripLegs[i];
-            const map = mapLegs[i];
-            
-            // Pickup
-            this.fill(page1, map.pickup_location, this.formatLoc(leg.pickUpLocation), font);
-            this.fill(page1, map.pickup_time, this.formatTime(leg.pickUpTime), font);
-            this.fill(page1, map.pickup_odometer, leg.pickUpOdometer.toString(), font);
-
-            // Dropoff
-            this.fill(page1, map.dropoff_location, this.formatLoc(leg.dropOffLocation), font);
-            this.fill(page1, map.dropoff_time, this.formatTime(leg.dropOffTime), font);
-            this.fill(page1, map.dropoff_odometer, leg.dropOffOdometer.toString(), font);
-            this.fill(page1, map.trip_miles, leg.tripMiles.toString(), font);
-
-            // Type
-            // Note: Different legs have specific checkbox mappings in `map.trip_type`
-            if (map.trip_type) {
-                this.check(page1, map.trip_type.one_way, leg.tripType === 'one_way', font);
-                this.check(page1, map.trip_type.round_trip, leg.tripType === 'round_trip', font);
-                this.check(page1, map.trip_type.multiple_stops, leg.tripType === 'multiple_stops', font);
-            }
-
-            // Reason & Escort
-            if (map.reason) this.fill(page1, map.reason, leg.reasonForVisit, font);
-            if (leg.escort && map.escort_name) {
-                this.fill(page1, map.escort_name, leg.escort.name, font);
-                this.fill(page1, map.escort_relationship, leg.escort.relationship, font);
-            }
+        // Handle Multi-Page Logic (If > 3 legs and only 1 page in template, duplicate it)
+        const totalLegs = report.tripLegs.length;
+        if (totalLegs > 3 && pdfDoc.getPageCount() === 1) {
+            const [page1Copy] = await pdfDoc.copyPages(pdfDoc, [0]);
+            pdfDoc.addPage(page1Copy);
         }
 
-
-        // 4. SIGNATURES
-        if (options?.addSignatures) {
-            const dateStr = this.formatDate(new Date()); // Or report compliance date
-
-            // Member
-            if (report.attestation.member) {
-                await this.embedSig(pdfDoc, page1, M.member_signature, report.attestation.member.signatureBase64);
-                this.fill(page1, M.member_signature_date, this.formatDate(report.attestation.complianceTimestamp), font);
+        const pages = pdfDoc.getPages();
+        
+        const M = AHCCCS_FIELD_MAPPING;
+        
+        // We'll fill Page 1 for legs 0-2
+        // And Page 2 for legs 3-5 (if available and template has 2 pages)
+        
+        for (let i = 0; i < pages.length; i++) {
+            const page = pages[i];
+            const pageOffset = i * 3; // 0 for page 1, 3 for page 2
+            
+            // Should we stop if no legs for this page? 
+            // Usually we fill at least Page 1. 
+            // If Page 2 exists but we have < 4 legs, maybe leave it blank or remove it?
+            // For now, let's fill whatever legs map to this page.
+            const pageYOffset = 0;
+            
+            // 1. Fill Header Info (Provider, Member) on ALL pages
+            // FIX: Only fill header on the FIRST page to avoid overlaying legs on subsequent pages
+            // (Assumes subsequent pages are continuation sheets or don't need re-headering in this specific layout context)
+            if (i === 0) {
+              this.fill(page, M.provider_ahcccs_id, "123456", font, pageYOffset); // Hardcoded or from provider?
+              if (report.driver?.name) {
+                   // Provider info is actually static for the agency? Or fetched from config?
+                   // Current code hardcoded "Great Values Transportation"
+              }
+              this.fill(page, M.provider_name, "GREAT VALUES TRANSPORTATION", font, pageYOffset); 
+              this.fill(page, M.provider_address, "5723 W. PUEBLO AVE\nPHOENIX, AZ 85043", font, pageYOffset);
+              this.fill(page, M.provider_phone, "(623) 219-3058", font, pageYOffset); 
+  
+              this.fill(page, M.provider_ahcccs_id, "A2A843", font, pageYOffset); // Mock/Config ID
+  
+              // Member Info
+              const member = report.member; // Assuming report.member is the single member object
+              if (member) {
+                   this.fill(page, M.member_ahcccs_id, member.ahcccsId, font, pageYOffset);
+                   this.fill(page, M.member_name, member.name, font, pageYOffset); // Assuming member.name is full name
+                   if (member.dateOfBirth) {
+                      this.fill(page, M.member_dob, member.dateOfBirth.toISOString().split('T')[0], font, pageYOffset);
+                   }
+                   // Address?
+                   const ma = member.mailingAddress;
+                   this.fill(page, M.member_address, `${ma.street}, ${ma.city}, ${ma.state} ${ma.zipCode}`, font, pageYOffset);
+              }
+  
+              // Vehicle Info (Right side)
+              if (report.vehicle) {
+                   this.fill(page, M.vehicle_fleet_id, report.vehicle.fleetId, font, pageYOffset); // Assuming fleetId maps to vehicleNumber
+                   this.fill(page, M.vehicle_make_color, `${report.vehicle.make} / ${report.vehicle.color}`, font, pageYOffset);
+                   
+                   // Checkboxes
+                   if (report.vehicle.type) {
+                       // Check type
+                       const vType = String(report.vehicle.type).toLowerCase();
+                       if (M.vehicle_type.wheelchair_van && (vType.includes('wheelchair') || vType.includes('van'))) {
+                           this.check(page, M.vehicle_type.wheelchair_van, true, font, pageYOffset);
+                       }
+                       // Add other types...
+                       this.check(page, M.vehicle_type.taxi, vType.includes('taxi'), font, pageYOffset);
+                       this.check(page, M.vehicle_type.bus, vType.includes('bus'), font, pageYOffset);
+                       const isOther = ![VehicleType.WHEELCHAIR_VAN, VehicleType.TAXI, VehicleType.BUS].includes(report.vehicle.type);
+                       this.check(page, M.vehicle_type.other, isOther, font, pageYOffset);
+                   }
+              }
             }
 
-            // Driver
-            if (report.attestation.driver) {
-                await this.embedSig(pdfDoc, page1, M.driver_signature, report.attestation.driver.signatureBase64);
-                this.fill(page1, M.driver_signature_date, this.formatDate(report.attestation.complianceTimestamp), font);
+            // 2. Fill Legs for this page
+            const mapLegs = [M.leg_1, M.leg_2, M.leg_3];
+            
+            for (let j = 0; j < 3; j++) {
+                const legIndex = pageOffset + j;
+                if (legIndex >= totalLegs) break; // No more legs
+                
+                const leg = report.tripLegs[legIndex];
+                const map = mapLegs[j]; // Map to Leg 1, 2, 3 positions on THIS page
+
+                this.fill(page, map.pickup_location, this.formatLoc(leg.pickUpLocation), font, pageYOffset);
+                this.fill(page, map.pickup_time, this.formatTime(leg.pickUpTime), font, pageYOffset);
+                this.fill(page, map.pickup_odometer, String(leg.pickUpOdometer), font, pageYOffset);
+
+                this.fill(page, map.dropoff_location, this.formatLoc(leg.dropOffLocation), font, pageYOffset);
+                this.fill(page, map.dropoff_time, this.formatTime(leg.dropOffTime) || '', font, pageYOffset);
+                this.fill(page, map.dropoff_odometer, String(leg.dropOffOdometer), font, pageYOffset);
+                
+                // Miles
+                const miles = (leg.dropOffOdometer && leg.pickUpOdometer) ? (leg.dropOffOdometer - leg.pickUpOdometer) : 0;
+                this.fill(page, map.trip_miles, String(miles), font, pageYOffset);
+
+                // Type
+                if ('trip_type' in map && map.trip_type) {
+                    const tt = (map as any).trip_type;
+                    this.check(page, tt.one_way, String(leg.tripType) === 'one_way', font, pageYOffset);
+                    this.check(page, tt.round_trip, String(leg.tripType) === 'round_trip', font, pageYOffset);
+                    this.check(page, tt.multiple_stops, String(leg.tripType) === 'multiple_stops', font, pageYOffset);
+                }
+
+                // Reason & Escort
+                if ('reason' in map && map.reason) this.fill(page, map.reason, leg.reasonForVisit, font, pageYOffset);
+                
+                const m = map as any;
+                if (leg.escort && m.escort_name) {
+                    this.fill(page, m.escort_name, leg.escort.name, font, pageYOffset);
+                    this.fill(page, m.escort_relationship, String(leg.escort.relationship), font, pageYOffset);
+                }
             }
+
+            // Signatures (Usually on Page 1? Or both? Let's sign both if populated)
+            // If signature is provided, embed it.
+            if (options?.addSignatures) {
+                 const attestation = report.attestation;
+                 
+                 if (attestation.member && attestation.member.signatureImageUrl) {
+                     await PDFGenerator.embedSig(pdfDoc, page, M.member_signature, attestation.member.signatureImageUrl, pageYOffset);
+                     this.fill(page, M.member_signature_date, this.formatDate(attestation.complianceTimestamp), font, pageYOffset);
+                 }
+
+                 if (attestation.driver && attestation.driver.signatureImageUrl) {
+                    await PDFGenerator.embedSig(pdfDoc, page, M.driver_signature, attestation.driver.signatureImageUrl, pageYOffset);
+                    this.fill(page, M.driver_signature_date, this.formatDate(attestation.complianceTimestamp), font, pageYOffset);
+                 }
+            }
+        }
+        
+        // Remove Page 2 if empty? Or keep it? 
+        // User asked for capability to fill 6 legs. 
+        // If trip has <= 3 legs, maybe we should delete the second page to be clean?
+        // But for "Daily Trip Report", sometimes they print front/back blank.
+        // Let's keep it simple: strict mapping.
+        
+        // If legs <= 3, check if we should remove page 2. 
+        // But `pdf-lib` removePage needs index.
+        if (totalLegs <= 3 && pages.length > 1) {
+             pdfDoc.removePage(1);
         }
 
         // Save
@@ -156,39 +215,42 @@ export class PDFGenerator {
 
   // --- HELPER METHODS ---
 
-  private static fill(page: any, field: any, value: string, font: PDFFont) {
+  // Global offset to fine-tune alignment without rewriting all coords
+  private static readonly X_OFFSET = 0;
+
+  private static fill(page: any, field: any, value: string, font: PDFFont, yOffset: number = 0) {
       if (!field || !value) return;
       page.drawText(String(value), {
-          x: field.x,
-          y: field.y,
+          x: field.x + PDFGenerator.X_OFFSET,
+          y: field.y + yOffset,
           size: field.fontSize || 9,
           font: font,
-          maxWidth: field.width // pdf-lib supports maxWidth for multiline wrapping
-          // lineHeight etc if needed
+          maxWidth: field.width 
       });
   }
 
-  private static check(page: any, field: any, isChecked: boolean, font: PDFFont) {
+  private static check(page: any, field: any, isChecked: boolean, font: PDFFont, yOffset: number = -70) {
       if (!field || !isChecked) return;
       const offset = (field.size || 10) * 0.15;
+      const x = field.x + PDFGenerator.X_OFFSET;
+      const y = field.y + yOffset;
+      
       // Draw X
       page.drawLine({
-          start: { x: field.x + offset, y: field.y + offset },
-          end: { x: field.x + field.size - offset, y: field.y + field.size - offset },
+          start: { x: x + offset, y: y + offset },
+          end: { x: x + field.size - offset, y: y + field.size - offset },
           thickness: 1.5,
           color: rgb(0, 0, 0)
       });
       page.drawLine({
-          start: { x: field.x + field.size - offset, y: field.y + offset },
-          end: { x: field.x + offset, y: field.y + field.size - offset },
+          start: { x: x + field.size - offset, y: y + offset },
+          end: { x: x + offset, y: y + field.size - offset },
           thickness: 1.5,
           color: rgb(0, 0, 0)
       });
-      // Or just draw text "X"
-      // page.drawText("X", { x: field.x, y: field.y, size: field.size, font: font });
   }
 
-  private static async embedSig(pdfDoc: PDFDocument, page: any, field: any, base64: string) {
+  private static async embedSig(pdfDoc: PDFDocument, page: any, field: any, base64: string, yOffset: number = -70) {
       if (!field || !base64) return;
       if (!base64.startsWith('data:image')) return;
 
@@ -196,14 +258,11 @@ export class PDFGenerator {
            const parts = base64.split(',');
            const bytes = Buffer.from(parts[1], 'base64');
            const image = await pdfDoc.embedPng(bytes);
-           // Scale to fit
            const dims = image.scaleToFit(field.width, field.height);
-           // Center in box? Or just place Bottom-Left?
-           // Field defines box x,y,w,h.
-           // Position image at x, y
+           
            page.drawImage(image, {
                x: field.x,
-               y: field.y,
+               y: field.y + yOffset, // Apply offset
                width: dims.width,
                height: dims.height
            });

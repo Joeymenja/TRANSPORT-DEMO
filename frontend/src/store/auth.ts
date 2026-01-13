@@ -53,6 +53,7 @@ export const useAuthStore = create<AuthState>()(
             },
 
             logout: () => {
+                console.log('[AuthStore] Logout action called');
                 set({ user: null, token: null, isAuthenticated: false });
             },
 

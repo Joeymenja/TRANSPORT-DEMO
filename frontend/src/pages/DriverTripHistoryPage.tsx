@@ -42,7 +42,7 @@ export const DriverTripHistoryPage = () => {
     const handleDownloadReport = async (tripId: string) => {
         try {
             // Call API to get report PDF
-            const apiUrl = 'http://localhost:3003'; // Fallback to default
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3003';
             const response = await fetch(`${apiUrl}/trips/${tripId}/report`, {
                 method: 'GET',
                 headers: {
@@ -81,7 +81,7 @@ export const DriverTripHistoryPage = () => {
                 driverApi.getTrips(driverId)
             ]);
             setDriver(driverData);
-            setTrips(tripsData);
+            setTrips(Array.isArray(tripsData) ? tripsData : []);
         } catch (error) {
             console.error('Error loading trip history:', error);
         } finally {

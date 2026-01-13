@@ -158,9 +158,7 @@ export default function MobileDriverDashboard() {
                     <IconButton edge="start" sx={{ color: '#333' }} onClick={() => setDrawerOpen(true)}>
                         <MenuIcon />
                     </IconButton>
-                    <Typography variant="h6" component="div" sx={{ flexGrow: 1, textAlign: 'center', fontWeight: 600, color: '#333' }}>
-                        Dashboard
-                    </Typography>
+
                     <Box sx={{ width: 40 }} />
                 </Toolbar>
             </AppBar>

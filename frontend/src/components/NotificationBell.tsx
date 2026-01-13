@@ -56,7 +56,10 @@ export default function NotificationBell() {
 
     const { data: notifications = [] } = useQuery({
         queryKey: ['notifications', 'unread'],
-        queryFn: notificationApi.getUnread,
+        queryFn: async () => {
+            const data = await notificationApi.getUnread();
+            return Array.isArray(data) ? data : [];
+        },
         refetchInterval: 30000, // Poll every 30 seconds
     });
 

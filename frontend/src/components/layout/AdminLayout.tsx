@@ -1,12 +1,13 @@
 import { Box, AppBar, Toolbar, Typography, Button, IconButton, Drawer, List, ListItem, ListItemIcon, ListItemText, useMediaQuery, useTheme } from '@mui/material';
 import { Menu as MenuIcon, Dashboard as DashboardIcon, Assignment as AssignmentIcon, People as PeopleIcon, DirectionsCar as CarIcon } from '@mui/icons-material';
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth';
 import NotificationBell from '../NotificationBell';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const navigate = useNavigate();
+    const location = useLocation();
     const logout = useAuthStore((state) => state.logout);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const theme = useTheme();
@@ -53,7 +54,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     >
                         {isMobile ? 'Admin' : 'Admin Portal'}
                     </Typography>
-                    <NotificationBell />
+                    {location.pathname !== '/notifications' && <NotificationBell />}
                     {!isMobile && (
                         <Button
                             color="inherit"

@@ -13,6 +13,8 @@ import ReportDetailPage from './pages/admin/ReportDetailPage';
 import BillingPage from './pages/admin/BillingPage';
 import ArchivePage from './pages/ArchivePage';
 import MembersPage from './pages/MembersPage';
+import NotificationsPage from './pages/NotificationsPage';
+import SettingsPage from './pages/admin/SettingsPage';
 import MemberDetailsPage from './pages/MemberDetailsPage';
 import VehiclesPage from './pages/VehiclesPage';
 import VehicleDetailsPage from './pages/VehicleDetailsPage';
@@ -219,6 +221,8 @@ function AppRoutes() {
                                     <Route path="/trips/:id" element={<TripDetailsPage />} />
                                     <Route path="/reports" element={<ReportsPage />} />
                                     <Route path="/billing" element={<BillingPage />} />
+                                    <Route path="/notifications" element={<NotificationsPage />} />
+                                    <Route path="/settings" element={<SettingsPage />} />
                                     <Route path="/" element={<RootRedirect />} />
                                 </Routes>
                             </AppLayout>

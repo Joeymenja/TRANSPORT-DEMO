@@ -14,6 +14,8 @@ import { DriverController } from './driver.controller';
 import { DriverService } from './driver.service';
 import { ReportController } from './report.controller';
 import { ReportService } from './report.service';
+import { MemberController } from './member.controller';
+import { MemberService } from './member.service';
 import { ActivityLog } from './entities/activity-log.entity';
 import { ActivityLogController } from './activity-log.controller';
 import { ActivityLogService } from './activity-log.service';
@@ -119,8 +121,8 @@ import { EventsGateway } from './events.gateway';
             }),
         }),
     ],
-    controllers: [TripController, VehicleController, DriverController, ReportController, ActivityLogController, NotificationController, LocationController, BillingController, PayrollController],
-    providers: [TripService, VehicleService, PdfService, DriverService, ReportService, ActivityLogService, NotificationService, JwtStrategy, LocationService, BillingService, PayrollService, EventsGateway],
-    exports: [TripService, VehicleService, ActivityLogService, BillingService],
+    controllers: [TripController, VehicleController, DriverController, ReportController, ActivityLogController, NotificationController, LocationController, BillingController, MemberController],
+    providers: [TripService, VehicleService, PdfService, DriverService, ReportService, ActivityLogService, NotificationService, JwtStrategy, LocationService, BillingService, EventsGateway, MemberService],
+    exports: [TripService, VehicleService, ActivityLogService, BillingService, MemberService],
 })
 export class TransportModule { }

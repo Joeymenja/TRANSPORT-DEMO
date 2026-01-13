@@ -13,9 +13,10 @@ export default function DriverTripsPage() {
 
     const { data: trips = [], isLoading } = useQuery({
         queryKey: ['driver-trips', user?.id],
-        queryFn: () => {
+        queryFn: async () => {
             if (!user?.id) return [];
-            return tripApi.getDriverTrips(user.id);
+            const data = await tripApi.getDriverTrips(user.id);
+            return Array.isArray(data) ? data : [];
         },
         enabled: !!user?.id,
     });

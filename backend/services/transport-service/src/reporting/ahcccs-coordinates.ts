@@ -9,7 +9,7 @@ export const AHCCCS_FIELD_MAPPING = {
   // ─────────────────────────────────────────────────────────────
   
   provider_ahcccs_id: { x: 42, y: 745, width: 80, height: 15, fontSize: 10 },
-  provider_name: { x: 220, y: 745, width: 150, height: 15, fontSize: 10 },
+  provider_name: { x: 220, y: 745, width: 350, height: 15, fontSize: 10 },
   provider_address: { x: 220, y: 728, width: 150, height: 30, fontSize: 9, multiline: true },
   provider_phone: { x: 220, y: 698, width: 80, height: 15, fontSize: 9 },
 
@@ -42,11 +42,11 @@ export const AHCCCS_FIELD_MAPPING = {
   // Note: Leg 1 Trip Type Order: One Way, Multiple Stops, Round Trip
   
   leg_1: {
-      pickup_location: { x: 42, y: 605, width: 450, height: 30, fontSize: 9, multiline: true },
-      pickup_time: { x: 520, y: 615, width: 50, height: 12, fontSize: 9 },
-      pickup_odometer: { x: 615, y: 615, width: 45, height: 12, fontSize: 9 },
+      pickup_location: { x: 42, y: 700, width: 450, height: 30, fontSize: 9, multiline: true },
+      pickup_time: { x: 520, y: 660, width: 50, height: 12, fontSize: 9 },
+      pickup_odometer: { x: 615, y: 660, width: 45, height: 12, fontSize: 9 },
       
-      dropoff_location: { x: 42, y: 570, width: 450, height: 30, fontSize: 9, multiline: true },
+      dropoff_location: { x: 42, y: 660, width: 450, height: 30, fontSize: 9, multiline: true },
       dropoff_time: { x: 520, y: 575, width: 50, height: 12, fontSize: 9 },
       dropoff_odometer: { x: 615, y: 575, width: 45, height: 12, fontSize: 9 },
       trip_miles: { x: 680, y: 575, width: 35, height: 12, fontSize: 9 },
@@ -68,11 +68,11 @@ export const AHCCCS_FIELD_MAPPING = {
   // Note: Leg 2 Trip Type Order: Round Trip, One Way, Multiple Stops
   
   leg_2: {
-      pickup_location: { x: 42, y: 460, width: 450, height: 30, fontSize: 9, multiline: true },
-      pickup_time: { x: 520, y: 470, width: 50, height: 12, fontSize: 9 },
-      pickup_odometer: { x: 615, y: 470, width: 45, height: 12, fontSize: 9 },
+      pickup_location: { x: 42, y: 560, width: 450, height: 30, fontSize: 9, multiline: true },
+      pickup_time: { x: 520, y: 530, width: 50, height: 12, fontSize: 9 },
+      pickup_odometer: { x: 615, y: 530, width: 45, height: 12, fontSize: 9 },
 
-      dropoff_location: { x: 42, y: 425, width: 450, height: 30, fontSize: 9, multiline: true },
+      dropoff_location: { x: 42, y: 545, width: 450, height: 30, fontSize: 9, multiline: true },
       dropoff_time: { x: 520, y: 430, width: 50, height: 12, fontSize: 9 },
       dropoff_odometer: { x: 615, y: 430, width: 45, height: 12, fontSize: 9 },
       trip_miles: { x: 680, y: 430, width: 35, height: 12, fontSize: 9 },
@@ -93,11 +93,11 @@ export const AHCCCS_FIELD_MAPPING = {
   // ─────────────────────────────────────────────────────────────
   
   leg_3: {
-      pickup_location: { x: 42, y: 315, width: 450, height: 30, fontSize: 9, multiline: true },
-      pickup_time: { x: 520, y: 325, width: 50, height: 12, fontSize: 9 },
-      pickup_odometer: { x: 615, y: 325, width: 45, height: 12, fontSize: 9 },
+      pickup_location: { x: 42, y: 435, width: 450, height: 30, fontSize: 9, multiline: true },
+      pickup_time: { x: 520, y: 385, width: 50, height: 12, fontSize: 9 },
+      pickup_odometer: { x: 615, y: 385, width: 45, height: 12, fontSize: 9 },
 
-      dropoff_location: { x: 42, y: 280, width: 450, height: 30, fontSize: 9, multiline: true },
+      dropoff_location: { x: 42, y: 420, width: 450, height: 30, fontSize: 9, multiline: true },
       dropoff_time: { x: 520, y: 290, width: 50, height: 12, fontSize: 9 },
       dropoff_odometer: { x: 615, y: 290, width: 45, height: 12, fontSize: 9 },
       trip_miles: { x: 680, y: 290, width: 35, height: 12, fontSize: 9 }

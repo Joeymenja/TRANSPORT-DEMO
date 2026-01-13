@@ -2,7 +2,7 @@ import { useEffect, useCallback } from 'react';
 import { useAuthStore } from '../store/auth';
 import { useNavigate } from 'react-router-dom';
 
-const LOGOUT_TIMER_MS = 15 * 60 * 1000; // 15 Minutes
+const LOGOUT_TIMER_MS = 12 * 60 * 60 * 1000; // 12 Hours
 
 export const useAutoLogout = () => {
     const { logout, isAuthenticated } = useAuthStore();
@@ -10,7 +10,7 @@ export const useAutoLogout = () => {
 
     const handleLogout = useCallback(() => {
         if (isAuthenticated) {
-            console.log('Session expired due to inactivity');
+            console.log(`[AutoLogout] Session expired due to inactivity. Timer: ${LOGOUT_TIMER_MS}ms`);
             logout();
             navigate('/login');
         }

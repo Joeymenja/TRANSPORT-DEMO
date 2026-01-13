@@ -37,9 +37,32 @@ export default function LoginPage() {
         }
     }, []);
 
+    const [emailError, setEmailError] = useState('');
+    const [passwordError, setPasswordError] = useState('');
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setError('');
+        setEmailError('');
+        setPasswordError('');
+        
+        // Custom Validation
+        let isValid = true;
+        if (!email) {
+            setEmailError('Please enter your email address');
+            isValid = false;
+        } else if (!/\S+@\S+\.\S+/.test(email)) {
+             setEmailError('Please enter a valid email address');
+             isValid = false;
+        }
+
+        if (!password) {
+            setPasswordError('Please enter your password');
+            isValid = false;
+        }
+
+        if (!isValid) return;
+
         setLoading(true);
 
         try {
@@ -50,15 +73,6 @@ export default function LoginPage() {
             } else {
                 localStorage.removeItem('rememberedEmail');
             }
-
-            // Fetch the user to check role and onboarding step
-            // Wait, the login action sets the user in store, we can get it from response or just check store?
-            // The 'login' function in store handles setting state. But it doesn't return the user object directly.
-            // We should modify store.login to return user or just check logic inside store?
-            // Actually, we can just access the store's state after login await, if it's updated synchronously (which zustand is, usually).
-            // However, better to modify the store's login to return the data, OR assume we are redirected.
-            // Let's modify the store.ts first? No, let's just peek at how we do it.
-            // Actually, useAuthStore.getState().user should be set.
 
             const user = useAuthStore.getState().user;
             if (user?.role === 'DRIVER' && (user.onboardingStep || 0) < 6) {
@@ -129,14 +143,18 @@ export default function LoginPage() {
                             </Alert>
                         )}
 
-                        <form onSubmit={handleSubmit}>
+                        <form onSubmit={handleSubmit} noValidate>
                             <TextField
                                 fullWidth
                                 label="Email"
                                 type="email"
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
+                                onChange={(e) => {
+                                    setEmail(e.target.value);
+                                    if (emailError) setEmailError('');
+                                }}
+                                error={!!emailError}
+                                helperText={emailError}
                                 sx={{ mb: 2 }}
                                 autoComplete="email"
                                 placeholder="Enter your email"
@@ -147,8 +165,12 @@ export default function LoginPage() {
                                 label="Password"
                                 type={showPassword ? 'text' : 'password'}
                                 value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
+                                onChange={(e) => {
+                                    setPassword(e.target.value);
+                                    if (passwordError) setPasswordError('');
+                                }}
+                                error={!!passwordError}
+                                helperText={passwordError}
                                 sx={{ mb: 1 }}
                                 autoComplete="current-password"
                                 InputProps={{

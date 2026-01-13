@@ -12,7 +12,6 @@ import {
     ErrorOutline,
     Add,
     AssignmentInd,
-    AssignmentInd,
     Warning,
     Tune
 } from '@mui/icons-material';
@@ -50,7 +49,7 @@ export default function DashboardPage() {
         proxyRelationship?: string,
         proxyReason?: string
     } | null>(null);
-    } | null>(null);
+
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [customizeOpen, setCustomizeOpen] = useState(false);
 
