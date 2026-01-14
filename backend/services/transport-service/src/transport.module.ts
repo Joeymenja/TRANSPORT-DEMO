@@ -44,6 +44,8 @@ import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { EventsGateway } from './events.gateway';
+import { OrganizationController } from './organization.controller';
+import { OrganizationService } from './organization.service';
 
 @Module({
     imports: [
@@ -76,7 +78,7 @@ import { EventsGateway } from './events.gateway';
             }),
             inject: [ConfigService],
         }),
-        TypeOrmModule.forFeature([Trip, TripMember, TripStop, Vehicle, Member, User, VehicleMaintenance, VehicleDocument, Driver, TripReport, Signature, ActivityLog, Notification, Location, Claim]),
+        TypeOrmModule.forFeature([Trip, TripMember, TripStop, Vehicle, Member, User, VehicleMaintenance, VehicleDocument, Driver, TripReport, Signature, ActivityLog, Notification, Location, Claim, Organization]),
         PassportModule,
         JwtModule.registerAsync({
             imports: [ConfigModule],
@@ -121,8 +123,8 @@ import { EventsGateway } from './events.gateway';
             }),
         }),
     ],
-    controllers: [TripController, VehicleController, DriverController, ReportController, ActivityLogController, NotificationController, LocationController, BillingController, MemberController],
-    providers: [TripService, VehicleService, PdfService, DriverService, ReportService, ActivityLogService, NotificationService, JwtStrategy, LocationService, BillingService, EventsGateway, MemberService],
+    controllers: [TripController, VehicleController, DriverController, ReportController, ActivityLogController, NotificationController, LocationController, BillingController, MemberController, OrganizationController],
+    providers: [TripService, VehicleService, PdfService, DriverService, ReportService, ActivityLogService, NotificationService, JwtStrategy, LocationService, BillingService, EventsGateway, MemberService, OrganizationService],
     exports: [TripService, VehicleService, ActivityLogService, BillingService, MemberService],
 })
 export class TransportModule { }

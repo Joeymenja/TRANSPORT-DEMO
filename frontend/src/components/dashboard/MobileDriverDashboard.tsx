@@ -140,7 +140,8 @@ export default function MobileDriverDashboard() {
     return (
         <Box sx={{ 
             height: '100vh', 
-            width: '100vw', 
+            width: '100%', 
+            overflowX: 'hidden',
             display: 'flex', 
             flexDirection: 'column', 
             bgcolor: '#fff',

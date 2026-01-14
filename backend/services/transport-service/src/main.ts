@@ -15,8 +15,19 @@ async function bootstrap() {
     console.log('----------------------------------------');
 
     // Enable CORS
+    // Enable CORS with dynamic origin support
     app.enableCors({
-        origin: configService.get('CORS_ORIGIN'),
+        origin: (origin, callback) => {
+            if (!origin) return callback(null, true);
+            if (configService.get('NODE_ENV') === 'development') {
+                 return callback(null, true);
+            }
+            const allowedOrigins = configService.get('CORS_ORIGIN').split(',');
+            if (allowedOrigins.indexOf(origin) !== -1 || configService.get('CORS_ORIGIN') === '*') {
+                 return callback(null, true);
+            }
+            return callback(new Error('Not allowed by CORS'));
+        },
         credentials: true,
     });
 

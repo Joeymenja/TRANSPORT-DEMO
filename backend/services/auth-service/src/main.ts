@@ -26,11 +26,29 @@ async function bootstrap() {
     console.log('HOST:', configService.get('DB_HOST'));
     console.log('DATABASE:', configService.get('DB_DATABASE'));
     console.log('USERNAME:', configService.get('DB_USERNAME'));
+    
+    const jwtSecret = configService.get('JWT_SECRET');
+    console.log('JWT SECRET (Masked):', jwtSecret ? `${jwtSecret.substring(0, 5)}...` : 'NOT SET');
     console.log('----------------------------------------');
 
     // Enable CORS
+    // Enable CORS with dynamic origin support
     app.enableCors({
-        origin: configService.get('CORS_ORIGIN'),
+        origin: (origin, callback) => {
+            // Allow requests with no origin (like mobile apps or curl requests)
+            if (!origin) return callback(null, true);
+            
+            // In development, refrain from strict origin checks to allow local network access (e.g. phone)
+            if (configService.get('NODE_ENV') === 'development') {
+                 return callback(null, true);
+            }
+            
+            const allowedOrigins = configService.get('CORS_ORIGIN').split(',');
+            if (allowedOrigins.indexOf(origin) !== -1 || configService.get('CORS_ORIGIN') === '*') {
+                 return callback(null, true);
+            }
+            return callback(new Error('Not allowed by CORS'));
+        },
         credentials: true,
     });
 

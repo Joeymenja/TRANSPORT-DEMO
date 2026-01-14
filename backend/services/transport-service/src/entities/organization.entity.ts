@@ -23,6 +23,15 @@ export class Organization {
     @Column({ name: 'ensora_last_sync_at', type: 'timestamp', nullable: true })
     ensoraLastSyncAt: Date;
 
+    @Column({ name: 'ahcccs_provider_id', type: 'varchar', length: 50, nullable: true })
+    ahcccsProviderId: string;
+
+    @Column({ name: 'address', type: 'varchar', length: 255, nullable: true })
+    address: string;
+
+    @Column({ name: 'phone_number', type: 'varchar', length: 20, nullable: true })
+    phoneNumber: string;
+
     @Column({ name: 'is_active', type: 'boolean', default: true })
     isActive: boolean;
 

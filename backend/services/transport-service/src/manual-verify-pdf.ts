@@ -3,7 +3,7 @@
  * Run with: npx ts-node src/manual-verify-pdf.ts
  */
 
-import { PDFGenerator } from './reporting/trip-report-pdf';
+import { fillAcroForm } from './reporting/fill-acroform';
 import { AHCCCSTripReport, TripLeg, VehicleType } from './reporting/trip-report-models';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -135,7 +135,7 @@ async function verify() {
         const outputPath = path.join(process.cwd(), 'manual_test_result.pdf');
         
         console.log(`Generating PDF to: ${outputPath}`);
-        await PDFGenerator.generatePDF(mockReport, { outputPath });
+        await fillAcroForm(mockReport, outputPath);
         console.log("PDF Generation Completed!");
         
         if (fs.existsSync(outputPath)) {

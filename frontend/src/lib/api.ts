@@ -13,6 +13,7 @@ api.interceptors.request.use((config) => {
     const { token, user } = useAuthStore.getState();
 
     if (token) {
+        console.log('API Interceptor: Attaching token', token.substring(0, 20) + '...');
         config.headers.Authorization = `Bearer ${token}`;
     }
 
@@ -29,6 +30,7 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
+            console.error('API 401 Unauthorized from:', error.config.url); // Added this line
             console.error('[API] 401 Unauthorized detected. Triggering logout.', { url: error.config.url });
             useAuthStore.getState().logout();
             window.location.href = '/login';

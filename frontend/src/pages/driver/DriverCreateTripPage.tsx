@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Container, Typography, Card, Button, TextField, Grid, MenuItem, Stepper, Step, StepLabel, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, FormControlLabel, Switch } from '@mui/material';
+import { Box, Container, Typography, Card, Button, TextField, Grid, MenuItem, Stepper, Step, StepLabel, Alert, Dialog, DialogTitle, DialogContent, DialogActions, FormControlLabel, Switch } from '@mui/material';
 import { MobileDatePicker, MobileTimePicker } from '@mui/x-date-pickers';
 import { format } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -166,21 +166,19 @@ export default function DriverCreateTripPage() {
                             </TextField>
                         </Grid>
                         <Grid item xs={12}>
-                             <Autocomplete
-                                freeSolo
-                                options={ALL_TRIP_REASONS}
+                             <TextField
+                                select
+                                label="Reason for Visit"
+                                fullWidth
                                 value={formData.reasonForVisit}
-                                onChange={(_, newValue) => setFormData({ ...formData, reasonForVisit: newValue || '' })}
-                                onInputChange={(_, newInputValue) => setFormData({ ...formData, reasonForVisit: newInputValue })}
-                                renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        label="Reason for Visit"
-                                        placeholder="Select or type..."
-                                        fullWidth
-                                    />
-                                )}
-                            />
+                                onChange={(e) => setFormData({ ...formData, reasonForVisit: e.target.value })}
+                            >
+                                {ALL_TRIP_REASONS.map((option) => (
+                                    <MenuItem key={option} value={option}>
+                                        {option}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
                         </Grid>
                         <Grid item xs={12}>
                              <TextField

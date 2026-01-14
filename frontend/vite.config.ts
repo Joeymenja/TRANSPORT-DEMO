@@ -10,6 +10,7 @@ export default defineConfig({
         react(),
     ],
     server: {
+        host: true, // Listen on all addresses (0.0.0.0)
         port: 3000,
         proxy: {
             '/api/auth': {
@@ -61,7 +62,7 @@ export default defineConfig({
     },
     resolve: {
         alias: {
-            // Alias removed to rely on npm resolution
+            "@mui/styled-engine": "@mui/styled-engine/modern",
         },
     },
 })

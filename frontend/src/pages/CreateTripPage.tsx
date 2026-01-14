@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Container, Typography, Card, Button, TextField, Grid, MenuItem, Stepper, Step, StepLabel, Checkbox, FormControlLabel, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete } from '@mui/material';
+import { Box, Container, Typography, Card, Button, TextField, Grid, MenuItem, Stepper, Step, StepLabel, Checkbox, FormControlLabel, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { tripApi, CreateTripData } from '../api/trips';
@@ -262,37 +262,21 @@ export default function CreateTripPage() {
                             </Grid>
                         )}
                         <Grid item xs={12}>
-                            <Autocomplete
-                                freeSolo
-                                options={locations?.map((l: any) => l.address) || []}
+                            <TextField
+                                label="Pickup Address"
+                                fullWidth
+                                helperText="Type address manually (Autocomplete disabled)"
                                 value={formData.pickupAddress}
-                                onChange={(_, newValue) => setFormData({ ...formData, pickupAddress: newValue || '' })}
-                                onInputChange={(_, newInputValue) => setFormData({ ...formData, pickupAddress: newInputValue })}
-                                renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        label="Pickup Address"
-                                        fullWidth
-                                        helperText="Select a GVBH location or type a custom address"
-                                    />
-                                )}
+                                onChange={(e) => setFormData({ ...formData, pickupAddress: e.target.value })}
                             />
                         </Grid>
                         <Grid item xs={12}>
-                            <Autocomplete
-                                freeSolo
-                                options={locations?.map((l: any) => l.address) || []}
+                            <TextField
+                                label="Drop-off Address"
+                                fullWidth
+                                helperText="Type address manually (Autocomplete disabled)"
                                 value={formData.dropoffAddress}
-                                onChange={(_, newValue) => setFormData({ ...formData, dropoffAddress: newValue || '' })}
-                                onInputChange={(_, newInputValue) => setFormData({ ...formData, dropoffAddress: newInputValue })}
-                                renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        label="Drop-off Address"
-                                        fullWidth
-                                        helperText="Select a GVBH location or type a custom address"
-                                    />
-                                )}
+                                onChange={(e) => setFormData({ ...formData, dropoffAddress: e.target.value })}
                             />
                         </Grid>
                     </Grid>

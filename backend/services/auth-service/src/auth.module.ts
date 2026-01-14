@@ -36,12 +36,18 @@ import { JwtStrategy } from './strategies/jwt.strategy';
         HttpModule,
         JwtModule.registerAsync({
             imports: [ConfigModule],
-            useFactory: (configService: ConfigService) => ({
-                secret: configService.get('JWT_SECRET'),
-                signOptions: {
-                    expiresIn: configService.get('JWT_EXPIRATION')
-                },
-            }),
+            useFactory: (configService: ConfigService) => {
+                const secret = configService.get('JWT_SECRET');
+                if (!secret) {
+                    throw new Error('CRITICAL: JWT_SECRET environment variable must be set.');
+                }
+                return {
+                    secret,
+                    signOptions: {
+                        expiresIn: configService.get('JWT_EXPIRATION')
+                    },
+                };
+            },
             inject: [ConfigService],
         }),
     ],

@@ -107,26 +107,12 @@ export class TripController {
 
     @Get(':id/report')
     async getReport(@Param('id') id: string, @Res() res: Response) {
-        const trip = await this.tripService.findOne(id);
-        
-        if (!trip.reportFilePath) {
-             return res.status(404).send('Report not generated yet');
-        }
-
         try {
-            // Resolve path: trip.reportFilePath might be relative to root
-            let filePath = trip.reportFilePath;
-            if (!filePath.startsWith('/')) {
-                filePath =  require('path').join(process.cwd(), filePath);
-            }
+            // Generate report on-demand to ensure latest format and data
+            const filePath = await this.tripService.generateReportForTrip(id);
             
             if (!require('fs').existsSync(filePath)) {
-                 // Try relative to dist if running there
-                 filePath = require('path').join(__dirname, '..', '..', trip.reportFilePath);
-            }
-
-            if (!require('fs').existsSync(filePath)) {
-                return res.status(404).send('Report file not found on server');
+                return res.status(404).send('Report file could not be generated');
             }
 
             const buffer = require('fs').readFileSync(filePath);
@@ -139,8 +125,8 @@ export class TripController {
 
             res.end(buffer);
         } catch (e) {
-             console.error('Error serving report:', e);
-             res.status(500).send('Error serving report');
+             console.error('Error generating/serving report:', e);
+             res.status(500).send('Error generating report');
         }
     }
 

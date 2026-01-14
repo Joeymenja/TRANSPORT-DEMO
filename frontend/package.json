@@ -20,7 +20,7 @@
         "@fontsource/inter": "^5.2.8",
         "@mui/icons-material": "^5.18.0",
         "@mui/material": "^5.18.0",
-        "@mui/styled-engine": "5.15.3",
+        "@mui/styled-engine": "^5.16.6",
         "@mui/x-date-pickers": "^7.29.4",
         "@tanstack/react-query": "^5.17.9",
         "@types/leaflet": "^1.9.21",

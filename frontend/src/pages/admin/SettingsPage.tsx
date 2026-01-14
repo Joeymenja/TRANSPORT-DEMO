@@ -1,10 +1,49 @@
 
-import { Box, Container, Typography, Paper, FormControlLabel, Switch, Divider, Grid } from '@mui/material';
+import { Box, Container, Typography, Paper, FormControlLabel, Switch, Divider, Grid, TextField, Button, Alert } from '@mui/material';
 import { usePreferencesStore } from '../../store/preferences';
 import { Receipt, Paid, DirectionsCar } from '@mui/icons-material';
+import { useState, useEffect } from 'react';
+import { organizationApi } from '../../api/organization';
 
 export default function SettingsPage() {
     const { features, toggleFeature } = usePreferencesStore();
+    const [orgForm, setOrgForm] = useState({
+        ahcccsProviderId: '',
+        address: '',
+        phoneNumber: ''
+    });
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+    useEffect(() => {
+        loadOrganization();
+    }, []);
+
+    const loadOrganization = async () => {
+        try {
+            const org = await organizationApi.get();
+            setOrgForm({
+                ahcccsProviderId: org.ahcccsProviderId || '',
+                address: org.address || '',
+                phoneNumber: org.phoneNumber || ''
+            });
+        } catch (error) {
+            console.error('Failed to load organization', error);
+        }
+    };
+
+    const handleSaveOrg = async () => {
+        setLoading(true);
+        setMessage(null);
+        try {
+            await organizationApi.update(orgForm);
+            setMessage({ type: 'success', text: 'Organization settings saved successfully' });
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Failed to save settings' });
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <Container maxWidth="md" sx={{ py: 4 }}>
@@ -80,6 +119,62 @@ export default function SettingsPage() {
                                 onChange={() => toggleFeature('driverView')}
                             />
                         </Box>
+                    </Grid>
+                </Grid>
+            </Paper>
+
+            <Box mb={4} />
+
+            <Paper sx={{ p: 4, borderRadius: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                    Provider Information
+                </Typography>
+                <Typography variant="body2" color="text.secondary" mb={3}>
+                    These details will appear on the AHCCCS Trip Reports.
+                </Typography>
+
+                {message && (
+                    <Alert severity={message.type} sx={{ mb: 3 }}>
+                        {message.text}
+                    </Alert>
+                )}
+
+                <Grid container spacing={3}>
+                    <Grid item xs={12} md={6}>
+                        <TextField
+                            fullWidth
+                            label="AHCCCS Provider ID"
+                            value={orgForm.ahcccsProviderId}
+                            onChange={(e) => setOrgForm({ ...orgForm, ahcccsProviderId: e.target.value })}
+                            placeholder="e.g. 123456"
+                        />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                        <TextField
+                            fullWidth
+                            label="Phone Number"
+                            value={orgForm.phoneNumber}
+                            onChange={(e) => setOrgForm({ ...orgForm, phoneNumber: e.target.value })}
+                            placeholder="(602) 555-0123"
+                        />
+                    </Grid>
+                    <Grid item xs={12}>
+                        <TextField
+                            fullWidth
+                            label="Company Address"
+                            value={orgForm.address}
+                            onChange={(e) => setOrgForm({ ...orgForm, address: e.target.value })}
+                            placeholder="e.g. 123 Business St, Phoenix, AZ 85000"
+                        />
+                    </Grid>
+                    <Grid item xs={12}>
+                        <Button
+                            variant="contained"
+                            onClick={handleSaveOrg}
+                            disabled={loading}
+                        >
+                            {loading ? 'Saving...' : 'Save Settings'}
+                        </Button>
                     </Grid>
                 </Grid>
             </Paper>

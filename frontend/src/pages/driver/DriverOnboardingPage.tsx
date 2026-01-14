@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Box, Container, Typography, Stepper, Step, StepLabel, Card, CardContent } from '@mui/material';
+import { Box, Container, Typography, Stepper, Step, StepLabel, Card, CardContent, Button } from '@mui/material';
+import { ExitToApp } from '@mui/icons-material';
 import { useAuthStore } from '../../store/auth';
 import { useNavigate } from 'react-router-dom';
 import PersonalInfoStep from './onboarding/PersonalInfoStep';
@@ -19,7 +20,7 @@ const STEPS = [
 
 export default function DriverOnboardingPage() {
     const navigate = useNavigate();
-    const user = useAuthStore((state) => state.user);
+    const { user, logout } = useAuthStore((state) => ({ user: state.user, logout: state.logout }));
     const [activeStep, setActiveStep] = useState(user?.onboardingStep || 0);
 
     // Force rebuild check
@@ -39,6 +40,11 @@ export default function DriverOnboardingPage() {
 
     const handleBack = () => {
         setActiveStep((prev) => prev - 1);
+    };
+
+    const handleExit = () => {
+        logout();
+        navigate('/login');
     };
 
     const renderStepContent = (step: number) => {
@@ -66,6 +72,16 @@ export default function DriverOnboardingPage() {
     return (
         <Box sx={{ minHeight: '100vh', bgcolor: '#f0f4f8', py: 4 }}>
             <Container maxWidth="md">
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+                    <Button 
+                        startIcon={<ExitToApp />} 
+                        onClick={handleExit}
+                        sx={{ color: 'text.secondary' }}
+                    >
+                        Resume Later
+                    </Button>
+                </Box>
+
                 <Box sx={{ mb: 4, textAlign: 'center' }}>
                     <Typography variant="h4" fontWeight={700} color="primary" gutterBottom>
                         Complete Your Profile
