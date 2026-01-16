@@ -1,0 +1,4 @@
+
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS ahcccs_provider_id VARCHAR(50);
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS address VARCHAR(255);
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS phone_number VARCHAR(20);

@@ -1,8 +1,9 @@
-import { Drawer, Box, List, ListItem, ListItemIcon, ListItemText, Typography, Avatar, Divider, Chip } from '@mui/material';
+import { Drawer, Box, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typography, Avatar, Divider, Chip } from '@mui/material';
 import {
     HomeOutlined, CalendarMonthOutlined, ChatBubbleOutline,
     DirectionsCarOutlined, PersonOutline, FolderOutlined,
-    SettingsOutlined, HelpOutline, Logout, ChevronRight
+    SettingsOutlined, HelpOutline, Logout, ChevronRight,
+    Person, VerifiedUser, History as BackfillIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth';
@@ -88,39 +89,40 @@ export default function DriverDrawer({ open, onClose, driver }: DriverDrawerProp
                     { text: 'Messages', icon: <ChatBubbleOutline />, path: '/driver/messages', badge: 3 }, // Mock badge
                     { text: 'Trips', icon: <DirectionsCarOutlined />, path: '/driver/trips' },
                     { text: 'Profile', icon: <PersonOutline />, path: '/driver/profile' },
+                    { text: 'Log Past Trip', icon: <BackfillIcon />, path: '/driver/backfill' },
                 ].map((item) => {
                     const isActive = location.pathname === item.path;
                     return (
-                        <ListItem
-                            key={item.text}
-                            button
-                            onClick={() => handleNavigate(item.path)}
-                            sx={{
-                                borderRadius: 2,
-                                mb: 0.5,
-                                bgcolor: isActive ? '#E3F2FD' : 'transparent', // Light Brand Tint active
-                                color: isActive ? 'primary.main' : '#333',
-                                '&:hover': { bgcolor: '#F5F5F5' }
-                            }}
-                        >
-                            <ListItemIcon sx={{ minWidth: 40, color: isActive ? 'primary.main' : '#666' }}>
-                                {item.icon}
-                            </ListItemIcon>
-                            <ListItemText
-                                primary={item.text}
-                                primaryTypographyProps={{ fontSize: 15, fontWeight: isActive ? 600 : 500 }}
-                            />
-                            {item.badge && (
-                                <Box sx={{
-                                    bgcolor: 'primary.main', color: 'white',
-                                    fontSize: 11, fontWeight: 'bold',
-                                    minWidth: 18, height: 18, borderRadius: '9px',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', px: 0.5, mr: 1
-                                }}>
-                                    {item.badge}
-                                </Box>
-                            )}
-                            <ChevronRight sx={{ fontSize: 18, color: '#ccc' }} />
+                        <ListItem key={item.text} disablePadding>
+                            <ListItemButton
+                                onClick={() => handleNavigate(item.path)}
+                                sx={{
+                                    borderRadius: 2,
+                                    mb: 0.5,
+                                    bgcolor: isActive ? '#E3F2FD' : 'transparent', // Light Brand Tint active
+                                    color: isActive ? 'primary.main' : '#333',
+                                    '&:hover': { bgcolor: '#F5F5F5' }
+                                }}
+                            >
+                                <ListItemIcon sx={{ minWidth: 40, color: isActive ? 'primary.main' : '#666' }}>
+                                    {item.icon}
+                                </ListItemIcon>
+                                <ListItemText
+                                    primary={item.text}
+                                    primaryTypographyProps={{ fontSize: 15, fontWeight: isActive ? 600 : 500 }}
+                                />
+                                {item.badge && (
+                                    <Box sx={{
+                                        bgcolor: 'primary.main', color: 'white',
+                                        fontSize: 11, fontWeight: 'bold',
+                                        minWidth: 18, height: 18, borderRadius: '9px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', px: 0.5, mr: 1
+                                    }}>
+                                        {item.badge}
+                                    </Box>
+                                )}
+                                <ChevronRight sx={{ fontSize: 18, color: '#ccc' }} />
+                            </ListItemButton>
                         </ListItem>
                     );
                 })}
@@ -131,26 +133,29 @@ export default function DriverDrawer({ open, onClose, driver }: DriverDrawerProp
             <List sx={{ px: 1 }}>
                 {[
                     { text: 'Documents', icon: <FolderOutlined />, path: '/driver/documents' },
+                    { text: 'Compliance', icon: <VerifiedUser />, path: '/driver/compliance' },
                     { text: 'Settings', icon: <SettingsOutlined />, path: '/driver/settings' },
                     { text: 'Help & Support', icon: <HelpOutline />, path: '/driver/help' },
                 ].map((item) => (
-                    <ListItem
-                        key={item.text}
-                        button
-                        onClick={() => handleNavigate(item.path)}
-                        sx={{ borderRadius: 2, mb: 0.5, color: '#333' }}
-                    >
-                        <ListItemIcon sx={{ minWidth: 40, color: '#666' }}>{item.icon}</ListItemIcon>
-                        <ListItemText primary={item.text} primaryTypographyProps={{ fontSize: 15, fontWeight: 500 }} />
-                        <ChevronRight sx={{ fontSize: 18, color: '#ccc' }} />
+                    <ListItem key={item.text} disablePadding>
+                        <ListItemButton
+                            onClick={() => handleNavigate(item.path)}
+                            sx={{ borderRadius: 2, mb: 0.5, color: '#333' }}
+                        >
+                            <ListItemIcon sx={{ minWidth: 40, color: '#666' }}>{item.icon}</ListItemIcon>
+                            <ListItemText primary={item.text} primaryTypographyProps={{ fontSize: 15, fontWeight: 500 }} />
+                            <ChevronRight sx={{ fontSize: 18, color: '#ccc' }} />
+                        </ListItemButton>
                     </ListItem>
                 ))}
             </List>
 
             <Box sx={{ mt: 'auto', p: 3 }}>
-                <ListItem button onClick={handleLogout} sx={{ color: '#D32F2F', px: 0 }}>
-                    <ListItemIcon sx={{ minWidth: 40, color: '#D32F2F' }}><Logout /></ListItemIcon>
-                    <ListItemText primary="Logout" primaryTypographyProps={{ fontWeight: 500 }} />
+                <ListItem disablePadding>
+                    <ListItemButton onClick={handleLogout} sx={{ color: '#D32F2F', px: 0 }}>
+                        <ListItemIcon sx={{ minWidth: 40, color: '#D32F2F' }}><Logout /></ListItemIcon>
+                        <ListItemText primary="Logout" primaryTypographyProps={{ fontWeight: 500 }} />
+                    </ListItemButton>
                 </ListItem>
                 <Typography variant="caption" sx={{ color: '#ccc', display: 'block', mt: 2, textAlign: 'center' }}>
                     v1.0.0

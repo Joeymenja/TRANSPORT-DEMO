@@ -55,6 +55,13 @@ async function createProperTripReports() {
             }
 
             const reportId = crypto.randomUUID();
+            
+            // Fix for legacy/demo data with invalid UUIDs
+            let orgId = trip.organization_id;
+            if (orgId === 'org-1' || !orgId || orgId.length < 36) {
+                orgId = 'f0578ebc-c7e9-4d1b-8cb9-6fab3b565c00'; // Default valid Org ID
+            }
+
             const baseOdometer = trip.odometer || 15000;
             const distance = Math.floor(Math.random() * 50) + 15; // 15-65 miles
             const startOdometer = baseOdometer;
@@ -78,7 +85,7 @@ async function createProperTripReports() {
                 VALUES ($1, $2, $3, $4, $5, 'SUBMITTED', $6, $7, $8, $9, $10, true, true, false, true, $11, NOW(), NOW(), NOW())
             `, [
                 reportId,
-                trip.organization_id,
+                orgId,
                 trip.trip_id,
                 trip.member_id,
                 trip.assigned_driver_id,
@@ -120,7 +127,7 @@ async function createProperTripReports() {
                 VALUES ($1, $2, 'TRIP_REPORT_SUBMITTED', $3, $4, 'UNREAD', $5, NOW())
             `, [
                 notificationId,
-                trip.organization_id,
+                orgId,
                 'Trip Report Submitted',
                 `A trip report has been submitted by ${driverName} and is ready for review`,
                 JSON.stringify({
