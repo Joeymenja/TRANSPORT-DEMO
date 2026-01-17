@@ -33,9 +33,9 @@ export default function DashboardPage() {
     const queryClient = useQueryClient();
     const user = useAuthStore((state) => state.user);
 
-    // Redirect Drivers to Mobile Dashboard
-    if (user?.role === 'DRIVER') {
-        return <MobileDriverDashboard />;
+    // For now, return Desktop Dashboard for everyone (Driver and House Manager)
+    if (user?.role === 'DRIVER' || user?.role === 'HOUSE_MANAGER') {
+        return <DesktopDriverDashboard />;
     }
 
     const today = format(new Date(), 'yyyy-MM-dd');

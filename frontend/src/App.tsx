@@ -176,8 +176,8 @@ function AppRoutes() {
                     <PrivateRoute>
                         <DriverLayout>
                             <Routes>
-                                <Route path="/" element={<MobileDriverDashboard />} />
-                                <Route path="dashboard" element={<MobileDriverDashboard />} />
+                                <Route path="/" element={<DesktopDriverDashboard />} />
+                                <Route path="dashboard" element={<DesktopDriverDashboard />} />
                                 <Route path="updates" element={<DriverUpdatesPage />} />
                                 <Route path="trips" element={<DriverTripsPage />} />
                                 <Route path="trips/:tripId" element={<TripDetailScreen />} />
