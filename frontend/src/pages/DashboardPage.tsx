@@ -1,4 +1,4 @@
-import { Box, Container, Grid, Card, CardContent, Typography, Button, Chip, Collapse, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Divider, List, ListItem, ListItemText, ListItemIcon, Checkbox, FormControlLabel, FormControl, InputLabel, Select, useMediaQuery, Tabs, Tab } from '@mui/material';
+import { Box, Container, Grid, Card, CardContent, Typography, Button, Chip, Collapse, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Divider, List, ListItem, ListItemText, ListItemIcon, Checkbox, FormControlLabel, FormControl, InputLabel, Select, useMediaQuery, Tabs, Tab, Autocomplete, Stack } from '@mui/material';
 import {
     DirectionsCar,
     Schedule,
@@ -13,15 +13,17 @@ import {
     Add,
     AssignmentInd,
     Warning,
-    Tune
+    Tune,
+    History as BackfillIcon
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tripApi, CreateTripData } from '../api/trips';
 import { memberApi } from '../api/members';
 import { driverApi } from '../api/drivers';
 import { useAuthStore } from '../store/auth';
 import api from '../lib/api';
-import { format } from 'date-fns';
+import { format, addMonths } from 'date-fns';
 import { useState, ReactNode } from 'react';
 import DriverStatusToggle from '../components/driver/DriverStatusToggle';
 import MobileDriverDashboard from '../components/dashboard/MobileDriverDashboard';
@@ -33,6 +35,7 @@ import ActivityFeed from '../components/dashboard/ActivityFeed';
 export default function DashboardPage() {
     const queryClient = useQueryClient();
     const user = useAuthStore((state) => state.user);
+    const navigate = useNavigate();
 
 
 
@@ -50,6 +53,7 @@ export default function DashboardPage() {
 
     const [activeTab, setActiveTab] = useState(0);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [isDischargeOpen, setIsDischargeOpen] = useState(false);
     const [customizeOpen, setCustomizeOpen] = useState(false);
 
     // Fetch Driver Profile
@@ -151,14 +155,6 @@ export default function DashboardPage() {
 
     const isMobile = useMediaQuery('(max-width:900px)');
     
-    if (user?.role === 'HOUSE_MANAGER') {
-        return <DesktopDriverDashboard />;
-    }
-    
-    if (user?.role === 'ADMIN') {
-        return <Box sx={{ p: 4 }}><Typography variant="h4">Admin Dashboard (under construction)</Typography></Box>;
-    }
-
     if (user?.role === 'DRIVER') {
         return isMobile ? <MobileDriverDashboard /> : <DesktopDriverDashboard />;
     }
@@ -249,22 +245,40 @@ export default function DashboardPage() {
                         {format(new Date(), 'EEEE, MMMM d, yyyy')} • {trips.length} Total Trips Today
                     </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', gap: 2 }}>
+                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
                     <Button 
                         startIcon={<Add />} 
                         variant="contained" 
                         color="primary"
                         onClick={() => setIsCreateDialogOpen(true)}
-                        sx={{ borderRadius: 2, px: 3, fontWeight: 700 }}
+                        sx={{ borderRadius: 2, px: 3, fontWeight: 700, bgcolor: '#0096D6' }}
                     >
                         New Trip
+                    </Button>
+                    <Button 
+                        startIcon={<BackfillIcon />} 
+                        variant="contained" 
+                        color="secondary"
+                        onClick={() => navigate('/driver/backfill')}
+                        sx={{ borderRadius: 2, px: 3, fontWeight: 700, bgcolor: '#0f172a' }}
+                    >
+                        Log Past Trip
+                    </Button>
+                    <Button 
+                        startIcon={<HistoryIcon />} 
+                        variant="outlined" 
+                        color="error"
+                        onClick={() => setIsDischargeOpen(true)}
+                        sx={{ borderRadius: 2, px: 2, fontWeight: 700 }}
+                    >
+                        Discharge
                     </Button>
                     {!driver && (
                         <Button 
                             startIcon={<Tune />} 
                             variant="outlined" 
                             onClick={() => setCustomizeOpen(true)}
-                            sx={{ borderRadius: 2 }}
+                            sx={{ borderRadius: 2, fontWeight: 600 }}
                         >
                             Layout
                         </Button>
@@ -728,7 +742,78 @@ export default function DashboardPage() {
                 </Dialog>
                 </>
             )}
-        </Container>
+             <DischargeMemberDialog 
+                 open={isDischargeOpen} 
+                 onClose={() => setIsDischargeOpen(false)} 
+             />
+         </Container>
+    );
+}
+
+function DischargeMemberDialog({ open, onClose }: { open: boolean, onClose: () => void }) {
+    const [selectedMember, setSelectedMember] = useState<any>(null);
+    const queryClient = useQueryClient();
+
+    const { data: members = [] } = useQuery({
+        queryKey: ['members'],
+        queryFn: memberApi.getMembers
+    });
+
+    const dischargeMutation = useMutation({
+        mutationFn: async () => {
+             const today = format(new Date(), 'yyyy-MM-dd');
+             const futureTrips = await tripApi.getTrips({ 
+                 startDate: today, 
+                 endDate: format(addMonths(new Date(), 12), 'yyyy-MM-dd'),
+             });
+
+             const memberTrips = futureTrips.filter((t: any) => 
+                 t.members.some((m: any) => m.memberId === selectedMember.id || m.memberId === selectedMember.memberId) && 
+                 t.status !== 'CANCELLED' && 
+                 t.status !== 'COMPLETED'
+             );
+
+             const promises = memberTrips.map((t: any) => 
+                 tripApi.cancelTrip(t.id, 'Discharged Member', 'Bulk cancellation via Dashboard')
+             );
+             await Promise.all(promises);
+             return memberTrips.length;
+        },
+        onSuccess: (count) => {
+            alert(`Successfully cancelled ${count} future trips for ${selectedMember.firstName}.`);
+            queryClient.invalidateQueries({ queryKey: ['trips'] });
+            onClose();
+            setSelectedMember(null);
+        }
+    });
+
+    return (
+        <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
+            <DialogTitle>Discharge & Bulk Cancel</DialogTitle>
+            <DialogContent>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Select a member to cancel ALL their upcoming scheduled trips. This action cannot be undone efficiently.
+                </Typography>
+                <Autocomplete
+                    options={members}
+                    getOptionLabel={(o: any) => `${o.firstName} ${o.lastName}`}
+                    value={selectedMember}
+                    onChange={(_, v) => setSelectedMember(v)}
+                    renderInput={(p) => <TextField {...p} label="Select Member" />}
+                />
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={onClose}>Cancel</Button>
+                <Button 
+                    variant="contained" 
+                    color="error" 
+                    disabled={!selectedMember || dischargeMutation.isPending}
+                    onClick={() => dischargeMutation.mutate()}
+                >
+                    {dischargeMutation.isPending ? 'Processing...' : 'Confirm Discharge'}
+                </Button>
+            </DialogActions>
+        </Dialog>
     );
 }
 

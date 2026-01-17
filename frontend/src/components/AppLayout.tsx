@@ -107,7 +107,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 }}
             >
                 <Toolbar>
-                    {/* <IconButton
+                    <IconButton
                         color="inherit"
                         aria-label="open drawer"
                         edge="start"
@@ -115,7 +115,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                         sx={{ mr: 2, display: { md: 'none' }, color: '#212121' }}
                     >
                         <MenuIcon />
-                    </IconButton> */}
+                    </IconButton>
 
                     <Typography
                         variant="h6"
@@ -161,7 +161,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
                         {user?.role !== 'DRIVER' && !location.pathname.startsWith('/notifications') && <NotificationBell />}
 
-                        {/* {user?.role !== 'DRIVER' && (
+                        {user?.role !== 'DRIVER' && (
                             <>
                                 <IconButton
                                     size="large"
@@ -194,7 +194,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                                     <MenuItem onClick={handleLogout}>Logout</MenuItem>
                                 </Menu>
                             </>
-                        )} */}
+                        )}
                     </Box>
                 </Toolbar>
             </AppBar>
