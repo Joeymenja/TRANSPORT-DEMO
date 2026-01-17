@@ -4,7 +4,8 @@ import {
     CalendarMonthOutlined, 
     NotificationsOutlined, 
     PersonOutline,
-    Home
+    Home,
+    History as HistoryIcon
 } from '@mui/icons-material';
 import React, { useState } from 'react';
 import { useAuthStore } from '../store/auth';
@@ -44,33 +45,22 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
                 zIndex: 1000
             }}>
                 <Typography variant="h6" fontWeight={800} color="primary" sx={{ letterSpacing: -0.5 }}>GVBH TRANSPORT</Typography>
-                <Box sx={{ display: 'flex', gap: 1 }}>
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                     <Button 
-                        onClick={() => navigate('/driver')}
-                        sx={{ fontWeight: 700, borderRadius: 2, px: 2, color: getNavValue() === 0 ? 'primary.main' : '#666' }}
-                        startIcon={<DashboardOutlined />}
-                    >
-                        Dashboard
-                    </Button>
-                    <Button 
-                        onClick={() => {
-                            console.log('[DriverNav] Navigating to Schedule');
-                            navigate('/driver/schedule');
+                        onClick={() => navigate('/driver/backfill')}
+                        variant="contained"
+                        startIcon={<HistoryIcon />}
+                        sx={{ 
+                            fontWeight: 800, 
+                            borderRadius: 3, 
+                            px: 3, 
+                            bgcolor: '#0f172a',
+                            '&:hover': { bgcolor: '#1e293b' },
+                            textTransform: 'none',
+                            fontSize: '0.9rem'
                         }}
-                        sx={{ fontWeight: 700, borderRadius: 2, px: 2, color: getNavValue() === 1 ? 'primary.main' : '#666' }}
-                        startIcon={<CalendarMonthOutlined />}
                     >
-                        Schedule
-                    </Button>
-                    <Button 
-                        onClick={() => {
-                            console.log('[DriverNav] Navigating to Updates');
-                            navigate('/driver/updates');
-                        }}
-                        sx={{ fontWeight: 700, borderRadius: 2, px: 2, color: getNavValue() === 2 ? 'primary.main' : '#666' }}
-                        startIcon={<NotificationsOutlined />}
-                    >
-                        Updates
+                        Log Past Trip
                     </Button>
                 </Box>
                 <IconButton onClick={() => navigate('/driver/profile')}>
