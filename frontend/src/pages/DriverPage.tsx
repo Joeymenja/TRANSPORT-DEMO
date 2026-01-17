@@ -17,7 +17,6 @@ export default function DriverPage() {
         return () => clearInterval(timer);
     }, []);
 
-    const { data: trips = [], isLoading } = useQuery({
     const { data: driverTrips = [], isLoading } = useQuery({
         queryKey: ['driver-trips', user?.id],
         queryFn: () => {

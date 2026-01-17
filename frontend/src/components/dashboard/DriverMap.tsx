@@ -1,144 +1,90 @@
-import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import { Box, Paper, Fab } from '@mui/material';
-import { MyLocation, Navigation } from '@mui/icons-material';
-import L from 'leaflet';
-import { useEffect, useState } from 'react';
+import { Box, Typography } from '@mui/material';
+import { Map as MapIcon, PersonPin, TripOrigin, LocationOn } from '@mui/icons-material';
+import Map, { Marker, NavigationControl } from 'react-map-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import { useMemo } from 'react';
 
-// --- Icon Fixes for Leaflet in React ---
-// @ts-ignore
-import icon from 'leaflet/dist/images/marker-icon.png';
-// @ts-ignore
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
-let DefaultIcon = L.icon({
-    iconUrl: icon,
-    shadowUrl: iconShadow,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41]
-});
-L.Marker.prototype.options.icon = DefaultIcon;
+// Helper to validate coordinates
+const isValidCoord = (val: any): val is number => typeof val === 'number' && !isNaN(val);
 
-// Custom Icons
-const CarIcon = L.divIcon({
-    html: `<div style="background-color: #2196F3; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
-    className: 'custom-car-icon',
-    iconSize: [24, 24],
-    iconAnchor: [12, 12]
-});
-
-const LocationMarker = ({ position }: { position: L.LatLngExpression | null }) => {
-    const map = useMap();
-    
-    useEffect(() => {
-        if (position) {
-            map.flyTo(position, map.getZoom());
-        }
-    }, [position, map]);
-
-    return position === null ? null : (
-        <>
-             <Marker position={position} icon={CarIcon}>
-                <Popup>You are here</Popup>
-            </Marker>
-            <Circle center={position} radius={50} pathOptions={{ color: '#2196F3', fillColor: '#2196F3', fillOpacity: 0.2 }} />
-        </>
-    );
-};
-
-// Recenter Control
-const RecenterControl = ({ position, onClick }: { position: L.LatLngExpression | null, onClick: () => void }) => {
-    return (
-        <Box sx={{ position: 'absolute', bottom: 20, right: 20, zIndex: 1000 }}>
-             <Fab color="primary" size="small" onClick={onClick} disabled={!position}>
-                <MyLocation />
-            </Fab>
-        </Box>
-    );
-}
-
-interface DriverMapProps {
-    activeTrip?: any; // Pass trip data for route rendering
-    className?: string;
-}
-
-export default function DriverMap({ activeTrip }: DriverMapProps) {
-    const [position, setPosition] = useState<L.LatLngExpression | null>(null); // [lat, lng]
-    // Default to Phoenix Area if no location yet
-    const defaultCenter: L.LatLngExpression = [33.4484, -112.0740]; 
-
-    // Geolocation Hook (Real-world readiness)
-    useEffect(() => {
-        if (!navigator.geolocation) {
-            console.warn("Geolocation is not supported by this browser.");
-            return;
-        }
-
-        const watchId = navigator.geolocation.watchPosition(
-            (pos) => {
-                const { latitude, longitude } = pos.coords;
-                setPosition([latitude, longitude]);
-            },
-            (err) => {
-                console.error("Geolocation error:", err);
-                // Fallback or alert could go here
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 5000
-            } // Factory config: High accuracy necessary
+export default function DriverMap({ activeTrip }: any) {
+    // If we don't have a token, show a friendly message
+    if (!MAPBOX_TOKEN || MAPBOX_TOKEN.includes('your_token_here')) {
+        return (
+            <Box sx={{ width: '100%', height: '100%', bgcolor: '#f0f2f5', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 4, textAlign: 'center' }}>
+                <MapIcon sx={{ fontSize: 48, color: '#90a4ae', mb: 2 }} />
+                <Typography variant="h6" color="text.primary" fontWeight={700}>Mapbox Setup Required</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 300, mt: 1 }}>
+                    Please add your Mapbox Access Token to the <strong>.env</strong> file (<code>VITE_MAPBOX_ACCESS_TOKEN</code>) to enable the live map.
+                </Typography>
+            </Box>
         );
+    }
 
-        return () => navigator.geolocation.clearWatch(watchId);
-    }, []);
-
-    const handleRecenter = () => {
-         // Logic handled by useEffect or explicit flyTo if we lift map ref state. 
-         // For now, simpler: pass signal or just rely on state update if we want 'follow' mode.
-         // Actually, LocationMarker automatically follows.
-         // IF we want manual re-center only when requested, we would change LocationMarker logic.
-         // Let's keep it auto-follow for 'Navigation' feel.
-    };
+    // Default to Phoenix area
+    const initialViewState = useMemo(() => {
+        const firstStop = activeTrip?.stops?.[0];
+        if (firstStop && isValidCoord(firstStop.latitude) && isValidCoord(firstStop.longitude)) {
+            return {
+                latitude: firstStop.latitude,
+                longitude: firstStop.longitude,
+                zoom: 12
+            };
+        }
+        return {
+            latitude: 33.448376,
+            longitude: -112.074036,
+            zoom: 11
+        };
+    }, [activeTrip]);
 
     return (
-        <Box sx={{ width: '100%', height: '100%', position: 'relative', bgcolor: '#e0e0e0' }}>
-            <MapContainer
-                center={defaultCenter}
-                zoom={15}
-                style={{ height: '100%', width: '100%' }}
-                zoomControl={false} // Custom controls preferred for mobile
+        <Box sx={{ width: '100%', height: '100%', position: 'relative' }}>
+            <Map
+                initialViewState={initialViewState}
+                style={{ width: '100%', height: '100%' }}
+                mapStyle="mapbox://styles/mapbox/streets-v12"
+                mapboxAccessToken={MAPBOX_TOKEN}
             >
-                <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
+                <NavigationControl position="top-right" />
                 
-                {/* Active Trip Markers */}
-                {activeTrip?.stops?.map((stop: any, idx: number) => {
-                     // Need lat/lng for stops. Assuming data has it or geocoded.
-                     // Mocking for now if not present in generic trip object type
-                     // In real app, stops MUST have LatLng.
-                     // Let's mock based on Phoenix for demo if missing.
-                     const mockOffsets = [[0.01, 0.01], [-0.01, -0.01]];
-                     const pos: L.LatLngExpression = stop.lat && stop.lng 
-                        ? [stop.lat, stop.lng] 
-                        : [33.4484 + (mockOffsets[idx]?.[0] || 0), -112.0740 + (mockOffsets[idx]?.[1] || 0)];
-                     
-                     return (
-                        <Marker key={stop.id} position={pos}>
-                            <Popup>
-                                <strong>{stop.stopType === 'PICKUP' ? 'Pick Up' : 'Drop Off'}</strong><br/>
-                                {stop.address}
-                            </Popup>
+                {/* Render Stops if present */}
+                {activeTrip?.stops?.map((stop: any, idx: number) => (
+                    isValidCoord(stop.latitude) && isValidCoord(stop.longitude) && (
+                        <Marker 
+                            key={stop.id || idx} 
+                            latitude={stop.latitude} 
+                            longitude={stop.longitude}
+                            anchor="bottom"
+                        >
+                            {stop.stopType === 'PICKUP' ? (
+                                <TripOrigin sx={{ color: '#4caf50', fontSize: 24 }} />
+                            ) : (
+                                <LocationOn sx={{ color: '#f44336', fontSize: 24 }} />
+                            )}
                         </Marker>
-                     )
-                })}
+                    )
+                ))}
 
-                <LocationMarker position={position} />
-            </MapContainer>
-            
-            {/* Custom UI Overlays can go here (e.g. Speed, Distance) */}
+                {/* Simulated Driver Marker */}
+                {(() => {
+                    const firstStop = activeTrip?.stops?.[0];
+                    if (firstStop && isValidCoord(firstStop.latitude) && isValidCoord(firstStop.longitude)) {
+                        return (
+                             <Marker 
+                                latitude={firstStop.latitude + 0.002} 
+                                longitude={firstStop.longitude + 0.002}
+                                anchor="center"
+                            >
+                                <PersonPin sx={{ color: '#2196F3', fontSize: 32 }} />
+                            </Marker>
+                        );
+                    }
+                    return null;
+                })()}
+            </Map>
         </Box>
     );
 }

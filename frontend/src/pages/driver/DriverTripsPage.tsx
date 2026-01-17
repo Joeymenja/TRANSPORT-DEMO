@@ -67,7 +67,7 @@ export default function DriverTripsPage() {
                         <CardContent sx={{ pb: '16px !important' }}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 1 }}>
                                 <Chip
-                                    label={trip.status.replace('_', ' ')}
+                                    label={(trip.status || '').replace('_', ' ')}
                                     size="small"
                                     color={
                                         trip.status === 'IN_PROGRESS' ? 'warning' :
@@ -77,19 +77,19 @@ export default function DriverTripsPage() {
                                     sx={{ fontWeight: 500 }}
                                 />
                                 <Typography variant="caption" color="text.secondary">
-                                    Trip #{trip.id.slice(0, 5)}
+                                    Trip #{(trip.id || '').slice(0, 5)}
                                 </Typography>
                             </Box>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                                 <Schedule fontSize="small" color="action" />
                                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                                    {trip.stops[0]?.scheduledTime ? format(new Date(trip.stops[0].scheduledTime), 'h:mm a') : 'TBD'}
+                                    {(trip.stops || [])[0]?.scheduledTime ? format(new Date(trip.stops[0].scheduledTime), 'h:mm a') : 'TBD'}
                                 </Typography>
                             </Box>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <Person fontSize="small" color="action" />
                                 <Typography variant="body2" color="text.secondary">
-                                    {trip.members.map((tm: any) => tm.member ? `${tm.member.firstName} ${tm.member.lastName}` : 'Unknown').join(', ')}
+                                    {(trip.members || []).map((tm: any) => tm.member ? `${tm.member.firstName} ${tm.member.lastName}` : 'Unknown').join(', ')}
                                 </Typography>
                             </Box>
                             <Box sx={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', color: '#bdbdbd' }}>

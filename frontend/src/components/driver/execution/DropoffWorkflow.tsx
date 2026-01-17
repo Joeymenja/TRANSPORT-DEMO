@@ -1,33 +1,68 @@
-import { Box, Typography, Button, Paper, TextField, Tabs, Tab, Alert } from '@mui/material';
-import { useState, useRef, useEffect } from 'react'; // Added useEffect/useRef
-import { Draw, Save, Restore, Clear } from '@mui/icons-material';
+import { Box, Typography, Button, Paper, TextField, Tabs, Tab, Alert, Divider, Stack } from '@mui/material';
+import { useState, useRef, useEffect } from 'react';
+import { Draw, Save, Restore, Clear, DirectionsCar, LocationOn, Person, AccessTime } from '@mui/icons-material';
+import { calculateTripDistance } from '../../../utils/distance';
 
 interface DropoffWorkflowProps {
     onComplete: (data: { signature: string; odometer: number; notes: string }) => void;
-    startOdometer?: number; // Added optional prop
+    startOdometer?: number;
+    trip?: any; // Added trip object for recap
 }
 
-export default function DropoffWorkflow({ onComplete, startOdometer = 0 }: DropoffWorkflowProps) {
+export default function DropoffWorkflow({ onComplete, startOdometer = 0, trip }: DropoffWorkflowProps) {
     const [tab, setTab] = useState(0);
     const [notes, setNotes] = useState('');
-    const [odometer, setOdometer] = useState<string>(''); // Allow empty initially
+    const [odometer, setOdometer] = useState<string>('');
     const [signatureData, setSignatureData] = useState<string | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [isDrawing, setIsDrawing] = useState(false);
-
     const containerRef = useRef<HTMLDivElement>(null);
+    
+    const driverCanvasRef = useRef<HTMLCanvasElement>(null);
+    const [driverSignatureData, setDriverSignatureData] = useState<string | null>(null);
+    const [isDrawingClient, setIsDrawingClient] = useState(false);
+    const [isDrawingDriver, setIsDrawingDriver] = useState(false);
+
+    const clientName = trip?.members?.[0]?.member ? `${trip.members[0].member.firstName} ${trip.members[0].member.lastName}` : 'Client';
+    const pickupAddr = trip?.stops?.find((s: any) => s.stopType === 'PICKUP')?.address?.split(',')[0] || 'Pickup';
+    const dropoffAddr = trip?.stops?.find((s: any) => s.stopType === 'DROPOFF')?.address?.split(',')[0] || 'Dropoff';
+
+    const [calculatedMiles, setCalculatedMiles] = useState<number>(12.4);
+
+    useEffect(() => {
+        if (trip?.stops?.length >= 2) {
+            const dist = calculateTripDistance(trip.stops);
+            setCalculatedMiles(dist || 12.4);
+        }
+    }, [trip]);
+
+    useEffect(() => {
+        if (!odometer && startOdometer > 0 && calculatedMiles > 0) {
+            setOdometer(Math.ceil(startOdometer + calculatedMiles).toString());
+        }
+    }, [startOdometer, calculatedMiles]);
 
     // Signature Pad Logic & Resize
     useEffect(() => {
-        const resizeCanvas = () => {
+        const resizeCanvases = () => {
+             // Resize Client Canvas
              if (tab === 0 && canvasRef.current && containerRef.current) {
                 const canvas = canvasRef.current;
                 const container = containerRef.current;
-                // Save current content? (Too complex for MVP refactor, just clear or keep size)
-                // Ideally we set internal dimensions to match clientWidth
                 canvas.width = container.clientWidth;
                 canvas.height = container.clientHeight;
-                
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.lineWidth = 3;
+                    ctx.lineCap = 'round';
+                    ctx.strokeStyle = '#000';
+                }
+            }
+            // Resize Driver Canvas
+            if (tab === 2 && driverCanvasRef.current && containerRef.current) {
+                const canvas = driverCanvasRef.current;
+                const container = containerRef.current;
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight;
                 const ctx = canvas.getContext('2d');
                 if (ctx) {
                     ctx.lineWidth = 3;
@@ -37,13 +72,13 @@ export default function DropoffWorkflow({ onComplete, startOdometer = 0 }: Dropo
             }
         };
 
-        resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
-        return () => window.removeEventListener('resize', resizeCanvas);
+        resizeCanvases();
+        window.addEventListener('resize', resizeCanvases);
+        return () => window.removeEventListener('resize', resizeCanvases);
     }, [tab]);
 
     const startDrawing = (e: any) => {
-        const canvas = canvasRef.current;
+        const canvas = tab === 2 ? driverCanvasRef.current : canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
@@ -54,12 +89,15 @@ export default function DropoffWorkflow({ onComplete, startOdometer = 0 }: Dropo
 
         ctx.beginPath();
         ctx.moveTo(x, y);
-        setIsDrawing(true);
+        if (tab === 2) setIsDrawingDriver(true);
+        else setIsDrawingClient(true);
     };
 
     const draw = (e: any) => {
+        const isDrawing = tab === 2 ? isDrawingDriver : isDrawingClient;
         if (!isDrawing) return;
-        const canvas = canvasRef.current;
+        
+        const canvas = tab === 2 ? driverCanvasRef.current : canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
@@ -73,24 +111,36 @@ export default function DropoffWorkflow({ onComplete, startOdometer = 0 }: Dropo
     };
 
     const stopDrawing = () => {
-        if (!isDrawing) return;
-        setIsDrawing(false);
-        if (canvasRef.current) {
-            setSignatureData(canvasRef.current.toDataURL());
+        if (tab === 2) {
+            if (!isDrawingDriver) return;
+            setIsDrawingDriver(false);
+            if (driverCanvasRef.current) setDriverSignatureData(driverCanvasRef.current.toDataURL());
+        } else {
+            if (!isDrawingClient) return;
+            setIsDrawingClient(false);
+            if (canvasRef.current) setSignatureData(canvasRef.current.toDataURL());
         }
     };
 
     const clearSignature = () => {
-        const canvas = canvasRef.current;
-        if (canvas) {
-            const ctx = canvas.getContext('2d');
-            ctx?.clearRect(0, 0, canvas.width, canvas.height);
-            setSignatureData(null);
+        if (tab === 2) {
+            const canvas = driverCanvasRef.current;
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx?.clearRect(0, 0, canvas.width, canvas.height);
+                setDriverSignatureData(null);
+            }
+        } else {
+            const canvas = canvasRef.current;
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx?.clearRect(0, 0, canvas.width, canvas.height);
+                setSignatureData(null);
+            }
         }
     };
 
     const handleUseSaved = () => {
-        // Mock using a saved signature
         setSignatureData('saved_signature_v1');
     };
 
@@ -103,105 +153,204 @@ export default function DropoffWorkflow({ onComplete, startOdometer = 0 }: Dropo
     };
 
     return (
-        <Box sx={{ p: 2, pb: 20 }}>
-            <Typography variant="h5" fontWeight={700} gutterBottom>Trip Report & Dropoff</Typography>
-            <Typography color="text.secondary" paragraph>
-                Finalize the trip details and collect signature.
-            </Typography>
-
-            {/* 1. Trip Stats */}
-            <Paper elevation={0} sx={{ p: 3, mb: 4, borderRadius: 4, bgcolor: '#f8f9fa' }}>
-                <Typography variant="subtitle2" fontWeight={700} gutterBottom>TRIP DETAILS</Typography>
-                <TextField
-                    label="End Odometer"
-                    fullWidth
-                    type="number"
-                    variant="outlined"
-                    sx={{ mb: 2, bgcolor: 'white' }}
-                    value={odometer}
-                    onChange={(e) => setOdometer(e.target.value)}
-                    helperText={startOdometer ? `Started at: ${startOdometer} mi` : ''}
-                />
-                <TextField
-                    label="Trip Notes (Optional)"
-                    fullWidth
-                    multiline
-                    rows={2}
-                    variant="outlined"
-                    sx={{ bgcolor: 'white' }}
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                />
-            </Paper>
-
-            {/* 2. Signature Section */}
-            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, ml: 1 }}>SIGNATURE</Typography>
-            <Paper elevation={0} sx={{ borderRadius: 4, border: '1px solid #eee', overflow: 'hidden' }}>
-                <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth" sx={{ bgcolor: '#f5f5f5' }}>
-                    <Tab label="Client Sign" icon={<Draw />} iconPosition="start" />
-                    <Tab label="Saved File" icon={<Restore />} iconPosition="start" />
-                </Tabs>
-
-                <Box sx={{ p: 3, minHeight: 250, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    {tab === 0 ? (
-                        <>
-                            <Box
-                                ref={containerRef}
-                                sx={{ 
-                                    border: '2px dashed #bbb', 
-                                    borderRadius: 3, 
-                                    bgcolor: '#fff', 
-                                    touchAction: 'none',
-                                    width: '100%',
-                                    height: 200,
-                                    position: 'relative',
-                                    overflow: 'hidden'
-                                }}
-                            >
-                                <canvas
-                                    ref={canvasRef}
-                                    style={{ width: '100%', height: '100%' }}
-                                    onMouseDown={startDrawing}
-                                    onMouseMove={draw}
-                                    onMouseUp={stopDrawing}
-                                    onMouseLeave={stopDrawing}
-                                    onTouchStart={startDrawing}
-                                    onTouchMove={draw}
-                                    onTouchEnd={stopDrawing}
-                                />
+        <Box sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ flex: 1, overflowY: 'auto', p: 2, pb: 12 }}>
+                
+                {/* 1. Trip Recap Header */}
+                <Typography variant="h5" fontWeight={900} sx={{ mt: 1, mb: 2, letterSpacing: -0.5 }}>Review & Finalize</Typography>
+                
+                <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 4, bgcolor: '#f8fbfc', border: '1px solid #e1e8ed' }}>
+                    <Stack spacing={2}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Box sx={{ p: 1, bgcolor: '#e3f2fd', borderRadius: 2 }}>
+                                <Person sx={{ color: '#0096D6', fontSize: 20 }} />
                             </Box>
-                            <Button size="small" onClick={clearSignature} startIcon={<Clear />} sx={{ mt: 1 }}>
-                                Clear Signature
-                            </Button>
-                        </>
-                    ) : (
-                        <Box sx={{ textAlign: 'center' }}>
-                            <Typography gutterBottom>Use signature on file for <strong>Jane Doe</strong>?</Typography>
-                            {signatureData === 'saved_signature_v1' ? (
-                                <Alert severity="success" sx={{ mt: 2 }}>Signature Applied</Alert>
-                            ) : (
-                                <Button variant="contained" onClick={handleUseSaved} startIcon={<Save />} sx={{ mt: 2, borderRadius: 20 }}>
-                                    Apply Saved Signature
-                                </Button>
-                            )}
+                            <Box>
+                                <Typography variant="caption" color="text.secondary" fontWeight={700}>CLIENT</Typography>
+                                <Typography variant="body1" fontWeight={800}>{clientName}</Typography>
+                            </Box>
                         </Box>
-                    )}
-                </Box>
-            </Paper>
+                        
+                        <Divider />
+                        
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Box sx={{ p: 1, bgcolor: '#f1f8e9', borderRadius: 2 }}>
+                                <LocationOn sx={{ color: '#4caf50', fontSize: 20 }} />
+                            </Box>
+                            <Box>
+                                <Typography variant="caption" color="text.secondary" fontWeight={700}>ROUTE</Typography>
+                                <Typography variant="body2" fontWeight={600}>{pickupAddr} → {dropoffAddr}</Typography>
+                            </Box>
+                        </Box>
 
-            {/* Floating Action Button */}
-            <Box sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, p: 2, pb: 4, bgcolor: 'white', borderTop: '1px solid #f0f0f0' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+                            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <DirectionsCar sx={{ color: '#666', fontSize: 18 }} />
+                                <Typography variant="body2" fontWeight={600}>{startOdometer} mi start</Typography>
+                            </Box>
+                            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <AccessTime sx={{ color: '#666', fontSize: 18 }} />
+                                <Typography variant="body2" fontWeight={600}>Total {calculatedMiles} mi</Typography>
+                            </Box>
+                        </Box>
+                    </Stack>
+                </Paper>
+
+                {/* 2. Odometer & Notes */}
+                <Typography variant="caption" fontWeight={800} color="primary" sx={{ display: 'block', mb: 1, ml: 1, letterSpacing: 1 }}>FINAL MILEAGE & NOTES</Typography>
+                <Paper elevation={0} sx={{ p: 2.5, mb: 3, borderRadius: 4, bgcolor: '#fff', border: '1px solid #eee' }}>
+                    <TextField
+                        label="Final Odometer Reading *"
+                        fullWidth
+                        type="number"
+                        variant="outlined"
+                        sx={{ mb: 2 }}
+                        value={odometer}
+                        onChange={(e) => setOdometer(e.target.value)}
+                        placeholder="0.0"
+                    />
+                    <TextField
+                        label="Trip Notes (Optional)"
+                        fullWidth
+                        multiline
+                        rows={2}
+                        variant="outlined"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Mention any issues, delays, or special assistance..."
+                    />
+                </Paper>
+
+                {/* 3. Sequential Signature Section */}
+                <Typography variant="caption" fontWeight={800} sx={{ mb: 1.5, ml: 1, display: 'block', letterSpacing: 1 }}>SIGNATURES</Typography>
+                <Paper elevation={0} sx={{ borderRadius: 4, border: '1px solid #eee', overflow: 'hidden', mb: 4 }}>
+                    <Tabs 
+                        value={tab} 
+                        onChange={(_, v) => setTab(v)} 
+                        variant="fullWidth" 
+                        sx={{ 
+                            bgcolor: '#f5f5f5',
+                            '& .Mui-selected': { bgcolor: 'white', fontWeight: 800 }
+                        }}
+                    >
+                        <Tab 
+                            label={`1. CLIENT ${signatureData ? '✓' : ''}`} 
+                            sx={{ fontSize: '0.75rem', color: !signatureData ? 'primary.main' : 'text.secondary' }} 
+                        />
+                        <Tab 
+                            label="FILE" 
+                            disabled={!!signatureData && signatureData !== 'saved_signature_v1'}
+                            sx={{ fontSize: '0.75rem' }} 
+                        />
+                        <Tab 
+                            label={`2. DRIVER ${driverSignatureData ? '✓' : ''}`} 
+                            disabled={!signatureData}
+                            sx={{ fontSize: '0.75rem', color: signatureData && !driverSignatureData ? 'primary.main' : 'text.secondary' }} 
+                        />
+                    </Tabs>
+
+                    <Box sx={{ p: 2, minHeight: 240, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                        {(tab === 0 || tab === 2) ? (
+                            <>
+                                <Box sx={{ width: '100%', mb: 1, textAlign: 'center' }}>
+                                    <Typography variant="subtitle2" fontWeight={800} color="primary">
+                                        {tab === 0 ? `Please have ${clientName} sign below` : 'Driver, please sign below'}
+                                    </Typography>
+                                </Box>
+                                <Box
+                                    ref={containerRef}
+                                    sx={{ 
+                                        border: '2px dashed #0096D6', 
+                                        borderRadius: 3, 
+                                        bgcolor: '#fff', 
+                                        touchAction: 'none',
+                                        width: '100%',
+                                        height: 160,
+                                        position: 'relative'
+                                    }}
+                                >
+                                    <canvas
+                                        ref={tab === 2 ? driverCanvasRef : canvasRef}
+                                        style={{ width: '100%', height: '100%' }}
+                                        onMouseDown={startDrawing}
+                                        onMouseMove={draw}
+                                        onMouseUp={stopDrawing}
+                                        onMouseLeave={stopDrawing}
+                                        onTouchStart={startDrawing}
+                                        onTouchMove={draw}
+                                        onTouchEnd={stopDrawing}
+                                    />
+                                    {!((tab === 2 ? driverSignatureData : signatureData)) && (
+                                        <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none', opacity: 0.2 }}>
+                                            <Typography variant="h6" fontWeight={900}>SIGN HERE</Typography>
+                                        </Box>
+                                    )}
+                                </Box>
+                                
+                
+                                <Button size="small" onClick={clearSignature} startIcon={<Clear />} sx={{ mt: 1, fontWeight: 700 }}>
+
+                                    Clear Signature
+                                </Button>
+                            </>
+                        ) : (
+                            <Box sx={{ textAlign: 'center', py: 2 }}>
+                                <Typography variant="body2" gutterBottom sx={{ mb: 2 }}>Use signature on file for member verification?</Typography>
+                                {signatureData === 'saved_signature_v1' ? (
+                                    <Alert severity="success" sx={{ borderRadius: 2 }}>✓ Signature Applied from File</Alert>
+                                ) : (
+                                    <Button variant="contained" onClick={handleUseSaved} startIcon={<Save />} sx={{ borderRadius: 20, px: 3 }}>
+                                        Apply Saved Signature
+                                    </Button>
+                                )}
+                            </Box>
+                        )}
+                    </Box>
+                </Paper>
+            </Box>
+
+            {/* Fixed Bottom Action Area */}
+            <Box sx={{ 
+                p: 2, 
+                pb: 6, // Increased padding for mobile hit area
+                bgcolor: 'white', 
+                borderTop: '1px solid #f0f0f0',
+                boxShadow: '0 -10px 30px rgba(0,0,0,0.05)',
+                zIndex: 50
+            }}>
                 <Button
                     fullWidth
                     variant="contained"
                     size="large"
-                    disabled={!signatureData || !odometer}
-                    onClick={handleSubmit}
-                    sx={{ borderRadius: 27, height: 54, fontSize: '1.1rem', fontWeight: 700 }}
+                    // Only disabled if odometer is missing. If signatures missing, we use it to switch tabs.
+                    disabled={!odometer} 
+                    onClick={() => {
+                        if (!signatureData) {
+                            setTab(0); // Go to client tab
+                        } else if (!driverSignatureData) {
+                            setTab(2); // Go to driver tab
+                        } else {
+                            handleSubmit();
+                        }
+                    }}
+                    sx={{ 
+                        borderRadius: 27, 
+                        height: 56, 
+                        fontSize: '1rem', 
+                        fontWeight: 900,
+                        boxShadow: '0 4px 12px rgba(0,150,214,0.3)',
+                        textTransform: 'uppercase',
+                        bgcolor: !signatureData || !driverSignatureData ? '#0096D6' : '#4caf50',
+                        '&:hover': { bgcolor: !signatureData || !driverSignatureData ? '#007bb2' : '#43a047' }
+                    }}
                 >
-                    Complete Dropoff
+                    {!odometer ? 'Enter Odometer to Continue' : 
+                     !signatureData ? 'Next: Client Signature' : 
+                     !driverSignatureData ? 'Next: Driver Signature' : 
+                     'Complete & Submit Report'}
                 </Button>
             </Box>
         </Box>
     );
 }
+

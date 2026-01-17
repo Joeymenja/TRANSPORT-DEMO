@@ -86,8 +86,8 @@ export default function PolicyReviewStep({ onNext: _onNext, onBack }: PolicyRevi
                 />
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
-                <Button variant="outlined" onClick={onBack} disabled={loading}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mt: 4 }}>
+                <Button variant="outlined" onClick={onBack} disabled={loading} sx={{ width: { xs: '100%', sm: 'auto' } }}>
                     Back
                 </Button>
                 <Button
@@ -97,6 +97,7 @@ export default function PolicyReviewStep({ onNext: _onNext, onBack }: PolicyRevi
                     onClick={handleSubmit}
                     disabled={!agreedToTerms || !agreedToSafety || loading}
                     color="success"
+                    sx={{ width: { xs: '100%', sm: 'auto' }, flexGrow: 1 }}
                 >
                     {loading ? 'Submitting Application...' : 'Submit Application'}
                 </Button>

@@ -143,7 +143,7 @@ export const DriverDetailsPage = () => {
             <TabPanel value={tabValue} index={0}>
                 <Paper sx={{ p: 3, borderRadius: 2 }}>
                     <Typography variant="h6" gutterBottom>Driver Overview</Typography>
-                    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2 }}>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2 }}>
                         <Box>
                             <Typography variant="subtitle2" color="text.secondary">Phone</Typography>
                             <Typography>{driver.user?.phoneNumber || 'N/A'}</Typography>
@@ -193,7 +193,7 @@ export const DriverDetailsPage = () => {
                                         </TableCell>
                                         <TableCell>{new Date(doc.createdAt).toLocaleDateString()}</TableCell>
                                         <TableCell>
-                                            <Box display="flex" gap={1}>
+                                            <Box display="flex" gap={1} sx={{ flexDirection: { xs: 'column', sm: 'row' } }}>
                                                 <Button size="small" startIcon={<OpenInNew />} href={doc.fileUrl} target="_blank">
                                                     View
                                                 </Button>

@@ -1,33 +1,68 @@
-import { Box, Button, Container, Paper, Typography, Chip, Card, CardContent, Divider, Avatar, IconButton } from '@mui/material';
-import { Directions, AccessTime, Phone, PlayArrow, PlaceOutlined, PersonOutline, LocalTaxiOutlined } from '@mui/icons-material';
+import { Box, Button, Container, Paper, Typography, Chip, Card, CardContent, Divider, Avatar, IconButton, useMediaQuery, useTheme } from '@mui/material';
+import { Directions, AccessTime, Phone, PlayArrow, PlaceOutlined, PersonOutline, LocalTaxiOutlined, Edit, Description as ReportIcon, Download, Visibility } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { tripApi } from '../../api/trips';
 import { format } from 'date-fns';
+import { useAuthStore } from '../../store/auth';
 import MobileHeader from '../../components/layout/MobileHeader';
 
 export default function TripDetailScreen() {
     const { tripId } = useParams();
     const navigate = useNavigate();
+    const user = useAuthStore(state => state.user);
 
-    const { data: trip, isLoading } = useQuery({
+    const { data: trip, isLoading, isError } = useQuery({
         queryKey: ['trip', tripId],
         queryFn: () => tripApi.getTripById(tripId!),
         enabled: !!tripId,
     });
 
-    if (isLoading || !trip) return <Typography sx={{ p: 4 }}>Loading...</Typography>;
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+    if (isLoading) return <Typography sx={{ p: 4 }}>Loading...</Typography>;
+
+    if (isError || !trip) {
+        return (
+            <Box sx={{ bgcolor: '#fff', minHeight: '100vh', pb: 12 }}>
+                <MobileHeader title="Trip Details" backRoute="/driver" />
+                <Box sx={{ p: 4, textAlign: 'center' }}>
+                    <Typography color="error" gutterBottom variant="h6">Trip Not Found</Typography>
+                    <Typography color="text.secondary" paragraph>
+                        We couldn't load the details for this trip.
+                    </Typography>
+                    <Button variant="outlined" onClick={() => navigate('/driver')}>
+                        Back to Dashboard
+                    </Button>
+                </Box>
+            </Box>
+        );
+    }
 
     // Check if trip can be started (e.g., within window)
     const canStart = trip.status === 'SCHEDULED' || trip.status === 'IN_PROGRESS';
+    const safeMembers = Array.isArray(trip.members) ? trip.members : [];
+    const safeStops = Array.isArray(trip.stops) ? trip.stops : [];
+
+
 
     return (
         <Box sx={{ bgcolor: '#fff', minHeight: '100vh', pb: 12 }}>
-            <MobileHeader title={`Trip #${trip.id.slice(-4)}`} />
+            <MobileHeader 
+                title={`Trip #${(trip.id || '').slice(-4)}`} 
+                backRoute="/driver"
+                action={
+                    <IconButton onClick={() => navigate(`/driver/schedule-new?edit=${trip.id}&date=${format(new Date(trip.tripDate), 'yyyy-MM-dd')}`)}>
+                        <Edit />
+                    </IconButton>
+                }
+            />
 
             <Container maxWidth="sm" sx={{ pt: 2 }}>
 
                 {/* 1. Map Preview Card */}
+                {/* ... existing map card ... */}  
                 <Card elevation={0} sx={{ mb: 3, borderRadius: 4, overflow: 'hidden', border: '1px solid #f0f0f0', position: 'relative' }}>
                     <Box sx={{
                         height: 200,
@@ -66,7 +101,7 @@ export default function TripDetailScreen() {
 
                 {/* 2. Passenger Info */}
                 <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Passenger</Typography>
-                {trip.members.map((tm: any) => (
+                {safeMembers.map((tm: any) => (
                     <Card key={tm.id} elevation={0} sx={{ mb: 3, borderRadius: 3, border: '1px solid #eee' }}>
                         <CardContent sx={{ p: 2 }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -93,13 +128,13 @@ export default function TripDetailScreen() {
                 <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Route</Typography>
                 <Card elevation={0} sx={{ mb: 4, borderRadius: 3, border: '1px solid #eee' }}>
                     <CardContent sx={{ p: 0 }}>
-                        {trip.stops.map((stop: any, idx: number) => (
+                        {safeStops.map((stop: any, idx: number) => (
                             <Box key={stop.id}>
                                 <Box sx={{ p: 2.5, display: 'flex', gap: 2 }}>
                                     {/* Timeline Line */}
                                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pt: 0.5 }}>
                                         <PlaceOutlined sx={{ color: stop.stopType === 'PICKUP' ? 'primary.main' : 'error.main', fontSize: 20 }} />
-                                        {idx < trip.stops.length - 1 && <Box sx={{ width: 1, flex: 1, bgcolor: '#eee', my: 0.5 }} />}
+                                        {idx < safeStops.length - 1 && <Box sx={{ width: 1, flex: 1, bgcolor: '#eee', my: 0.5 }} />}
                                     </Box>
 
                                     <Box sx={{ flex: 1 }}>
@@ -108,14 +143,14 @@ export default function TripDetailScreen() {
                                                 {stop.stopType === 'PICKUP' ? 'Pick Up' : 'Drop Off'}
                                             </Typography>
                                             <Typography variant="body2" fontWeight={600} color="text.secondary">
-                                                {format(new Date(stop.scheduledTime), 'h:mm a')}
+                                                {stop.scheduledTime ? format(new Date(stop.scheduledTime), 'h:mm a') : 'TBD'}
                                             </Typography>
                                         </Box>
                                         <Typography variant="body1" sx={{ color: '#333' }}>
-                                            {stop.address.split(',')[0]}
+                                            {stop.address?.split(',')[0]}
                                         </Typography>
                                         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                                            {stop.address.split(',').slice(1).join(',')}
+                                            {stop.address?.split(',').slice(1).join(',')}
                                         </Typography>
 
                                         <Button
@@ -132,33 +167,74 @@ export default function TripDetailScreen() {
                         ))}
                     </CardContent>
                 </Card>
+
+                {/* 4. Trip Report Section */}
+                {(trip.status === 'COMPLETED' || trip.status === 'FINALIZED') && (
+                    <Box sx={{ mt: 2, mb: 4 }}>
+                        <Typography variant="h6" fontWeight={700} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <ReportIcon color="success" /> Trip Report
+                        </Typography>
+                        <Paper variant="outlined" sx={{ p: 2, borderRadius: 4, bgcolor: '#f0fdf4', borderColor: '#bcf0da' }}>
+                            <Typography variant="body2" sx={{ mb: 2, color: '#065f46' }}>
+                                The trip report has been generated and is ready for review.
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 2 }}>
+                                <Button 
+                                    variant="contained" 
+                                    color="success" 
+                                    fullWidth
+                                    startIcon={<Download />}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        tripApi.downloadReport(trip.id);
+                                    }}
+                                    sx={{ borderRadius: 3, fontWeight: 700, textTransform: 'none' }}
+                                >
+                                    Download PDF
+                                </Button>
+                                <Button 
+                                    variant="outlined" 
+                                    color="success" 
+                                    fullWidth
+                                    startIcon={<Visibility />}
+                                    onClick={() => navigate(`/driver/report/${trip.id}`)}
+                                    sx={{ borderRadius: 3, fontWeight: 700, bgcolor: 'white', textTransform: 'none' }}
+                                >
+                                    View Report
+                                </Button>
+                            </Box>
+                        </Paper>
+                    </Box>
+                )}
             </Container>
 
-            {/* Floating Action Bar */}
-            <Box sx={{
-                position: 'fixed', bottom: 0, left: 0, right: 0,
-                p: 2, pb: 4, bgcolor: 'white',
-                borderTop: '1px solid #f0f0f0'
-            }}>
-                <Button
-                    variant="contained"
-                    fullWidth
-                    size="large"
-                    disabled={!canStart}
-                    startIcon={<PlayArrow />}
-                    onClick={() => navigate(`/driver/trips/${tripId}/execute`)}
-                    sx={{
-                        height: 54,
-                        fontSize: '1.1rem',
-                        fontWeight: 600,
-                        borderRadius: 27, // Pill shape
-                        boxShadow: 'none',
-                        bgcolor: 'primary.main'
-                    }}
-                >
-                    {trip.status === 'IN_PROGRESS' ? 'Resume Trip' : 'Start Trip'}
-                </Button>
-            </Box>
+            {/* Floating Action Bar - Driver Only (Mobile) */}
+            {isMobile && user?.role === 'DRIVER' && !['COMPLETED', 'FINALIZED', 'CANCELLED'].includes(trip.status) && (
+                <Box sx={{
+                    position: 'fixed', bottom: 0, left: 0, right: 0,
+                    p: 2, pb: 4, bgcolor: 'white',
+                    borderTop: '1px solid #f0f0f0'
+                }}>
+                    <Button
+                        variant="contained"
+                        fullWidth
+                        size="large"
+                        disabled={!canStart}
+                        startIcon={<PlayArrow />}
+                        onClick={() => navigate(`/driver/trips/${tripId}/execute`)}
+                        sx={{
+                            height: 54,
+                            fontSize: '1.1rem',
+                            fontWeight: 600,
+                            borderRadius: 27, // Pill shape
+                            boxShadow: 'none',
+                            bgcolor: 'primary.main'
+                        }}
+                    >
+                        {trip.status === 'IN_PROGRESS' ? 'Resume Trip' : 'Start Trip'}
+                    </Button>
+                </Box>
+            )}
         </Box>
     );
 }

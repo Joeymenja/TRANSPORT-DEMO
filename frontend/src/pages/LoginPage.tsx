@@ -81,7 +81,8 @@ export default function LoginPage() {
                 navigate('/dashboard');
             }
         } catch (err: any) {
-            setError(err.message || 'Invalid email or password');
+            setError(err.response?.data?.message || err.message || 'Login failed. Please check console.');
+            console.error('Login Error Details:', err);
         } finally {
             setLoading(false);
         }

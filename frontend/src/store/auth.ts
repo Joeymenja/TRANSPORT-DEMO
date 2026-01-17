@@ -13,6 +13,23 @@ export interface User {
     onboardingStep?: number;
     signatureUrl?: string; // Driver signature
     isActive: boolean;
+    // Personal Info
+    phone?: string;
+    dob?: string;
+    addressStreet?: string;
+    addressUnit?: string;
+    addressCity?: string;
+    addressState?: string;
+    addressZip?: string;
+    // License Info
+    licenseNumber?: string;
+    licenseState?: string;
+    licenseExpiry?: string;
+    // Emergency Contact
+    emergencyContactName?: string;
+    emergencyContactRelationship?: string;
+    emergencyContactPhone?: string;
+    profileImage?: string;
 }
 
 interface AuthState {

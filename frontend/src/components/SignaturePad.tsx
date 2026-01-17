@@ -24,12 +24,17 @@ export default function SignaturePad({ open, onClose, onSave, title = 'Sign Belo
             const canvas = canvasRef.current;
             const ctx = canvas.getContext('2d');
             if (ctx) {
+                // Adjust for high DPI if needed, but keeping simple for now
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+                
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.lineWidth = 2;
+                ctx.lineWidth = 3;
                 ctx.strokeStyle = '#000';
                 ctx.lineCap = 'round';
             }
             setHasSignature(false);
+            
             // Reset proxy state when opening
             setIsProxy(false);
             setProxyName('');
@@ -38,31 +43,52 @@ export default function SignaturePad({ open, onClose, onSave, title = 'Sign Belo
         }
     }, [open]);
 
-    const startDrawing = (e: any) => {
+    const getCoordinates = (event: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent) => {
+        const canvas = canvasRef.current;
+        if (!canvas) return { x: 0, y: 0 };
+        
+        const rect = canvas.getBoundingClientRect();
+        let clientX, clientY;
+
+        if ('touches' in event && event.touches.length > 0) {
+            clientX = event.touches[0].clientX;
+            clientY = event.touches[0].clientY;
+        } else if ('clientX' in event) {
+            clientX = (event as React.MouseEvent).clientX;
+            clientY = (event as React.MouseEvent).clientY;
+        } else {
+             return { x: 0, y: 0 };
+        }
+
+        return {
+            x: clientX - rect.left,
+            y: clientY - rect.top
+        };
+    };
+
+    const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
+        
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        const rect = canvas.getBoundingClientRect();
-        const x = (e.clientX ?? e.touches?.[0]?.clientX) - rect.left;
-        const y = (e.clientY ?? e.touches?.[0]?.clientY) - rect.top;
+        const { x, y } = getCoordinates(e);
 
         ctx.beginPath();
         ctx.moveTo(x, y);
         setIsDrawing(true);
     };
 
-    const draw = (e: any) => {
+    const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
         if (!isDrawing) return;
         const canvas = canvasRef.current;
         if (!canvas) return;
+        
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        const rect = canvas.getBoundingClientRect();
-        const x = (e.clientX ?? e.touches?.[0]?.clientX) - rect.left;
-        const y = (e.clientY ?? e.touches?.[0]?.clientY) - rect.top;
+        const { x, y } = getCoordinates(e);
 
         ctx.lineTo(x, y);
         ctx.stroke();
@@ -85,7 +111,7 @@ export default function SignaturePad({ open, onClose, onSave, title = 'Sign Belo
     };
 
     const handleSave = () => {
-        if (canvasRef.current) {
+        if (canvasRef.current && hasSignature) {
             onSave({
                 signatureBase64: canvasRef.current.toDataURL(),
                 isProxy,
@@ -98,6 +124,11 @@ export default function SignaturePad({ open, onClose, onSave, title = 'Sign Belo
     };
 
     const isSaveDisabled = !hasSignature || (isProxy && (!proxyName || !proxyRelationship || !proxyReason));
+
+    // Prevent scrolling when touching canvas
+    const preventScroll = (e: React.TouchEvent) => {
+        if (isDrawing) e.preventDefault();
+    };
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -155,16 +186,15 @@ export default function SignaturePad({ open, onClose, onSave, title = 'Sign Belo
                         borderRadius: 1,
                         bgcolor: '#f5f5f5',
                         touchAction: 'none',
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        mb: 1
+                        position: 'relative',
+                        height: 200,
+                        width: '100%',
+                        overflow: 'hidden'
                     }}
                 >
                     <canvas
                         ref={canvasRef}
-                        width={500}
-                        height={200}
+                        style={{ width: '100%', height: '100%', touchAction: 'none' }}
                         onMouseDown={startDrawing}
                         onMouseMove={draw}
                         onMouseUp={stopDrawing}
@@ -172,7 +202,6 @@ export default function SignaturePad({ open, onClose, onSave, title = 'Sign Belo
                         onTouchStart={startDrawing}
                         onTouchMove={draw}
                         onTouchEnd={stopDrawing}
-                        style={{ maxWidth: '100%', height: 'auto', cursor: 'crosshair' }}
                     />
                 </Box>
                 <Typography variant="caption" color="text.secondary">

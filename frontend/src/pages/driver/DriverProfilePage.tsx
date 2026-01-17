@@ -5,12 +5,14 @@ import MobileHeader from '../../components/layout/MobileHeader';
 import { useState } from 'react';
 import SignaturePad from '../../components/SignaturePad';
 import { useMutation } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 
 export default function DriverProfilePage() {
     const user = useAuthStore((state) => state.user);
     const setUser = useAuthStore((state) => state.setUser); // To update local store after save
     const [signOpen, setSignOpen] = useState(false);
+    const navigate = useNavigate();
 
     const signatureMutation = useMutation({
         mutationFn: async (signatureBase64: string) => {
@@ -52,13 +54,13 @@ export default function DriverProfilePage() {
                 </Box>
 
                 <Grid container spacing={2} sx={{ mb: 4 }}>
-                    <Grid item xs={6}>
+                    <Grid size={{ xs: 6 }}>
                         <Paper sx={{ p: 2, textAlign: 'center', borderRadius: 3, bgcolor: '#f9f9f9' }} elevation={0}>
                             <Typography variant="h4" fontWeight={700} color="primary">45</Typography>
                             <Typography variant="caption" color="text.secondary">HOURS THIS WEEK</Typography>
                         </Paper>
                     </Grid>
-                    <Grid item xs={6}>
+                    <Grid size={{ xs: 6 }}>
                         <Paper sx={{ p: 2, textAlign: 'center', borderRadius: 3, bgcolor: '#f9f9f9' }} elevation={0}>
                             <Typography variant="h4" fontWeight={700} color="primary">28</Typography>
                             <Typography variant="caption" color="text.secondary">TRIPS COMPLETED</Typography>
@@ -105,7 +107,7 @@ export default function DriverProfilePage() {
                             <Typography variant="caption" color="success.main">All Up to Date</Typography>
                         </Box>
                         <Box sx={{ ml: 'auto' }}>
-                            <Button size="small">View</Button>
+                            <Button size="small" onClick={() => navigate('/driver/compliance')}>View</Button>
                         </Box>
                     </Box>
                     <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
@@ -115,7 +117,7 @@ export default function DriverProfilePage() {
                             <Typography variant="caption" color="text.secondary">Toyota Sienna (Blue)</Typography>
                         </Box>
                         <Box sx={{ ml: 'auto' }}>
-                            <Button size="small">Edit</Button>
+                            <Button size="small" onClick={() => alert('Vehicle editing coming soon')}>Edit</Button>
                         </Box>
                     </Box>
                 </Paper>

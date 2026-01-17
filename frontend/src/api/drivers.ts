@@ -37,6 +37,8 @@ export interface Driver {
 }
 
 export interface CreateDriverDto {
+    userId?: string; // For linking to existing user
+    organizationId?: string;
     firstName: string;
     lastName: string;
     email: string;
@@ -48,6 +50,7 @@ export interface CreateDriverDto {
     emergencyContactName?: string;
     emergencyContactPhone?: string;
     assignedVehicleId?: string;
+    status?: string;
 }
 
 export interface UpdateDriverDto {

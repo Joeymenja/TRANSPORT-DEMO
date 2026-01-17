@@ -1,4 +1,4 @@
-import { Box, Typography, List, ListItem, ListItemIcon, ListItemText, Switch, Divider } from '@mui/material';
+import { Box, Typography, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Switch, Divider } from '@mui/material';
 import { Notifications, DarkMode, Language, Security, ChevronRight } from '@mui/icons-material';
 import MobileHeader from '../../components/layout/MobileHeader';
 import DriverSignatureSettings from './settings/DriverSignatureSettings';
@@ -22,15 +22,19 @@ export default function DriverSettingsPage() {
                 </ListItem>
                 <Divider variant="inset" component="li" />
 
-                <ListItem button>
-                    <ListItemIcon><Language /></ListItemIcon>
-                    <ListItemText primary="Language" secondary="English (US)" />
-                    <ChevronRight color="action" />
+                <ListItem disablePadding>
+                    <ListItemButton>
+                        <ListItemIcon><Language /></ListItemIcon>
+                        <ListItemText primary="Language" secondary="English (US)" />
+                        <ChevronRight color="action" />
+                    </ListItemButton>
                 </ListItem>
-                <ListItem button>
-                    <ListItemIcon><Security /></ListItemIcon>
-                    <ListItemText primary="Privacy & Security" />
-                    <ChevronRight color="action" />
+                <ListItem disablePadding>
+                    <ListItemButton>
+                        <ListItemIcon><Security /></ListItemIcon>
+                        <ListItemText primary="Privacy & Security" />
+                        <ChevronRight color="action" />
+                    </ListItemButton>
                 </ListItem>
             </List>
 

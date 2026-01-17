@@ -14,9 +14,10 @@ export default function DriverCreateTripPage() {
     const queryClient = useQueryClient();
     const user = useAuthStore((state) => state.user);
     const [activeStep, setActiveStep] = useState(0);
-    const [openMemberDialog, setOpenMemberDialog] = useState(false);
+    const [isPastTrip, setIsPastTrip] = useState(false);
     
     // Member form state
+    const [openMemberDialog, setOpenMemberDialog] = useState(false);
     const [newMember, setNewMember] = useState({
         firstName: '',
         lastName: '',
@@ -27,7 +28,7 @@ export default function DriverCreateTripPage() {
 
     const [formData, setFormData] = useState({
         memberId: '',
-        date: new Date().toLocaleDateString('en-CA'), // Use local date YYYY-MM-DD
+        date: format(new Date(), 'yyyy-MM-dd'),
         time: '09:00',
         pickupAddress: '',
         dropoffAddress: '',
@@ -35,7 +36,7 @@ export default function DriverCreateTripPage() {
         reasonForVisit: '',
         escortName: '',
         escortRelationship: '',
-        startNow: true, // Default to true per user feedback
+        startNow: true, 
     });
 
     const steps = ['Trip Details', 'Route & Schedule'];
@@ -83,14 +84,19 @@ export default function DriverCreateTripPage() {
                     { stopType: 'PICKUP', stopOrder: 1, address: formData.pickupAddress, scheduledTime: tripDate },
                     { stopType: 'DROPOFF', stopOrder: 2, address: formData.dropoffAddress, scheduledTime: new Date(tripDate.getTime() + 3600000) }
                 ],
-                status: formData.startNow ? 'IN_PROGRESS' : 'PENDING_APPROVAL',
+                // If past trip, mark as COMPLETED so we can report immediately. 
+                // Otherwise respect "Start Now" or Pending.
+                status: isPastTrip ? 'COMPLETED' : (formData.startNow ? 'IN_PROGRESS' : 'PENDING_APPROVAL'),
             };
 
             return tripApi.createTrip(tripData);
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['driver-trips'] });
-            if (formData.startNow && data.id) {
+            if (isPastTrip && data.id) {
+                // Go directly to report
+                navigate(`/driver/trips/${data.id}/report`);
+            } else if (formData.startNow && data.id) {
                 navigate(`/driver/trips/${data.id}/execute`);
             } else {
                 navigate('/driver/trips');
@@ -126,10 +132,27 @@ export default function DriverCreateTripPage() {
 
     return (
         <Container maxWidth="md" sx={{ py: 2 }}>
-            <Button variant="text" onClick={() => navigate('/driver')}>
-                Cancel
-            </Button>
-            <Typography variant="h5" sx={{ mb: 3, mt: 1 }}>New Trip Entry</Typography>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                 <Button variant="text" onClick={() => navigate('/driver')}>
+                    Cancel
+                </Button>
+                <FormControlLabel
+                    control={
+                        <Switch
+                            checked={isPastTrip}
+                            onChange={(e) => {
+                                setIsPastTrip(e.target.checked);
+                                if (e.target.checked) setFormData(prev => ({ ...prev, startNow: false }));
+                            }}
+                        />
+                    }
+                    label="Log Past Trip"
+                />
+            </Box>
+           
+            <Typography variant="h5" sx={{ mb: 3, mt: 1 }}>
+                {isPastTrip ? 'Log Past Trip' : 'New Trip Entry'}
+            </Typography>
 
             <Stepper activeStep={activeStep} sx={{ mb: 4 }} alternativeLabel>
                 {steps.map((label) => (
@@ -142,12 +165,12 @@ export default function DriverCreateTripPage() {
             <Card sx={{ p: 3 }}>
                 {activeStep === 0 && (
                     <Grid container spacing={3}>
-                         <Grid item xs={12}>
+                         <Grid size={12}>
                             <Alert severity="info" sx={{mb: 1}}>
                                 This trip will be assigned to you ({user?.firstName}).
                             </Alert>
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 select
                                 label="Select Member"
@@ -165,7 +188,7 @@ export default function DriverCreateTripPage() {
                                 ))}
                             </TextField>
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                              <TextField
                                 select
                                 label="Reason for Visit"
@@ -180,7 +203,7 @@ export default function DriverCreateTripPage() {
                                 ))}
                             </TextField>
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                              <TextField
                                 select
                                 label="Trip Type"
@@ -197,7 +220,7 @@ export default function DriverCreateTripPage() {
 
                 {activeStep === 1 && (
                     <Grid container spacing={3}>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <MobileDatePicker
                                 label="Date"
                                 value={new Date(formData.date + 'T00:00:00')}
@@ -209,10 +232,10 @@ export default function DriverCreateTripPage() {
                                 slotProps={{ textField: { fullWidth: true } }}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <MobileTimePicker
                                 label="Time"
-                                value={new Date(`2000-01-01T${formData.time}`)}
+                                value={new Date(`2000-01-01T${formData.time}:00`)}
                                 onChange={(newValue) => {
                                     if (newValue) {
                                         setFormData({ ...formData, time: format(newValue, 'HH:mm') });
@@ -221,7 +244,7 @@ export default function DriverCreateTripPage() {
                                 slotProps={{ textField: { fullWidth: true } }}
                             />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 label="Pickup Address"
                                 fullWidth
@@ -229,7 +252,7 @@ export default function DriverCreateTripPage() {
                                 onChange={(e) => setFormData({ ...formData, pickupAddress: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 label="Drop-off Address"
                                 fullWidth
@@ -237,25 +260,28 @@ export default function DriverCreateTripPage() {
                                 onChange={(e) => setFormData({ ...formData, dropoffAddress: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12}>
-                            <FormControlLabel
-                                control={
-                                    <Switch
-                                        checked={formData.startNow}
-                                        onChange={(e) => setFormData({ ...formData, startNow: e.target.checked })}
-                                        color="primary"
-                                    />
-                                }
-                                label={
-                                    <Box>
-                                        <Typography variant="body1" fontWeight={500}>Start Trip Immediately</Typography>
-                                        <Typography variant="caption" color="text.secondary">
-                                            Trip will be created and properly started immediately.
-                                        </Typography>
-                                    </Box>
-                                }
-                            />
-                        </Grid>
+                        
+                        {!isPastTrip && (
+                            <Grid size={12}>
+                                <FormControlLabel
+                                    control={
+                                        <Switch
+                                            checked={formData.startNow}
+                                            onChange={(e) => setFormData({ ...formData, startNow: e.target.checked })}
+                                            color="primary"
+                                        />
+                                    }
+                                    label={
+                                        <Box>
+                                            <Typography variant="body1" fontWeight={500}>Start Trip Immediately</Typography>
+                                            <Typography variant="caption" color="text.secondary">
+                                                Trip will be created and properly started immediately.
+                                            </Typography>
+                                        </Box>
+                                    }
+                                />
+                            </Grid>
+                        )}
                     </Grid>
                 )}
 
@@ -268,7 +294,7 @@ export default function DriverCreateTripPage() {
                         onClick={handleNext}
                         disabled={activeStep === 0 && !formData.memberId}
                     >
-                        {activeStep === steps.length - 1 ? (createMutation.isPending ? 'Starting...' : (formData.startNow ? 'Start Trip Now' : 'Schedule Trip')) : 'Next'}
+                        {activeStep === steps.length - 1 ? (createMutation.isPending ? 'Processing...' : (isPastTrip ? 'Create & File Report' : (formData.startNow ? 'Start Trip Now' : 'Schedule Trip'))) : 'Next'}
                     </Button>
                 </Box>
             </Card>
@@ -282,7 +308,7 @@ export default function DriverCreateTripPage() {
                         </Alert>
                     )}
                     <Grid container spacing={2} sx={{ mt: 1 }}>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="First Name"
                                 fullWidth
@@ -290,7 +316,7 @@ export default function DriverCreateTripPage() {
                                 onChange={(e) => setNewMember({ ...newMember, firstName: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Last Name"
                                 fullWidth
@@ -298,7 +324,7 @@ export default function DriverCreateTripPage() {
                                 onChange={(e) => setNewMember({ ...newMember, lastName: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Date of Birth"
                                 type="date"
@@ -308,7 +334,7 @@ export default function DriverCreateTripPage() {
                                 onChange={(e) => setNewMember({ ...newMember, dateOfBirth: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Member ID / Insurance ID"
                                 fullWidth

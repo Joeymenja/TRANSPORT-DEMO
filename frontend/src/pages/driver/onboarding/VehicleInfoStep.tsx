@@ -41,20 +41,35 @@ export default function VehicleInfoStep({ onNext, onBack }: VehicleInfoStepProps
                 type: formData.type as any, // Cast to match enum
             });
 
-            // 2. Assign to Driver (assuming we can get driver ID from user ID easily, 
-            // or we might need to search for the driver profile first. 
-            // For now, let's try updating the driver profile associated with this user)
-
-            // Fetch driver profile first
-            const driver = await driverApi.getByUserId(user.id);
-            if (driver) {
-                await driverApi.update(driver.id, { assignedVehicleId: vehicle.id });
+            // 2. Assign to Driver
+            try {
+                // Try to find existing driver profile
+                const driver = await driverApi.getByUserId(user.id);
+                if (driver) {
+                    await driverApi.update(driver.id, { assignedVehicleId: vehicle.id });
+                }
+            } catch (err) {
+                // Driver profile doesn't exist, create it
+                console.log('Driver profile not found, creating new one...');
+                await driverApi.create({
+                    firstName: user.firstName || 'Unknown',
+                    lastName: user.lastName || 'Driver',
+                    email: user.email || `driver-${user.id}@example.com`,
+                    phone: user.phone,
+                    licenseNumber: (user as any).licenseNumber,
+                    licenseState: (user as any).licenseState,
+                    licenseExpiryDate: (user as any).licenseExpiry,
+                    emergencyContactName: (user as any).emergencyContactName,
+                    emergencyContactPhone: (user as any).emergencyContactPhone,
+                    employmentStatus: 'CONTRACTOR' as any,
+                    assignedVehicleId: vehicle.id
+                }, (user as any).organizationId);
             }
 
             onNext();
         } catch (error) {
-            console.error('Failed to save vehicle info:', error);
-            alert('Failed to save vehicle information. Please try again.');
+            console.error('Failed to save vehicle/driver info:', error);
+            alert('Failed to save vehicle/driver information. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -72,19 +87,19 @@ export default function VehicleInfoStep({ onNext, onBack }: VehicleInfoStepProps
             </Typography>
 
             <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                     <TextField label="Make" name="make" fullWidth value={formData.make} onChange={handleChange} placeholder="e.g. Toyota" />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                     <TextField label="Model" name="model" fullWidth value={formData.model} onChange={handleChange} placeholder="e.g. Camry" />
                 </Grid>
-                <Grid item xs={6} sm={4}>
+                <Grid size={{ xs: 6, sm: 4 }}>
                     <TextField label="Year" name="year" type="number" fullWidth value={formData.year} onChange={handleChange} />
                 </Grid>
-                <Grid item xs={6} sm={4}>
+                <Grid size={{ xs: 6, sm: 4 }}>
                     <TextField label="Color" name="color" fullWidth value={formData.color} onChange={handleChange} placeholder="e.g. White" />
                 </Grid>
-                <Grid item xs={12} sm={4}>
+                <Grid size={{ xs: 12, sm: 4 }}>
                     <TextField
                         select
                         label="Type"
@@ -99,16 +114,16 @@ export default function VehicleInfoStep({ onNext, onBack }: VehicleInfoStepProps
                         <MenuItem value="TRUCK">Truck</MenuItem>
                     </TextField>
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                     <TextField label="License Plate" name="licensePlate" fullWidth value={formData.licensePlate} onChange={handleChange} />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                     <TextField label="VIN" name="vin" fullWidth value={formData.vin} onChange={handleChange} />
                 </Grid>
             </Grid>
 
-            <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
-                <Button variant="outlined" onClick={onBack} disabled={loading}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mt: 4 }}>
+                <Button variant="outlined" onClick={onBack} disabled={loading} sx={{ width: { xs: '100%', sm: 'auto' } }}>
                     Back
                 </Button>
                 <Button
@@ -117,6 +132,7 @@ export default function VehicleInfoStep({ onNext, onBack }: VehicleInfoStepProps
                     size="large"
                     onClick={handleSubmit}
                     disabled={!isValid || loading}
+                    sx={{ width: { xs: '100%', sm: 'auto' }, flexGrow: 1 }}
                 >
                     {loading ? <CircularProgress size={24} /> : 'Save & Continue'}
                 </Button>

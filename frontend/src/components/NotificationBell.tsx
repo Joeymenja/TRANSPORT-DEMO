@@ -114,14 +114,23 @@ export default function NotificationBell() {
                 color="inherit"
                 onClick={handleClick}
                 sx={{
-                    ml: 2,
                     '&:hover': {
-                        bgcolor: 'rgba(255,255,255,0.1)',
+                        bgcolor: 'rgba(0,0,0,0.04)',
                     },
                 }}
             >
-                <Badge badgeContent={unreadCount} color="error">
-                    <Notifications />
+                <Badge 
+                    badgeContent={unreadCount} 
+                    color="error"
+                    sx={{
+                        '& .MuiBadge-badge': {
+                            fontSize: '0.65rem',
+                            height: 18,
+                            minWidth: 18,
+                        }
+                    }}
+                >
+                    <Notifications sx={{ color: '#444' }} />
                 </Badge>
             </IconButton>
 

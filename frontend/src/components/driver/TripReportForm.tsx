@@ -19,10 +19,15 @@ import {
     IconButton,
     Dialog,
     Slide,
+    Autocomplete,
 } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers';
+import TimeWheelSelector from '../common/TimeWheelSelector';
 import { TransitionProps } from '@mui/material/transitions';
 import React from 'react';
+import { generateTripReportPdf } from '../../utils/pdfGenerator';
 import { Clear, CheckCircle, Description, Create, Edit, Warning } from '@mui/icons-material';
+import { format, parse } from 'date-fns';
 
 const REASONS_FOR_VISIT = [
     'Primary Care (PCP)',
@@ -74,23 +79,46 @@ interface TripReportFormProps {
         name: string;
     };
     startOdometer: number;
+    preFill?: {
+        pickupTime?: string;
+        dropoffTime?: string;
+        startOdometer?: string;
+        endOdometer?: string;
+        reasonForVisit?: string;
+        legs?: any[];
+    };
     onSubmit: (data: any) => void;
     onCancel: () => void;
+    defaultReviewMode?: boolean;
+    isSubmitting?: boolean;
+    readOnly?: boolean;
 }
 
 export default function TripReportForm({
     tripData,
     driverInfo,
     startOdometer,
+    preFill,
     onSubmit,
     onCancel,
+    defaultReviewMode = false,
+    isSubmitting = false,
+    readOnly = false,
 }: TripReportFormProps) {
     // Form state
-    const [endOdometer, setEndOdometer] = useState<string>('');
-    const [pickupTime, setPickupTime] = useState<string>('');
-    const [dropoffTime, setDropoffTime] = useState<string>('');
-    const [tripType, setTripType] = useState<'ONE_WAY' | 'ROUND_TRIP' | 'MULTIPLE_STOPS'>('ONE_WAY');
-    const [reasonForVisit, setReasonForVisit] = useState('');
+    const [legs, setLegs] = useState<any[]>(preFill?.legs || [
+        {
+            pickupAddress: tripData.pickupAddress,
+            dropoffAddress: tripData.dropoffAddress,
+            pickupTime: preFill?.pickupTime || '08:00',
+            dropoffTime: preFill?.dropoffTime || '09:00',
+            startOdometer: preFill?.startOdometer || startOdometer.toString(),
+            endOdometer: preFill?.endOdometer || '',
+            reasonForVisit: preFill?.reasonForVisit || 'Behavioral Health / Counseling',
+            tripType: 'ONE_WAY'
+        }
+    ]);
+
     const [escortName, setEscortName] = useState('');
     const [escortRelationship, setEscortRelationship] = useState('');
     const [additionalInfo, setAdditionalInfo] = useState('');
@@ -100,6 +128,7 @@ export default function TripReportForm({
     const [incidentDescription, setIncidentDescription] = useState('');
     const [multipleMembers, setMultipleMembers] = useState(false);
     const [differentLocations, setDifferentLocations] = useState(false);
+    const [reportDate, setReportDate] = useState<Date | null>(new Date());
 
     const [signatureData, setSignatureData] = useState<string | null>(null);
     const [driverSignatureData, setDriverSignatureData] = useState<string | null>(null);
@@ -114,46 +143,159 @@ export default function TripReportForm({
     // Document Viewer State
     const [viewerOpen, setViewerOpen] = useState(false);
     const [showSignaturePad, setShowSignaturePad] = useState(false);
-    const [isReviewing, setIsReviewing] = useState(false);
+    const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+    const [isReviewing, setIsReviewing] = useState(defaultReviewMode);
 
-    // ... existing hooks
+    const [showDriverSignaturePad, setShowDriverSignaturePad] = useState(false);
 
-    // Submit Handler (First Step: Review)
-    const handleReview = () => {
-        if (!endOdometer || !pickupTime || !dropoffTime) {
-            alert('Please fill in all required fields');
-            return;
-        }
-
-        if (!signatureData && !memberUnableToSign) {
-            alert('Please obtain client signature or indicate they are unable to sign');
-            return;
-        }
-
-        if (!driverSignatureData) {
-            alert('Driver signature is required');
-            return;
-        }
-
-        setIsReviewing(true);
+    // Member Signature Drawing
+    const startDrawing = (e: any) => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX || e.touches[0].clientX) - rect.left;
+        const y = (e.clientY || e.touches[0].clientY) - rect.top;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#000';
+        setIsDrawing(true);
     };
 
-    // Final Submit
-    const handleFinalSubmit = () => {
-        const totalMiles = parseFloat(endOdometer) - startOdometer;
-        // ... (rest of payload construction)
-        const reportData = {
+    const draw = (e: any) => {
+        if (!isDrawing) return;
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX || e.touches[0].clientX) - rect.left;
+        const y = (e.clientY || e.touches[0].clientY) - rect.top;
+        ctx.lineTo(x, y);
+        ctx.stroke();
+    };
+
+    const stopDrawing = () => {
+        if (!isDrawing) return;
+        setIsDrawing(false);
+        if (canvasRef.current) {
+            setSignatureData(canvasRef.current.toDataURL());
+        }
+    };
+
+    const clearSignature = () => {
+        const canvas = canvasRef.current;
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            ctx?.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        setSignatureData(null);
+    };
+
+    const usePrintedNameAsSignature = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 400;
+        canvas.height = 200;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.font = 'italic 32px "Dancing Script", "Cursive", "Apple Chancery", serif';
+        ctx.fillStyle = '#000';
+        ctx.textAlign = 'center';
+        ctx.fillText(tripData.memberName, canvas.width / 2, canvas.height / 2 + 10);
+        
+        // Add a subtle line under
+        ctx.beginPath();
+        ctx.moveTo(50, canvas.height / 2 + 25);
+        ctx.lineTo(350, canvas.height / 2 + 25);
+        ctx.strokeStyle = '#333';
+        ctx.stroke();
+
+        setSignatureData(canvas.toDataURL());
+        setShowSignaturePad(false);
+    };
+
+    // Driver Signature Drawing
+    const startDrawingDriver = (e: any) => {
+        const canvas = driverCanvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX || e.touches[0].clientX) - rect.left;
+        const y = (e.clientY || e.touches[0].clientY) - rect.top;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#000';
+        setIsDrawingDriver(true);
+    };
+
+    const drawDriver = (e: any) => {
+        if (!isDrawingDriver) return;
+        const canvas = driverCanvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX || e.touches[0].clientX) - rect.left;
+        const y = (e.clientY || e.touches[0].clientY) - rect.top;
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.beginPath(); // Reset path to avoid connecting lines
+        ctx.moveTo(x, y);
+    };
+
+    const stopDrawingDriver = () => {
+        if (!isDrawingDriver) return;
+        setIsDrawingDriver(false);
+        if (driverCanvasRef.current) {
+            setDriverSignatureData(driverCanvasRef.current.toDataURL());
+        }
+    };
+
+    const clearDriverSignature = () => {
+        const canvas = driverCanvasRef.current;
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            ctx?.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        setDriverSignatureData(null);
+    };
+
+    // Helper to construct report data
+    const getReportData = () => {
+        const processedLegs = legs.map(leg => ({
+            ...leg,
+            pickupTime: new Date(`${format(reportDate || new Date(), 'yyyy-MM-dd')}T${leg.pickupTime}`).toISOString(),
+            dropoffTime: new Date(`${format(reportDate || new Date(), 'yyyy-MM-dd')}T${leg.dropoffTime}`).toISOString(),
+            startOdometer: parseFloat(leg.startOdometer),
+            endOdometer: parseFloat(leg.endOdometer),
+            totalMiles: parseFloat(leg.endOdometer) - parseFloat(leg.startOdometer),
+            patientEscort: !!escortName,
+            escortName: escortName || null,
+            escortRelationship: escortRelationship || null
+        }));
+
+        return {
             id: tripData.id,
             driverId: driverInfo.id,
-            startOdometer,
-            endOdometer: parseFloat(endOdometer),
-            totalMiles,
-            pickupTime: new Date(`${new Date().toISOString().split('T')[0]}T${pickupTime}`).toISOString(),
-            dropoffTime: new Date(`${new Date().toISOString().split('T')[0]}T${dropoffTime}`).toISOString(),
-            tripType,
-            reasonForVisit,
-            escortName: escortName || null,
-            escortRelationship: escortRelationship || null,
+            driverName: driverInfo.name,
+            tripDate: format(reportDate || new Date(), 'yyyy-MM-dd'),
+            vehicleId: tripData.vehicleId,
+            vehicleColor: tripData.vehicleColor,
+            vehicleMake: tripData.vehicleMake,
+            vehicleType: tripData.vehicleType,
+            memberAhcccsId: tripData.memberAhcccsId,
+            memberDOB: tripData.memberDOB,
+            memberName: tripData.memberName,
+            memberAddress: tripData.memberAddress,
+            legs: processedLegs,
             additionalInfo: additionalInfo || null,
             serviceVerified,
             clientArrived,
@@ -163,69 +305,122 @@ export default function TripReportForm({
             differentLocations: multipleMembers ? differentLocations : null,
             refusedSignature: memberUnableToSign,
             refusalReason: memberUnableToSign ? (proxySignerType || refusalReason) : null,
-            notes: additionalInfo,
-            driverName: driverInfo.name,
-            vehicleId: tripData.vehicleId,
-            vehicleColor: tripData.vehicleColor,
-            vehicleMake: tripData.vehicleMake,
-            vehicleType: tripData.vehicleType,
-            memberAhcccsId: tripData.memberAhcccsId,
-            memberDOB: tripData.memberDOB,
-            memberName: tripData.memberName,
-            memberAddress: tripData.memberAddress,
-            pickupAddress: tripData.pickupAddress,
-            dropoffAddress: tripData.dropoffAddress,
+            memberSignature: signatureData,
+            driverSignature: driverSignatureData,
         };
-
-        onSubmit({
-             tripData: reportData,
-             signatureData: {
-                 member: signatureData,
-                 driver: driverSignatureData,
-                 driverName: driverInfo.name
-             }
-        });
     };
 
-    const totalMiles = endOdometer ? (parseFloat(endOdometer) - startOdometer).toFixed(1) : '0.0';
+    const updatePdfPreview = async () => {
+        try {
+            const data = getReportData();
+            const blob = await generateTripReportPdf(data);
+            const url = URL.createObjectURL(blob);
+            setPdfPreviewUrl(url);
+        } catch (error) {
+            console.error('Failed to generate preview', error);
+        }
+    };
 
-    if (isReviewing) {
-        return (
-            <Box sx={{ pb: 12, px: 2, pt: 2 }}>
-                 <Typography variant="h5" fontWeight={700} gutterBottom sx={{ color: '#0096D6', textAlign: 'center' }}>
-                    Review Trip Report
-                </Typography>
-                <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
-                    Please review the details below for accuracy before submitting.
-                </Typography>
+    // Effect to update preview when Reviewing or Signatures change
+    useEffect(() => {
+        if (isReviewing) {
+            updatePdfPreview();
+        }
+    }, [isReviewing, signatureData, driverSignatureData, memberUnableToSign]);
 
+    // Submit Handler (First Step: Review)
+    const handleReview = async () => {
+        const incompleteLeg = legs.find(l => !l.endOdometer || !l.pickupTime || !l.dropoffTime);
+        if (incompleteLeg) {
+            alert('Please fill in times and end odometer for all legs');
+            return;
+        }
+
+        // We just switch mode, the useEffect will handle the preview generation
+        setIsReviewing(true);
+    };
+
+    // Final Submit
+    const handleFinalSubmit = async () => {
+        const reportData = getReportData();
+
+        try {
+            const pdfBlob = await generateTripReportPdf(reportData);
+
+            onSubmit({
+                 tripData: reportData,
+                 signatureData: {
+                     member: signatureData,
+                     driver: driverSignatureData,
+                     driverName: driverInfo.name
+                 },
+                 pdfBlob: pdfBlob
+            });
+        } catch (error) {
+            console.error("PDF Prep Failed", error);
+            alert("Failed to generate PDF report");
+        }
+    };
+
+
+
+    const renderReviewView = () => (
+        <Box sx={{ pb: 12, px: 2, pt: 2 }}>
+             <Typography variant="h5" fontWeight={700} gutterBottom sx={{ color: '#0096D6', textAlign: 'center' }}>
+                Review Trip Report
+            </Typography>
+            <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
+                Please review the generated report below before signing and submitting.
+            </Typography>
+
+            {pdfPreviewUrl && (
+                <Box sx={{ mb: 3, height: readOnly ? '700px' : '500px', border: '1px solid #e0e0e0', borderRadius: 2, overflow: 'hidden' }}>
+                    <iframe 
+                        src={pdfPreviewUrl} 
+                        style={{ width: '100%', height: '100%', border: 'none' }} 
+                        title="PDF Preview"
+                    />
+                </Box>
+            )}
+
+            {!readOnly && (
+                <>
                 <Paper elevation={0} sx={{ p: 3, mb: 2, borderRadius: 3, border: '1px solid #e0e0e0' }}>
                     <Typography variant="overline" color="text.secondary" fontWeight={700}>TRIP SUMMARY</Typography>
                     <Divider sx={{ my: 1 }} />
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                         <Typography variant="body2">Date</Typography>
-                        <Typography variant="body2" fontWeight={600}>{new Date().toLocaleDateString()}</Typography>
+                        <Typography variant="body2" fontWeight={600}>{format(reportDate || new Date(), 'yyyy-MM-dd')}</Typography>
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                         <Typography variant="body2">Total Miles</Typography>
-                         <Typography variant="body2" fontWeight={600}>{totalMiles}</Typography>
+                        <Typography variant="body2">Total Legs</Typography>
+                        <Typography variant="body2" fontWeight={600}>{legs.length}</Typography>
                     </Box>
-                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                         <Typography variant="body2">Pickup Time</Typography>
-                         <Typography variant="body2" fontWeight={600}>{pickupTime}</Typography>
-                    </Box>
-                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                         <Typography variant="body2">Dropoff Time</Typography>
-                         <Typography variant="body2" fontWeight={600}>{dropoffTime}</Typography>
-                    </Box>
+                    <Divider sx={{ my: 1 }} />
+                    {legs.map((leg, i) => (
+                        <Box key={i} sx={{ mb: 2 }}>
+                            <Typography variant="caption" fontWeight={700} color="primary">LEG {i+1}</Typography>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="caption">{leg.pickupTime} - {leg.dropoffTime}</Typography>
+                                <Typography variant="caption" fontWeight={700}>
+                                    {(leg.endOdometer && leg.startOdometer) 
+                                        ? (parseFloat(leg.endOdometer) - parseFloat(leg.startOdometer)).toFixed(1) 
+                                        : '0.0'} mi
+                                </Typography>
+                            </Box>
+                            <Typography variant="caption" display="block" noWrap color="text.secondary">
+                                {leg.pickupAddress.split(',')[0]} → {leg.dropoffAddress.split(',')[0]}
+                            </Typography>
+                        </Box>
+                    ))}
                 </Paper>
 
                 <Paper elevation={0} sx={{ p: 3, mb: 2, borderRadius: 3, border: '1px solid #e0e0e0' }}>
                     <Typography variant="overline" color="text.secondary" fontWeight={700}>DETAILS</Typography>
                     <Divider sx={{ my: 1 }} />
-                     <Box sx={{ mb: 1 }}>
-                         <Typography variant="caption" color="text.secondary">Reason for Visit</Typography>
-                         <Typography variant="body2">{reasonForVisit}</Typography>
+                    <Box sx={{ mb: 1 }}>
+                        <Typography variant="caption" color="text.secondary">Reason for Visit</Typography>
+                        <Typography variant="body2">{legs[0]?.reasonForVisit || 'N/A'}</Typography>
                     </Box>
                     {additionalInfo && (
                         <Box sx={{ mb: 1 }}>
@@ -240,63 +435,77 @@ export default function TripReportForm({
                         </Alert>
                     )}
                 </Paper>
+                </>
+            )}
 
-                 <Paper elevation={0} sx={{ p: 3, mb: 4, borderRadius: 3, border: '1px solid #e0e0e0' }}>
+            {!readOnly && (
+                <Paper elevation={0} sx={{ p: 3, mb: 4, borderRadius: 3, border: '1px solid #e0e0e0' }}>
                     <Typography variant="overline" color="text.secondary" fontWeight={700}>SIGNATURES</Typography>
                     <Divider sx={{ my: 1 }} />
                     <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
-                        <Box sx={{ flex: 1, textAlign: 'center', p: 1, bgcolor: '#f9f9f9', borderRadius: 2 }}>
+                        <Box 
+                            sx={{ flex: 1, textAlign: 'center', p: 1, bgcolor: '#f9f9f9', borderRadius: 2, cursor: 'pointer' }}
+                            onClick={() => { if (!signatureData && !memberUnableToSign) { setViewerOpen(true); setShowSignaturePad(true); } }}
+                        >
                             <Typography variant="caption" display="block">Member</Typography>
-                             {signatureData ? (
+                            {signatureData ? (
                                 <img src={signatureData} style={{ height: 30 }} alt="Member" />
                             ) : (
-                                <Typography variant="caption" fontWeight={700} color="error">{memberUnableToSign ? 'UNABLE TO SIGN' : 'MISSING'}</Typography>
+                                <Typography variant="caption" fontWeight={700} color={memberUnableToSign ? 'success.main' : 'error'}>
+                                    {memberUnableToSign ? 'EXEMPT' : 'TAP TO SIGN'}
+                                </Typography>
                             )}
                         </Box>
-                        <Box sx={{ flex: 1, textAlign: 'center', p: 1, bgcolor: '#f9f9f9', borderRadius: 2 }}>
+                        <Box 
+                            sx={{ flex: 1, textAlign: 'center', p: 1, bgcolor: '#f9f9f9', borderRadius: 2, cursor: 'pointer' }}
+                            onClick={() => { if (!driverSignatureData) { setViewerOpen(true); setShowDriverSignaturePad(true); } }}
+                        >
                             <Typography variant="caption" display="block">Driver</Typography>
-                             {driverSignatureData ? (
+                            {driverSignatureData ? (
                                 <img src={driverSignatureData} style={{ height: 30 }} alt="Driver" />
                             ) : (
-                                <Typography variant="caption" fontWeight={700} color="error">MISSING</Typography>
+                                <Typography variant="caption" fontWeight={700} color="error">TAP TO SIGN</Typography>
                             )}
                         </Box>
                     </Box>
-                 </Paper>
+                </Paper>
+            )}
 
-                 <Button
+            {!readOnly && (
+                <Button
                     variant="contained"
                     fullWidth
                     size="large"
+                    disabled={(!signatureData && !memberUnableToSign) || !driverSignatureData || isSubmitting}
                     onClick={handleFinalSubmit}
                     sx={{ height: 56, borderRadius: 3, fontSize: '1.1rem', mb: 2, boxShadow: '0 4px 14px 0 rgba(0,118,255,0.39)' }}
                 >
-                    Confirm & Submit Report
+                    {isSubmitting ? 'Submitting Report...' : (!signatureData && !memberUnableToSign ? 'Member Signature Required' : !driverSignatureData ? 'Driver Signature Required' : 'Confirm & Submit Report')}
                 </Button>
+            )}
 
-                <Button
-                    variant="text"
-                    fullWidth
-                    onClick={() => setIsReviewing(false)}
-                    sx={{ color: 'text.secondary' }}
-                >
-                    Back to Edit
-                </Button>
-            </Box>
-        );
-    }
+            <Button
+                variant={readOnly ? "contained" : "text"}
+                fullWidth
+                onClick={readOnly ? onCancel : () => setIsReviewing(false)}
+                sx={{ color: readOnly ? 'white' : 'text.secondary', height: readOnly ? 56 : 'auto', borderRadius: readOnly ? 3 : 0 }}
+            >
+                {readOnly ? 'Close Report' : 'Back to Edit'}
+            </Button>
+        </Box>
+    );
 
     return (
         <Box sx={{ pb: 12 }}>
-            <Box sx={{ bgcolor: '#0096D6', color: 'white', p: 3, mb: 3 }}>
-                <Typography variant="h5" fontWeight={700}>AHCCCS Daily Trip Report</Typography>
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                    Driver: {driverInfo.name}
-                </Typography>
-                <Typography variant="body2">
-                    Date: {new Date().toLocaleDateString()}
+            {isReviewing ? renderReviewView() : (
+                <>
+            <Box sx={{ p: 2, mb: 1, borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="h6" fontWeight={800}>Final Trip Report</Typography>
+                <Typography variant="caption" fontWeight={700} color="text.secondary">
+                    {format(reportDate || new Date(), 'MMM d, yyyy')}
                 </Typography>
             </Box>
+
 
             <Box sx={{ px: 2 }}>
                 {/* Member Information */}
@@ -344,124 +553,97 @@ export default function TripReportForm({
                     </FormControl>
                 </Paper>
 
-                {/* Trip Details */}
-                <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 3, border: '2px solid #0096D6' }}>
-                    <Typography variant="subtitle2" fontWeight={700} gutterBottom color="primary">
-                        TRIP DETAILS
-                    </Typography>
-
-                    <Box sx={{ mb: 2 }}>
-                        <Typography variant="caption" color="text.secondary">Pickup Location</Typography>
-                        <Typography variant="body2" fontWeight={500}>{tripData.pickupAddress}</Typography>
-                    </Box>
-
-                    <TextField
-                        label="Pickup Time *"
-                        type="time"
-                        fullWidth
-                        value={pickupTime}
-                        onChange={(e) => setPickupTime(e.target.value)}
-                        sx={{ mb: 2, bgcolor: 'white' }}
-                        InputLabelProps={{ shrink: true }}
-                    />
-
-                    <TextField
-                        label="Pickup Odometer"
-                        fullWidth
-                        value={startOdometer}
-                        disabled
-                        sx={{ mb: 3, bgcolor: '#f5f5f5' }}
-                    />
-
-                    <Divider sx={{ my: 2 }} />
-
-                    <Box sx={{ mb: 2 }}>
-                        <Typography variant="caption" color="text.secondary">Dropoff Location</Typography>
-                        <Typography variant="body2" fontWeight={500}>{tripData.dropoffAddress}</Typography>
-                    </Box>
-
-                    <TextField
-                        label="Dropoff Time *"
-                        type="time"
-                        fullWidth
-                        value={dropoffTime}
-                        onChange={(e) => setDropoffTime(e.target.value)}
-                        sx={{ mb: 2, bgcolor: 'white' }}
-                        InputLabelProps={{ shrink: true }}
-                    />
-
-                    <TextField
-                        label="End Odometer *"
-                        type="number"
-                        fullWidth
-                        value={endOdometer}
-                        onChange={(e) => setEndOdometer(e.target.value)}
-                        sx={{ mb: 2, bgcolor: 'white' }}
-                        helperText={`Trip Miles: ${totalMiles}`}
-                    />
-
-                    <FormControl fullWidth sx={{ mb: 2 }}>
-                        <FormLabel>Type of Trip</FormLabel>
-                        <RadioGroup
-                            value={tripType}
-                            onChange={(e) => setTripType(e.target.value as any)}
-                            row
-                        >
-                            <FormControlLabel value="ONE_WAY" control={<Radio />} label="One Way" />
-                            <FormControlLabel value="ROUND_TRIP" control={<Radio />} label="Round Trip" />
-                            <FormControlLabel value="MULTIPLE_STOPS" control={<Radio />} label="Multiple Stops" />
-                        </RadioGroup>
-                    </FormControl>
-
-                    <FormControl fullWidth sx={{ mb: 2 }}>
-                        <InputLabel>Reason for Visit *</InputLabel>
-                        <Select
-                            value={reasonForVisit}
-                            onChange={(e) => setReasonForVisit(e.target.value)}
-                            label="Reason for Visit *"
-                            sx={{ bgcolor: 'white' }}
-                        >
-                            <Box sx={{ px: 2, py: 1, bgcolor: '#f0f0f0' }}>
-                                <Typography variant="caption" fontWeight={700}>COVERED MEDICAL</Typography>
+                {/* Trip Legs */}
+                <Typography variant="subtitle2" fontWeight={700} sx={{ px: 1, mb: 1 }}>TRIP LEGS ({legs.length}/6)</Typography>
+                
+                {legs.map((leg, index) => (
+                    <Paper key={index} elevation={0} sx={{ p: 3, mb: 3, borderRadius: 3, border: '2px solid #0096D6' }}>
+                        <Typography variant="caption" fontWeight={700} color="primary">LEG {index + 1}</Typography>
+                        
+                        <Box sx={{ my: 1.5 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Pickup Location</Typography>
+                            <Typography variant="body2" fontWeight={600}>{leg.pickupAddress}</Typography>
+                            
+                            <Box sx={{ mt: 1.5, mb: 1.5 }}>
+                                <TimeWheelSelector
+                                    label="Pickup Time *"
+                                    value={leg.pickupTime}
+                                    onChange={(newValue) => {
+                                        const newLegs = [...legs];
+                                        newLegs[index].pickupTime = newValue;
+                                        setLegs(newLegs);
+                                    }}
+                                />
                             </Box>
-                            {REASONS_FOR_VISIT.map(r => (
-                                <MenuItem key={r} value={r}>{r}</MenuItem>
-                            ))}
-                            <Box sx={{ px: 2, py: 1, bgcolor: '#fdf0f0' }}>
-                                <Typography variant="caption" fontWeight={700} color="error">NON-COVERED (FLAGGED)</Typography>
+
+                            <TextField
+                                label="Pickup Odometer"
+                                fullWidth
+                                value={leg.startOdometer}
+                                onChange={(e) => {
+                                    const newLegs = [...legs];
+                                    newLegs[index].startOdometer = e.target.value;
+                                    setLegs(newLegs);
+                                }}
+                                sx={{ mb: 1.5, bgcolor: '#f5f5f5' }}
+                                size="small"
+                            />
+                        </Box>
+
+                        <Divider sx={{ my: 2 }} />
+
+                        <Box sx={{ mb: 1.5 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Dropoff Location</Typography>
+                            <Typography variant="body2" fontWeight={600}>{leg.dropoffAddress}</Typography>
+
+                            <Box sx={{ mt: 1.5, mb: 1.5 }}>
+                                <TimeWheelSelector
+                                    label="Dropoff Time *"
+                                    value={leg.dropoffTime}
+                                    onChange={(newValue) => {
+                                        const newLegs = [...legs];
+                                        newLegs[index].dropoffTime = newValue;
+                                        setLegs(newLegs);
+                                    }}
+                                />
                             </Box>
-                            {NON_COVERED_REASONS.map(r => (
-                                <MenuItem key={r} value={r}>{r}</MenuItem>
-                            ))}
-                        </Select>
-                        {NON_COVERED_REASONS.includes(reasonForVisit) && (
-                            <Alert severity="warning" icon={<Warning />} sx={{ mt: 1, py: 0 }}>
-                                <Typography variant="caption" fontWeight={700}>
-                                    This visit type is typically NOT covered by AHCCCS.
-                                </Typography>
-                            </Alert>
-                        )}
-                    </FormControl>
 
-                    <TextField
-                        label="Name of Escort (if applicable)"
-                        fullWidth
-                        value={escortName}
-                        onChange={(e) => setEscortName(e.target.value)}
-                        sx={{ mb: 2, bgcolor: 'white' }}
-                    />
+                            <TextField
+                                label="End Odometer *"
+                                type="number"
+                                fullWidth
+                                value={leg.endOdometer}
+                                onChange={(e) => {
+                                    const newLegs = [...legs];
+                                    newLegs[index].endOdometer = e.target.value;
+                                    setLegs(newLegs);
+                                }}
+                                sx={{ mb: 1.5, bgcolor: 'white' }}
+                                size="small"
+                                helperText={leg.endOdometer && leg.startOdometer ? `Leg Miles: ${(parseFloat(leg.endOdometer) - parseFloat(leg.startOdometer)).toFixed(1)}` : ''}
+                            />
+                        </Box>
 
-                    {escortName && (
-                        <TextField
-                            label="Relationship to Member"
-                            fullWidth
-                            value={escortRelationship}
-                            onChange={(e) => setEscortRelationship(e.target.value)}
-                            sx={{ mb: 2, bgcolor: 'white' }}
-                            placeholder="Parent, Guardian, Caregiver, etc."
+                        <Autocomplete
+                            freeSolo
+                            options={[...REASONS_FOR_VISIT, ...NON_COVERED_REASONS]}
+                            value={leg.reasonForVisit}
+                            onInputChange={(_, newValue) => {
+                                const newLegs = [...legs];
+                                newLegs[index].reasonForVisit = newValue;
+                                setLegs(newLegs);
+                            }}
+                            renderInput={(params) => (
+                                <TextField 
+                                    {...params} 
+                                    label="Reason for Visit *" 
+                                    size="small" 
+                                    sx={{ mt: 1, bgcolor: 'white' }} 
+                                />
+                            )}
                         />
-                    )}
-                </Paper>
+                    </Paper>
+                ))}
 
                 {/* Service Verification */}
                 <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 3 }}>
@@ -594,12 +776,12 @@ export default function TripReportForm({
                             ) : (
                                 <Button
                                     fullWidth
-                                    variant="outlined"
+                                    variant="contained"
                                     onClick={() => { setViewerOpen(true); setShowSignaturePad(true); }}
-                                    startIcon={<Description />}
-                                    sx={{ height: 60, borderRadius: 2, borderStyle: 'dashed', borderWidth: 2 }}
+                                    startIcon={<Create />}
+                                    sx={{ height: 60, borderRadius: 3 }}
                                 >
-                                    Review & Sign Document
+                                    Sign Report Now
                                 </Button>
                             )}
                         </>
@@ -695,7 +877,10 @@ export default function TripReportForm({
                         {/* Signature Pad Bottom Sheet */}
                         {showSignaturePad && (
                            <Paper sx={{ position: 'absolute', bottom: 0, left: 0, right: 0, p: 3, borderTopLeftRadius: 24, borderTopRightRadius: 24, zIndex: 2000 }}>
-                                <Typography variant="h6" gutterBottom>Sign Below</Typography>
+                                <Typography variant="h6">Client Signature</Typography>
+                                <Typography variant="subtitle2" color="primary" sx={{ mb: 2 }}>
+                                    Signing as: {tripData.memberName}
+                                </Typography>
                                  <Box
                                     sx={{
                                         border: '2px dashed #ccc',
@@ -720,15 +905,26 @@ export default function TripReportForm({
                                         style={{ display: 'block', width: '100%' }}
                                     />
                                 </Box>
-                                <Box sx={{ display: 'flex', gap: 2 }}>
-                                    <Button variant="outlined" onClick={clearSignature} fullWidth>Clear</Button>
+                                <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+                                    <Box sx={{ display: 'flex', gap: 2 }}>
+                                        <Button variant="outlined" onClick={clearSignature} fullWidth>Clear</Button>
+                                        <Button 
+                                            variant="contained" 
+                                            fullWidth 
+                                            onClick={() => { setShowSignaturePad(false); }}
+                                            disabled={!signatureData}
+                                        >
+                                            Confirm
+                                        </Button>
+                                    </Box>
                                     <Button 
-                                        variant="contained" 
-                                        fullWidth 
-                                        onClick={() => { setShowSignaturePad(false); }}
-                                        disabled={!signatureData}
+                                        variant="text" 
+                                        color="primary"
+                                        onClick={usePrintedNameAsSignature}
+                                        fullWidth
+                                        sx={{ fontWeight: 600 }}
                                     >
-                                        Adopt Signature
+                                        Use Printed Name: {tripData.memberName}
                                     </Button>
                                 </Box>
                            </Paper>
@@ -810,7 +1006,11 @@ export default function TripReportForm({
                 </Alert>
             </Box>
 
-            {/* Fixed Bottom Actions */}
+                </>
+            )}
+
+            {/* Fixed Bottom Actions - Only show in Edit Mode */}
+            {!isReviewing && (
             <Box
                 sx={{
                     position: 'fixed',
@@ -828,7 +1028,7 @@ export default function TripReportForm({
                     variant="contained"
                     size="large"
                     onClick={handleReview}
-                    disabled={!endOdometer || !pickupTime || !dropoffTime || (!signatureData && !memberUnableToSign) || !driverSignatureData}
+                    disabled={legs.some(l => !l.endOdometer || !l.pickupTime)}
                     startIcon={<CheckCircle />}
                     sx={{
                         borderRadius: 3,
@@ -849,6 +1049,202 @@ export default function TripReportForm({
                     Cancel
                 </Button>
             </Box>
+            )}
+
+            {/* Document Viewer Modal - Shared and Persistent */}
+            <Dialog
+                fullScreen
+                open={viewerOpen}
+                onClose={() => setViewerOpen(false)}
+                TransitionComponent={Transition}
+            >
+                <Box sx={{ bgcolor: '#525659', flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                    <Box sx={{ p: 2, bgcolor: '#323639', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: 3 }}>
+                        <Typography variant="h6">Trip Report Packet</Typography>
+                        <IconButton onClick={() => setViewerOpen(false)} sx={{ color: 'white' }}>
+                            <Clear />
+                        </IconButton>
+                    </Box>
+                    
+                    <Box sx={{ flex: 1, overflow: 'hidden', position: 'relative', bgcolor: '#f5f5f5', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                        <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
+                            Please obtain signatures below.
+                        </Typography>
+                        {/* Signature Status Overlay */}
+                        <Paper
+                            elevation={2}
+                            sx={{
+                                position: 'absolute',
+                                top: 10,
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                p: 1.5,
+                                borderRadius: 3,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 2,
+                                bgcolor: 'rgba(255, 255, 255, 0.95)',
+                                backdropFilter: 'blur(4px)',
+                                zIndex: 10,
+                                border: '1px solid #e0e0e0'
+                            }}
+                        >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Box>
+                                    <Typography variant="caption" fontWeight={700} display="block">
+                                        {signatureData || memberUnableToSign ? '✓ Member' : 'Member Pending'}
+                                    </Typography>
+                                    <Typography variant="caption" fontWeight={700} display="block">
+                                        {driverSignatureData ? '✓ Driver' : 'Driver Pending'}
+                                    </Typography>
+                                </Box>
+                                <Typography variant="caption" color={(signatureData || memberUnableToSign) && driverSignatureData ? 'success.main' : 'error'}>
+                                    {(signatureData || memberUnableToSign) && driverSignatureData ? 'Ready to Submit' : 'Signatures Required'}
+                                </Typography>
+                            </Box>
+
+                            {!driverSignatureData && (
+                                    <Button
+                                    variant="contained"
+                                    color="primary"
+                                    onClick={() => setShowDriverSignaturePad(true)}
+                                    startIcon={<Create />}
+                                    size="small"
+                                    >
+                                        Sign as Driver
+                                    </Button>
+                            )}
+                        </Paper>
+                    </Box>
+                    
+                    {/* Signature Pad Bottom Sheet */}
+                    {showSignaturePad && (
+                        <Paper sx={{ position: 'absolute', bottom: 0, left: 0, right: 0, p: 3, borderTopLeftRadius: 24, borderTopRightRadius: 24, zIndex: 2000 }}>
+                            <Typography variant="h6">Client Signature</Typography>
+                            <Typography variant="subtitle2" color="primary" sx={{ mb: 2 }}>
+                                Signing as: {tripData.memberName}
+                            </Typography>
+                                <Box
+                                sx={{
+                                    border: '2px dashed #ccc',
+                                    borderRadius: 2,
+                                    bgcolor: '#f5f5f5',
+                                    touchAction: 'none',
+                                    mb: 2,
+                                    height: 200
+                                }}
+                            >
+                                <canvas
+                                    ref={canvasRef}
+                                    width={window.innerWidth - 60} // approximate
+                                    height={200}
+                                    onMouseDown={startDrawing}
+                                    onMouseMove={draw}
+                                    onMouseUp={stopDrawing}
+                                    onMouseLeave={stopDrawing}
+                                    onTouchStart={startDrawing}
+                                    onTouchMove={draw}
+                                    onTouchEnd={stopDrawing}
+                                    style={{ display: 'block', width: '100%' }}
+                                />
+                            </Box>
+                            <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+                                <Box sx={{ display: 'flex', gap: 2 }}>
+                                    <Button variant="outlined" onClick={clearSignature} fullWidth>Clear</Button>
+                                    <Button 
+                                        variant="contained" 
+                                        fullWidth 
+                                        onClick={() => { 
+                                            setShowSignaturePad(false);
+                                            // Auto-advance flow: If driver hasn't signed, open driver pad immediately
+                                            if (!driverSignatureData) {
+                                                setTimeout(() => setShowDriverSignaturePad(true), 200);
+                                            }
+                                        }}
+                                        disabled={!signatureData}
+                                    >
+                                        Confirm & Next
+                                    </Button>
+                                </Box>
+                                <Button 
+                                    variant="text" 
+                                    color="primary"
+                                    onClick={usePrintedNameAsSignature}
+                                    fullWidth
+                                    sx={{ fontWeight: 600 }}
+                                >
+                                    Use Printed Name: {tripData.memberName}
+                                </Button>
+                            </Box>
+                        </Paper>
+                    )}
+
+                    {/* Driver Signature Pad Bottom Sheet */}
+                    {showDriverSignaturePad && (
+                        <Paper sx={{ position: 'absolute', bottom: 0, left: 0, right: 0, p: 3, borderTopLeftRadius: 24, borderTopRightRadius: 24, zIndex: 2000 }}>
+                            <Typography variant="h6" gutterBottom>Driver Signature</Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                I certify that the information provided is true and accurate.
+                            </Typography>
+                                <Box
+                                sx={{
+                                    border: '2px dashed #0096D6',
+                                    borderRadius: 2,
+                                    bgcolor: '#f5f5f5',
+                                    touchAction: 'none',
+                                    mb: 2,
+                                    height: 200
+                                }}
+                            >
+                                <canvas
+                                    ref={driverCanvasRef}
+                                    width={window.innerWidth - 60}
+                                    height={200}
+                                    onMouseDown={startDrawingDriver}
+                                    onMouseMove={drawDriver}
+                                    onMouseUp={stopDrawingDriver}
+                                    onMouseLeave={stopDrawingDriver}
+                                    onTouchStart={startDrawingDriver}
+                                    onTouchMove={drawDriver}
+                                    onTouchEnd={stopDrawingDriver}
+                                    style={{ display: 'block', width: '100%' }}
+                                />
+                            </Box>
+                            <Box sx={{ display: 'flex', gap: 2 }}>
+                                <Button variant="outlined" onClick={clearDriverSignature} fullWidth>Clear</Button>
+                                <Button
+                                    variant="contained"
+                                    fullWidth
+                                    onClick={() => { setShowDriverSignaturePad(false); }}
+                                    disabled={!driverSignatureData}
+                                >
+                                    Adopt Signature
+                                </Button>
+                            </Box>
+                        </Paper>
+                    )}
+
+                    {/* Footer Actions */}
+                    {!showSignaturePad && !showDriverSignaturePad && (
+                            <Box sx={{ p: 2, bgcolor: 'white', borderTop: '1px solid #ddd' }}>
+                            <Box sx={{ display: 'flex', gap: 2 }}>
+                                <Button fullWidth variant="outlined" onClick={() => setViewerOpen(false)} startIcon={<Edit />}>
+                                    Edit Report Details
+                                </Button>
+                                <Button
+                                    fullWidth
+                                    variant="contained"
+                                    disabled={(!signatureData && !memberUnableToSign) || !driverSignatureData}
+                                    onClick={() => setViewerOpen(false)}
+                                >
+                                    Complete
+                                </Button>
+                            </Box>
+                            </Box>
+                    )}
+                </Box>
+            </Dialog>
+
         </Box>
     );
 }

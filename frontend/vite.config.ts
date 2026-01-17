@@ -9,6 +9,9 @@ export default defineConfig({
     plugins: [
         react(),
     ],
+    optimizeDeps: {
+        include: ['react-map-gl', 'mapbox-gl'],
+    },
     server: {
         host: true, // Listen on all addresses (0.0.0.0)
         port: 3000,
@@ -60,9 +63,12 @@ export default defineConfig({
             },
         },
     },
+
+
+
     resolve: {
         alias: {
-            "@mui/styled-engine": "@mui/styled-engine/modern",
+            // "@mui/styled-engine$": path.resolve(__dirname, "src", "mui-shim.js"),
         },
     },
 })

@@ -162,11 +162,11 @@ export default function MembersPage() {
                             <TableRow>
                                 <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
                                 <TableCell sx={{ fontWeight: 600 }}>Member ID</TableCell>
-                                <TableCell sx={{ fontWeight: 600 }}>Report Type</TableCell>
-                                <TableCell sx={{ fontWeight: 600 }}>Consent</TableCell>
+                                <TableCell sx={{ fontWeight: 600, display: { xs: 'none', md: 'table-cell' } }}>Report Type</TableCell>
+                                <TableCell sx={{ fontWeight: 600, display: { xs: 'none', md: 'table-cell' } }}>Consent</TableCell>
                                 <TableCell sx={{ fontWeight: 600 }}>Mobility</TableCell>
                                 <TableCell sx={{ fontWeight: 600 }}>Phone</TableCell>
-                                <TableCell sx={{ fontWeight: 600 }}>Insurance</TableCell>
+                                <TableCell sx={{ fontWeight: 600, display: { xs: 'none', md: 'table-cell' } }}>Insurance</TableCell>
                                 <TableCell sx={{ fontWeight: 600, textAlign: 'right' }}>Actions</TableCell>
                             </TableRow>
                         </TableHead>
@@ -196,7 +196,7 @@ export default function MembersPage() {
                                             </Typography>
                                         </TableCell>
                                         <TableCell>{member.memberId}</TableCell>
-                                        <TableCell>
+                                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                                             <Chip
                                                 label={member.reportType === 'NON_NATIVE' ? 'Non-Native' : 'Native'}
                                                 size="small"
@@ -204,7 +204,7 @@ export default function MembersPage() {
                                                 color="default"
                                             />
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                                             {member.consentOnFile ? (
                                                 <Tooltip title="Consent on file">
                                                     <AssignmentTurnedIn color="success" fontSize="small" />
@@ -225,7 +225,7 @@ export default function MembersPage() {
                                         <TableCell>
                                             <Typography variant="body2">{member.phone || '-'}</Typography>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                                             <Typography variant="body2">{member.insuranceProvider || 'N/A'}</Typography>
                                             <Typography variant="caption" color="textSecondary">{member.insuranceId}</Typography>
                                         </TableCell>

@@ -65,8 +65,8 @@ export default function BackgroundCheckStep({ onNext, onBack }: BackgroundCheckS
                 />
             </Paper>
 
-            <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
-                <Button variant="outlined" onClick={onBack} disabled={loading}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mt: 4 }}>
+                <Button variant="outlined" onClick={onBack} disabled={loading} sx={{ width: { xs: '100%', sm: 'auto' } }}>
                     Back
                 </Button>
                 <Button
@@ -75,6 +75,7 @@ export default function BackgroundCheckStep({ onNext, onBack }: BackgroundCheckS
                     size="large"
                     onClick={handleSubmit}
                     disabled={!agreed || ssn.length < 9 || loading}
+                    sx={{ width: { xs: '100%', sm: 'auto' }, flexGrow: 1 }}
                 >
                     {loading ? 'Processing...' : 'Authorize & Continue'}
                 </Button>

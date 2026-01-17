@@ -1,14 +1,17 @@
-import { Box, Container, CircularProgress, Paper, Button, Typography } from '@mui/material';
+import { Box, Container, CircularProgress, Paper, Button, Typography, IconButton } from '@mui/material';
+import { ArrowBack } from '@mui/icons-material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import { tripApi } from '../../api/trips';
 import { useState } from 'react';
+import { useAuthStore } from '../../store/auth';
 import PreTripChecklist from '../../components/driver/execution/PreTripChecklist';
 import ActiveNavigation from '../../components/driver/execution/ActiveNavigation';
 import PickupWorkflow from '../../components/driver/execution/PickupWorkflow';
 import DropoffWorkflow from '../../components/driver/execution/DropoffWorkflow';
 import TripSummary from '../../components/driver/execution/TripSummary';
 import TripReportForm from '../../components/driver/TripReportForm';
+import DriverMap from '../../components/dashboard/DriverMap';
 
 // Trip Execution States
 type ExecutionState = 'LOADING' | 'PRE_TRIP' | 'EN_ROUTE_PICKUP' | 'AT_PICKUP' | 'EN_ROUTE_DROPOFF' | 'AT_DROPOFF' | 'TRIP_REPORT' | 'COMPLETED';
@@ -84,12 +87,10 @@ export default function TripExecutionPage() {
     if (trip && !initialized) {
         setInitialized(true);
         if (trip.status === 'IN_PROGRESS') {
-             // Basic restoration logic
              const pickup = trip.stops.find((s: any) => s.stopType === 'PICKUP');
              const dropoff = trip.stops.find((s: any) => s.stopType === 'DROPOFF');
              
              if (pickup?.actualDepartureTime) {
-                 // Pickup done
                  if (dropoff?.actualArrivalTime) {
                      setViewState('AT_DROPOFF');
                  } else {
@@ -117,7 +118,7 @@ export default function TripExecutionPage() {
 
     const arriveStopMutation = useMutation({
         mutationFn: async (stopId: string) => {
-            return new Promise((resolve, reject) => {
+            return new Promise((resolve) => {
                 if ('geolocation' in navigator) {
                     navigator.geolocation.getCurrentPosition(
                         (position) => {
@@ -138,7 +139,6 @@ export default function TripExecutionPage() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['trip', tripId] });
-            // Auto-transition based on current state (could be improved with explicit state from backend)
             if (viewState === 'EN_ROUTE_PICKUP') setViewState('AT_PICKUP');
             if (viewState === 'EN_ROUTE_DROPOFF') setViewState('AT_DROPOFF');
         }
@@ -149,8 +149,6 @@ export default function TripExecutionPage() {
             tripApi.completeStop(tripId!, stopId, odometer),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['trip', tripId] });
-            // Transition logic
-            // Ideally we check variables.stopId against trip.stops to see if it was pickup or dropoff
         }
     });
 
@@ -162,8 +160,12 @@ export default function TripExecutionPage() {
 
     const completeTripMutation = useMutation({
         mutationFn: () => tripApi.completeTrip(tripId!),
-        onSuccess: () => navigate('/driver')
+        onSettled: () => {
+            console.log('[TripExecution] Trip settled, returning to dashboard');
+            navigate('/driver');
+        }
     });
+
 
     const submitReportMutation = useMutation({
         mutationFn: ({ reportData, pdfBlob }: { reportData: any, pdfBlob: Blob }) =>
@@ -178,20 +180,19 @@ export default function TripExecutionPage() {
         }
     });
 
+    const userAuth = useAuthStore(state => state.user);
+
     if (isLoading || !trip) return <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>;
 
-    // Helper to get stop IDs
     const pickupStop = trip.stops?.find((s: any) => s.stopType === 'PICKUP');
     const dropoffStop = trip.stops?.find((s: any) => s.stopType === 'DROPOFF');
     const firstMember = trip.members?.[0]?.member;
     const signingMemberId = trip.members?.[0]?.memberId;
     
-    // Derived values
     const clientName = firstMember ? `${firstMember.firstName} ${firstMember.lastName}` : 'Unknown Client';
     const clientAhcccsId = firstMember?.ahcccsId || '';
     const clientDob = firstMember?.dob || '';
     const clientAddress = firstMember?.address || '';
-
 
     const handleSignatureSave = (data: { signatureBase64: string; isProxy?: boolean; proxySignerName?: string; proxyRelationship?: string; proxyReason?: string }) => {
         if (signingMemberId) {
@@ -210,20 +211,38 @@ export default function TripExecutionPage() {
 
     return (
         <Box sx={{ height: '100vh', width: '100vw', bgcolor: '#e5e3df', position: 'relative', overflow: 'hidden' }}>
-            {/* Back Button Overlay - Hoisted for visibility */}
-            <Box sx={{ position: 'absolute', top: 48, left: 16, zIndex: 9999 }}>
-                <Button
-                    onClick={() => navigate('/driver')}
-                    variant="contained"
-                    sx={{ bgcolor: 'white', color: '#111', borderRadius: '50px', '&:hover': { bgcolor: '#f5f5f5' }, boxShadow: 2 }}
-                >
-                    Back
-                </Button>
+            {/* Header Overlay - Clear Navigation */}
+            <Box sx={{ 
+                position: 'absolute', 
+                top: 0, 
+                left: 0, 
+                right: 0, 
+                p: 2, 
+                pt: 7, // Safe area distance
+                zIndex: 2000, 
+                display: 'flex', 
+                alignItems: 'center' 
+            }}>
+                 <IconButton 
+                    onClick={() => {
+                        console.log('[TripExecution] Back to Dashboard');
+                        navigate('/driver');
+                    }}
+                    sx={{ 
+                        bgcolor: 'white', 
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)', 
+                        '&:hover': { bgcolor: '#f5f5f5' },
+                        zIndex: 2001
+                    }}
+                 >
+                    <ArrowBack />
+                 </IconButton>
             </Box>
 
-            {/* Background Map Simulation - Placeholder Pattern */}
-            <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: '30%', bgcolor: '#e3f2fd', opacity: 1, backgroundImage: 'radial-gradient(#2196F3 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
 
+            {/* Background Map - Real */}
+            <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}>
+                 <DriverMap activeTrip={trip} />
             </Box>
 
             {/* Bottom Sheet Container */}
@@ -231,7 +250,7 @@ export default function TripExecutionPage() {
                 elevation={6}
                 sx={{
                     position: 'absolute',
-                    top: '30%', // Starts from map edge
+                    top: '30%',
                     left: 0,
                     right: 0,
                     bottom: 0,
@@ -242,9 +261,8 @@ export default function TripExecutionPage() {
                 }}
             >
                 <Container maxWidth="sm" sx={{ pt: 1, pb: 24 }}>
-                    {/* Stepped Progress Indicator (Factory-Mode) */}
+                    {/* Stepped Progress Indicator */}
                     <Box sx={{ px: 2, display: 'flex', justifyContent: 'space-between', mb: 4, position: 'relative' }}>
-                        {/* Connecting Line */}
                         <Box sx={{ position: 'absolute', top: 16, left: 40, right: 40, height: 2, bgcolor: '#e0e0e0', zIndex: -1 }} />
                         
                         <TripStep label="START" status={viewState === 'PRE_TRIP' ? 'ACTIVE' : 'COMPLETED'} />
@@ -281,14 +299,11 @@ export default function TripExecutionPage() {
                             <PickupWorkflow
                                 clientName={clientName}
                                 onConfirmPickup={() => {
-                                    // 1. Mark ready (optional) 
-                                    // 2. Complete Pickup Stop
                                     completeStopMutation.mutate({ stopId: pickupStop?.id }, {
                                         onSuccess: () => setViewState('EN_ROUTE_DROPOFF')
                                     });
                                 }}
                                 onNoShow={(data) => {
-                                    // Handle no show API
                                     console.log('No Show:', data);
                                     navigate('/driver');
                                 }}
@@ -309,6 +324,7 @@ export default function TripExecutionPage() {
 
                         {viewState === 'AT_DROPOFF' && (
                             <DropoffWorkflow
+                                trip={trip}
                                 startOdometer={tripReport.startOdometer}
                                 onComplete={(data) => {
                                     setTripReport(prev => ({
@@ -317,18 +333,12 @@ export default function TripExecutionPage() {
                                         notes: data.notes,
                                         signature: data.signature
                                     }));
-
                                     handleSignatureSave({
-                                        signatureBase64: data.signature,
-                                        // TODO: Pass proxy data from DropoffWorkflow if supported
+                                        signatureBase64: data.signature
                                     });
-
-                                    // 2. Complete Dropoff Stop (passing end odometer if needed by API)
-                                    // Note: In real app, we might save notes/odometer to a separate endpoint or as trip metadata
                                     completeStopMutation.mutate({
                                         stopId: dropoffStop?.id,
                                         odometer: data.odometer
-                                        // notes: data.notes 
                                     }, {
                                         onSuccess: () => setViewState('TRIP_REPORT')
                                     });
@@ -352,8 +362,8 @@ export default function TripExecutionPage() {
                                     vehicleColor: trip.assignedVehicle?.color || 'White'
                                 }}
                                 driverInfo={{
-                                    id: 'DRIVER-001', // Mock
-                                    name: 'John Driver' // Mock
+                                    id: userAuth?.id || 'DRIVER-001',
+                                    name: userAuth ? `${userAuth.firstName} ${userAuth.lastName}` : 'John Driver'
                                 }}
                                 startOdometer={tripReport.startOdometer}
                                 onSubmit={(data) => {
@@ -363,8 +373,6 @@ export default function TripExecutionPage() {
                                             pdfBlob: data.pdfBlob
                                         });
                                     } else {
-                                        // Should satisfy TS type of pdfBlob being optionally present in data, 
-                                        // or we cast/check. The form guarantees it for submit now.
                                         alert("PDF not generated");
                                     }
                                 }}

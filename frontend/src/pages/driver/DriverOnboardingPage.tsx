@@ -91,7 +91,7 @@ export default function DriverOnboardingPage() {
                     </Typography>
                 </Box>
 
-                <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
+                <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4, display: { xs: 'none', sm: 'flex' } }}>
                     {STEPS.map((label, index) => (
                         <Step key={label} onClick={() => setActiveStep(index)} sx={{ cursor: 'pointer' }}>
                             <StepLabel>{label}</StepLabel>

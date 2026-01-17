@@ -84,7 +84,20 @@ export default function ActiveNavigation({ destinationAddress, destinationType, 
             )}
 
             {/* Quick Actions Footer (Floating) */}
-            <Box sx={{ position: 'absolute', bottom: 0, left: 0, right: 0, p: 2, pb: 4, bgcolor: 'white', display: 'flex', gap: 2, boxShadow: '0 -4px 20px rgba(0,0,0,0.05)', borderRadius: '24px 24px 0 0' }}>
+            <Box sx={{ 
+                position: 'absolute', 
+                bottom: 0, 
+                left: 0, 
+                right: 0, 
+                pt: 4, // INCREASED TOP PADDING
+                px: 2, 
+                pb: 5, 
+                bgcolor: 'white', 
+                display: 'flex', 
+                gap: 2, 
+                boxShadow: '0 -10px 30px rgba(0,0,0,0.08)', 
+                borderRadius: '28px 28px 0 0' 
+            }}>
                 <Button
                     variant="outlined"
                     sx={{ minWidth: 56, height: 56, borderRadius: '50%', color: '#d32f2f', borderColor: '#ffebee', bgcolor: '#ffebee' }}

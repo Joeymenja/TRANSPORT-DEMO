@@ -1,43 +1,25 @@
-
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { useSocket } from '../../context/SocketContext';
-import { useEffect, useState } from 'react';
-import 'leaflet/dist/leaflet.css'; // Import Leaflet CSS
+import { useEffect, useState, useMemo } from 'react';
 import { Box, Paper, Typography, Chip, Avatar } from '@mui/material';
+import Map, { Marker, Popup, NavigationControl } from 'react-map-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 import { Driver } from '../../api/drivers';
-import L from 'leaflet';
+import { PersonPin } from '@mui/icons-material';
 
-// Fix for default marker icon in Leaflet + bundlers
-// @ts-ignore
-import icon from 'leaflet/dist/images/marker-icon.png';
-// @ts-ignore
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
-let DefaultIcon = L.icon({
-    iconUrl: icon,
-    shadowUrl: iconShadow,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41]
-});
-
-L.Marker.prototype.options.icon = DefaultIcon;
-
-// Custom Icons could be added here based on status
-const getDriverIcon = () => {
-    // For now using default, but could swap colors
-    return DefaultIcon;
-};
+// Helper to validate coordinates
+const isValidCoord = (val: any): val is number => typeof val === 'number' && !isNaN(val);
 
 interface LiveMapProps {
     drivers: Driver[];
     height?: string | number;
 }
 
-
-
 export default function LiveMap({ drivers: initialDrivers, height = 500 }: LiveMapProps) {
     const socket = useSocket();
     const [drivers, setDrivers] = useState<Driver[]>(initialDrivers);
+    const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
     
     useEffect(() => {
         setDrivers(initialDrivers);
@@ -69,66 +51,101 @@ export default function LiveMap({ drivers: initialDrivers, height = 500 }: LiveM
         };
     }, [socket]);
 
-    // Center map on Phoenix/Mesa area for demo
-    const defaultCenter: [number, number] = [33.4152, -111.8315];
+    const initialViewState = useMemo(() => ({
+        latitude: 33.4152,
+        longitude: -111.8315,
+        zoom: 12
+    }), []);
+
+    if (!MAPBOX_TOKEN || MAPBOX_TOKEN.includes('your_token_here')) {
+        return (
+            <Paper elevation={0} variant="outlined" sx={{ height, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', bgcolor: '#f5f5f5' }}>
+                <Typography variant="subtitle1" fontWeight={700}>Mapbox Configuration Required</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', px: 2 }}>
+                    Update VITE_MAPBOX_ACCESS_TOKEN in your .env file.
+                </Typography>
+            </Paper>
+        );
+    }
 
     return (
         <Paper elevation={0} variant="outlined" sx={{ height, width: '100%', overflow: 'hidden', borderRadius: 2 }}>
-            <MapContainer
-                center={defaultCenter}
-                zoom={12}
-                style={{ height: '100%', width: '100%' }}
+            <Map
+                initialViewState={initialViewState}
+                style={{ width: '100%', height: '100%' }}
+                mapStyle="mapbox://styles/mapbox/light-v11"
+                mapboxAccessToken={MAPBOX_TOKEN}
             >
-                <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
+                <NavigationControl position="top-right" />
 
                 {drivers.map(driver => {
-                    // Check if driver has valid coordinates (and is active/online)
-                    // For demo purposes, we might show all active drivers
-                    const hasLocation = driver.currentLatitude && driver.currentLongitude;
-
+                    const hasLocation = isValidCoord(driver.currentLatitude) && isValidCoord(driver.currentLongitude);
                     if (!hasLocation) return null;
 
                     return (
                         <Marker
                             key={driver.id}
-                            position={[driver.currentLatitude!, driver.currentLongitude!] as [number, number]}
-                            icon={getDriverIcon()}
+                            latitude={driver.currentLatitude!}
+                            longitude={driver.currentLongitude!}
+                            anchor="center"
+                            onClick={e => {
+                                e.originalEvent.stopPropagation();
+                                setSelectedDriver(driver);
+                            }}
                         >
-                            <Popup>
-                                <Box sx={{ minWidth: 200 }}>
-                                    <Box display="flex" alignItems="center" gap={1} mb={1}>
-                                        <Avatar sx={{ width: 32, height: 32, fontSize: '0.9rem' }}>
-                                            {driver.user.firstName[0]}{driver.user.lastName[0]}
-                                        </Avatar>
-                                        <Box>
-                                            <Typography variant="subtitle2" fontWeight="bold">
-                                                {driver.user.firstName} {driver.user.lastName}
-                                            </Typography>
-                                            <Typography variant="caption" color="text.secondary">
-                                                {driver.assignedVehicle ? `${driver.assignedVehicle.make} ${driver.assignedVehicle.model}` : 'No Vehicle'}
-                                            </Typography>
-                                        </Box>
-                                    </Box>
-                                    <Chip
-                                        label={(driver.currentStatus || 'OFF_DUTY').replace('_', ' ')}
-                                        size="small"
-                                        color={driver.currentStatus === 'AVAILABLE' ? 'success' : driver.currentStatus === 'ON_TRIP' ? 'primary' : 'default'}
-                                        sx={{ width: '100%' }}
-                                    />
-                                    {driver.lastStatusUpdate && (
-                                        <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 1, textAlign: 'right' }}>
-                                            Updated: {new Date(driver.lastStatusUpdate).toLocaleTimeString()}
-                                        </Typography>
-                                    )}
-                                </Box>
-                            </Popup>
+                            <Box sx={{ 
+                                cursor: 'pointer',
+                                transition: 'transform 0.2s',
+                                '&:hover': { transform: 'scale(1.2)' }
+                            }}>
+                                <PersonPin sx={{ 
+                                    color: driver.currentStatus === 'AVAILABLE' ? '#4caf50' : '#2196F3',
+                                    fontSize: 32,
+                                    filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
+                                }} />
+                            </Box>
                         </Marker>
                     );
                 })}
-            </MapContainer>
+
+                {selectedDriver && isValidCoord(selectedDriver.currentLatitude) && isValidCoord(selectedDriver.currentLongitude) && (
+                    <Popup
+                        latitude={selectedDriver.currentLatitude!}
+                        longitude={selectedDriver.currentLongitude!}
+                        anchor="bottom"
+                        onClose={() => setSelectedDriver(null)}
+                        closeButton={true}
+                        maxWidth="300px"
+                    >
+                        <Box sx={{ p: 1 }}>
+                            <Box display="flex" alignItems="center" gap={1} mb={1}>
+                                <Avatar sx={{ width: 32, height: 32, fontSize: '0.8rem', bgcolor: 'primary.main' }}>
+                                    {selectedDriver.user.firstName[0]}{selectedDriver.user.lastName[0]}
+                                </Avatar>
+                                <Box>
+                                    <Typography variant="subtitle2" fontWeight="bold">
+                                        {selectedDriver.user.firstName} {selectedDriver.user.lastName}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {selectedDriver.assignedVehicle?.vehicleNumber || 'No Fleet ID'}
+                                    </Typography>
+                                </Box>
+                            </Box>
+                            <Chip
+                                label={(selectedDriver.currentStatus || 'OFF_DUTY').replace('_', ' ')}
+                                size="small"
+                                color={selectedDriver.currentStatus === 'AVAILABLE' ? 'success' : 'primary'}
+                                sx={{ width: '100%', mb: 1, fontWeight: 700 }}
+                            />
+                            {selectedDriver.lastStatusUpdate && (
+                                <Typography variant="caption" display="block" color="text.secondary" align="right">
+                                    Last Update: {new Date(selectedDriver.lastStatusUpdate).toLocaleTimeString()}
+                                </Typography>
+                            )}
+                        </Box>
+                    </Popup>
+                )}
+            </Map>
         </Paper>
     );
 }

@@ -21,7 +21,7 @@ export interface Trip {
         vehicleType: string;
         isActive: boolean;
     };
-    tripType: 'DROP_OFF' | 'PICK_UP' | 'ROUND_TRIP';
+    tripType: 'DROP_OFF' | 'PICK_UP' | 'ROUND_TRIP' | 'ONE_WAY' | 'MULTIPLE_STOPS';
     isCarpool: boolean;
     status: 'PENDING_APPROVAL' | 'SCHEDULED' | 'IN_PROGRESS' | 'WAITING_FOR_CLIENTS' | 'COMPLETED' | 'FINALIZED' | 'CANCELLED';
     reasonForVisit?: string;
@@ -35,7 +35,7 @@ export interface Trip {
     memberCount: number;
     stops: any[];
     members: any[];
-    mobilityRequirement: 'AMBULATORY' | 'WHEELCHAIR' | 'STRETCHER' | 'CAR_SEAT';
+    mobilityRequirement: 'AMBULATORY' | 'WHEELCHAIR' | 'STRETCHER' | 'CAR_SEAT' | 'BURIATRIC_WHEELCHAIR';
     createdAt: Date;
 }
 
@@ -59,7 +59,7 @@ export interface CreateTripData {
         isActive: boolean;
     };
     status?: 'PENDING_APPROVAL' | 'SCHEDULED' | 'IN_PROGRESS' | 'WAITING_FOR_CLIENTS' | 'COMPLETED' | 'FINALIZED' | 'CANCELLED';
-    tripType?: 'DROP_OFF' | 'PICK_UP' | 'ROUND_TRIP';
+    tripType?: 'DROP_OFF' | 'PICK_UP' | 'ROUND_TRIP' | 'ONE_WAY' | 'MULTIPLE_STOPS';
     isCarpool?: boolean;
     reasonForVisit?: string;
     escortName?: string;
@@ -73,7 +73,7 @@ export interface CreateTripData {
         gpsLongitude?: number;
         scheduledTime?: Date;
     }[];
-    mobilityRequirement?: 'AMBULATORY' | 'WHEELCHAIR' | 'STRETCHER' | 'CAR_SEAT';
+    mobilityRequirement?: 'AMBULATORY' | 'WHEELCHAIR' | 'STRETCHER' | 'CAR_SEAT' | 'BURIATRIC_WHEELCHAIR';
 }
 
 export const tripApi = {
@@ -142,9 +142,19 @@ export const tripApi = {
         return data;
     },
 
-    submitReport: async (tripId: string, reportPayload: { tripData: any, signatureData: any }): Promise<Trip> => {
-        const { data } = await api.post(`/trips/${tripId}/report/submit`, reportPayload);
-        return data;
+    submitReport: async (tripId: string, reportData: any, pdfBlob?: Blob): Promise<Trip> => {
+        if (pdfBlob) {
+            const formData = new FormData();
+            formData.append('reportData', JSON.stringify(reportData));
+            formData.append('pdf', pdfBlob, 'report.pdf');
+            const { data } = await api.post(`/trips/${tripId}/report/submit`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            return data;
+        } else {
+            const { data } = await api.post(`/trips/${tripId}/report/submit`, reportData);
+            return data;
+        }
     },
 
     arriveAtStop: async (tripId: string, stopId: string, gps?: { lat: number, lng: number }): Promise<any> => {

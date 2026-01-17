@@ -1,5 +1,5 @@
-import { Box, AppBar, Toolbar, Typography, IconButton, Menu, MenuItem, Avatar, Button, Badge } from '@mui/material';
-import { Logout } from '@mui/icons-material';
+import { Box, AppBar, Toolbar, Typography, IconButton, Menu, MenuItem, Avatar, Button, Badge, Drawer, List, ListItem, ListItemButton, ListItemText, Divider } from '@mui/material';
+import { Logout, Menu as MenuIcon } from '@mui/icons-material';
 import React, { useState } from 'react';
 import { useAuthStore } from '../store/auth';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -14,6 +14,7 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const [mobileOpen, setMobileOpen] = useState(false);
     const user = useAuthStore((state) => state.user);
     const logout = useAuthStore((state) => state.logout);
     const navigate = useNavigate();
@@ -26,6 +27,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
     const handleClose = () => {
         setAnchorEl(null);
+    };
+
+    const handleDrawerToggle = () => {
+        setMobileOpen(!mobileOpen);
     };
 
     const { data: unreadNotifications = [] } = useQuery({
@@ -48,6 +53,48 @@ export default function AppLayout({ children }: AppLayoutProps) {
         navigate('/login');
     };
 
+    const navItems = user?.role === 'DRIVER' ? [
+        { label: 'Today', path: '/driver' },
+        { label: 'Updates', path: '/driver/updates', badge: unreadCount },
+        { label: 'History', path: '/driver/trips' },
+        { label: 'Profile', path: '/driver/profile' },
+    ] : [
+        { label: 'Dashboard', path: '/dashboard' },
+        { label: 'Archives', path: '/archives' },
+        { label: 'Trips', path: '/trips' },
+        { label: 'Members', path: '/members' },
+        { label: 'Drivers', path: '/drivers' },
+        { label: 'Vehicles', path: '/vehicles' },
+        { label: 'Notifications', path: '/notifications' },
+        ...(features.billing ? [{ label: 'Billing', path: '/billing' }] : []),
+        ...(features.payroll ? [{ label: 'Payroll', path: '/payroll' }] : []),
+        ...(features.driverView ? [{ label: 'Driver View', path: '/driver' }] : [])
+    ];
+
+    const drawer = (
+        <Box onClick={handleDrawerToggle} sx={{ textAlign: 'center' }}>
+            <Typography variant="h6" sx={{ my: 2 }}>
+                GVBH Transport
+            </Typography>
+            <Divider />
+            <List>
+                {navItems.map((item) => (
+                    <ListItem key={item.path} disablePadding>
+                        <ListItemButton onClick={() => navigate(item.path)} sx={{ textAlign: 'center' }}>
+                            <ListItemText primary={
+                                item.badge ? (
+                                    <Badge badgeContent={item.badge} color="error">
+                                        {item.label}
+                                    </Badge>
+                                ) : item.label
+                            } />
+                        </ListItemButton>
+                    </ListItem>
+                ))}
+            </List>
+        </Box>
+    );
+
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
             {/* Header */}
@@ -60,6 +107,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 }}
             >
                 <Toolbar>
+                    {/* <IconButton
+                        color="inherit"
+                        aria-label="open drawer"
+                        edge="start"
+                        onClick={handleDrawerToggle}
+                        sx={{ mr: 2, display: { md: 'none' }, color: '#212121' }}
+                    >
+                        <MenuIcon />
+                    </IconButton> */}
+
                     <Typography
                         variant="h6"
                         sx={{
@@ -71,164 +128,29 @@ export default function AppLayout({ children }: AppLayoutProps) {
                         GVBH Transportation
                     </Typography>
 
-                    <Box sx={{ display: 'flex', gap: 3, mr: 4 }}>
-                        {user?.role === 'DRIVER' ? (
-                            <>
-                                <Button 
-                                    color="inherit" 
-                                    onClick={() => navigate('/driver')} 
-                                    sx={{ color: '#212121', fontWeight: 600 }}
-                                >
-                                    Today
-                                </Button>
-                                <Button 
-                                    color="inherit" 
-                                    onClick={() => navigate('/driver/updates')} 
-                                    sx={{ color: '#212121' }}
-                                >
-                                    <Badge badgeContent={unreadCount} color="error">
-                                        Updates
+                    <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3, mr: 4 }}>
+                        {navItems.map((item) => (
+                            <Button 
+                                key={item.path}
+                                color="inherit" 
+                                onClick={() => navigate(item.path)} 
+                                sx={{ 
+                                    color: location.pathname.startsWith(item.path) && item.path !== '/driver' ? '#0096D6' : '#212121',
+                                    borderBottom: location.pathname.startsWith(item.path) && item.path !== '/driver' ? '2px solid #0096D6' : '2px solid transparent',
+                                    borderRadius: 0 
+                                }}
+                            >
+                                {item.badge ? (
+                                    <Badge badgeContent={item.badge} color="error">
+                                        {item.label}
                                     </Badge>
-                                </Button>
-                                <Button 
-                                    color="inherit" 
-                                    onClick={() => navigate('/driver/trips')} 
-                                    sx={{ color: '#212121' }}
-                                >
-                                    History
-                                </Button>
-                                <Button 
-                                    color="inherit" 
-                                    onClick={() => navigate('/driver/profile')} 
-                                    sx={{ color: '#212121' }}
-                                >
-                                    Profile
-                                </Button>
-                            </>
-                        ) : (
-                            <>
-                                <Button 
-                                    color="inherit" 
-                                    onClick={() => navigate('/dashboard')} 
-                                    sx={{ 
-                                        color: location.pathname === '/dashboard' ? '#0096D6' : '#212121',
-                                        borderBottom: location.pathname === '/dashboard' ? '2px solid #0096D6' : '2px solid transparent',
-                                        borderRadius: 0 
-                                    }}
-                                >
-                                    Dashboard
-                                </Button>
-                                <Button 
-                                    color="inherit" 
-                                    onClick={() => navigate('/archives')} 
-                                    sx={{ 
-                                        color: location.pathname === '/archives' ? '#0096D6' : '#212121',
-                                        borderBottom: location.pathname === '/archives' ? '2px solid #0096D6' : '2px solid transparent',
-                                        borderRadius: 0
-                                    }}
-                                >
-                                    Archives
-                                </Button>
-                                <Button 
-                                    color="inherit" 
-                                    onClick={() => navigate('/trips')} 
-                                    sx={{ 
-                                        color: location.pathname.startsWith('/trips') ? '#0096D6' : '#212121',
-                                        borderBottom: location.pathname.startsWith('/trips') ? '2px solid #0096D6' : '2px solid transparent',
-                                        borderRadius: 0
-                                    }}
-                                >
-                                    Trips
-                                </Button>
-                                <Button 
-                                    color="inherit" 
-                                    onClick={() => navigate('/members')} 
-                                    sx={{ 
-                                        color: location.pathname.startsWith('/members') ? '#0096D6' : '#212121',
-                                        borderBottom: location.pathname.startsWith('/members') ? '2px solid #0096D6' : '2px solid transparent',
-                                        borderRadius: 0
-                                    }}
-                                >
-                                    Members
-                                </Button>
-                                <Button 
-                                    color="inherit" 
-                                    onClick={() => navigate('/drivers')} 
-                                    sx={{ 
-                                        color: location.pathname.startsWith('/drivers') ? '#0096D6' : '#212121',
-                                        borderBottom: location.pathname.startsWith('/drivers') ? '2px solid #0096D6' : '2px solid transparent',
-                                        borderRadius: 0
-                                    }}
-                                >
-                                    Drivers
-                                </Button>
-                                <Button 
-                                    color="inherit" 
-                                    onClick={() => navigate('/vehicles')} 
-                                    sx={{ 
-                                        color: location.pathname.startsWith('/vehicles') ? '#0096D6' : '#212121',
-                                        borderBottom: location.pathname.startsWith('/vehicles') ? '2px solid #0096D6' : '2px solid transparent',
-                                        borderRadius: 0
-                                    }}
-                                >
-                                    Vehicles
-                                </Button>
-                                <Button 
-                                    color="inherit" 
-                                    onClick={() => navigate('/notifications')} 
-                                    sx={{ 
-                                        color: location.pathname.startsWith('/notifications') ? '#0096D6' : '#212121',
-                                        borderBottom: location.pathname.startsWith('/notifications') ? '2px solid #0096D6' : '2px solid transparent',
-                                        borderRadius: 0
-                                    }}
-                                >
-                                    Notifications
-                                </Button>
-                                {features.billing && (
-                                    <Button 
-                                        color="inherit" 
-                                        onClick={() => navigate('/billing')} 
-                                        sx={{ 
-                                            color: location.pathname.startsWith('/billing') ? '#0096D6' : '#212121',
-                                            borderBottom: location.pathname.startsWith('/billing') ? '2px solid #0096D6' : '2px solid transparent',
-                                            borderRadius: 0
-                                        }}
-                                    >
-                                        Billing
-                                    </Button>
-                                )}
-                                {features.payroll && (
-                                    <Button 
-                                        color="inherit" 
-                                        onClick={() => navigate('/payroll')} 
-                                        sx={{ 
-                                            color: location.pathname.startsWith('/payroll') ? '#0096D6' : '#212121',
-                                            borderBottom: location.pathname.startsWith('/payroll') ? '2px solid #0096D6' : '2px solid transparent',
-                                            borderRadius: 0
-                                        }}
-                                    >
-                                        Payroll
-                                    </Button>
-                                )}
-                                {features.driverView && (
-                                    <Button 
-                                        color="inherit" 
-                                        onClick={() => navigate('/driver')} 
-                                        sx={{ 
-                                            color: location.pathname.startsWith('/driver') ? '#0096D6' : '#212121',
-                                            borderBottom: location.pathname.startsWith('/driver') ? '2px solid #0096D6' : '2px solid transparent',
-                                            borderRadius: 0
-                                        }}
-                                    >
-                                        Driver View
-                                    </Button>
-                                )}
-                            </>
-                        )}
+                                ) : item.label}
+                            </Button>
+                        ))}
                     </Box>
 
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Box sx={{ textAlign: 'right' }}>
+                        <Box sx={{ textAlign: 'right', display: { xs: 'none', sm: 'block' } }}>
                             <Typography variant="body2" sx={{ color: '#212121', fontWeight: 500 }}>
                                 {user?.firstName} {user?.lastName}
                             </Typography>
@@ -239,7 +161,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
                         {user?.role !== 'DRIVER' && !location.pathname.startsWith('/notifications') && <NotificationBell />}
 
-                        {user?.role !== 'DRIVER' && (
+                        {/* {user?.role !== 'DRIVER' && (
                             <>
                                 <IconButton
                                     size="large"
@@ -272,10 +194,27 @@ export default function AppLayout({ children }: AppLayoutProps) {
                                     <MenuItem onClick={handleLogout}>Logout</MenuItem>
                                 </Menu>
                             </>
-                        )}
+                        )} */}
                     </Box>
                 </Toolbar>
             </AppBar>
+
+            <nav>
+                <Drawer
+                    variant="temporary"
+                    open={mobileOpen}
+                    onClose={handleDrawerToggle}
+                    ModalProps={{
+                        keepMounted: true, // Better open performance on mobile.
+                    }}
+                    sx={{
+                        display: { xs: 'block', md: 'none' },
+                        '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 240 },
+                    }}
+                >
+                    {drawer}
+                </Drawer>
+            </nav>
 
             {/* Main Content */}
             <Box component="main" sx={{ flexGrow: 1, bgcolor: '#f0f4f8' }}>

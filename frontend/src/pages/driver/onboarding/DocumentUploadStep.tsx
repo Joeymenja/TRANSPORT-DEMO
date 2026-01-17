@@ -58,7 +58,7 @@ export default function DocumentUploadStep({ onNext, onBack }: Props) {
 
         return (
             <Card variant="outlined" sx={{ mb: 2, borderColor: status === 'MISSING' ? 'grey.300' : status === 'APPROVED' ? 'success.main' : 'warning.main' }}>
-                <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <CardContent sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', gap: 2 }}>
                     <Box>
                         <Typography variant="subtitle1" fontWeight={600}>{title}</Typography>
                         <Typography variant="body2" color="text.secondary">{description}</Typography>
@@ -68,7 +68,7 @@ export default function DocumentUploadStep({ onNext, onBack }: Props) {
                             </Typography>
                         )}
                     </Box>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: { xs: 'flex-start', sm: 'flex-end' }, gap: 1, width: { xs: '100%', sm: 'auto' } }}>
                         {status === 'MISSING' && (
                             <Button
                                 component="label"
@@ -76,6 +76,7 @@ export default function DocumentUploadStep({ onNext, onBack }: Props) {
                                 startIcon={<CloudUpload />}
                                 size="small"
                                 disabled={loading}
+                                fullWidth
                             >
                                 Upload
                                 <input
@@ -95,7 +96,7 @@ export default function DocumentUploadStep({ onNext, onBack }: Props) {
                             <Chip label="Approved" size="small" color="success" icon={<CheckCircle />} />
                         )}
                         {status === 'REJECTED' && (
-                            <Box sx={{ textAlign: 'right' }}>
+                            <Box sx={{ textAlign: { xs: 'left', sm: 'right' }, width: '100%' }}>
                                 <Chip label="Rejected" size="small" color="error" icon={<ErrorOutline />} sx={{ mb: 1 }} />
                                 <Button
                                     component="label"
