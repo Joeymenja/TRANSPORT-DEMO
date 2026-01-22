@@ -4,84 +4,35 @@ import { Draw, Save, Restore, Clear, DirectionsCar, LocationOn, Person, AccessTi
 import { calculateTripDistance } from '../../../utils/distance';
 
 interface DropoffWorkflowProps {
-    onComplete: (data: { signature: string; odometer: number; notes: string }) => void;
+    onComplete: (data: { signature: string; driverSignature?: string | null; odometer: number; notes: string }) => void;
     startOdometer?: number;
     trip?: any; // Added trip object for recap
 }
 
 export default function DropoffWorkflow({ onComplete, startOdometer = 0, trip }: DropoffWorkflowProps) {
+    // Auto-calculate suggested odometer
+    const initialOdometer = (startOdometer !== undefined && trip?.estimatedDistance) 
+        ? (startOdometer + trip.estimatedDistance).toFixed(1) 
+        : '';
+
     const [tab, setTab] = useState(0);
-    const [notes, setNotes] = useState('');
-    const [odometer, setOdometer] = useState<string>('');
+    const [odometer, setOdometer] = useState<string>(initialOdometer);
+    const [notes, setNotes] = useState<string>('');
     const [signatureData, setSignatureData] = useState<string | null>(null);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
-    
-    const driverCanvasRef = useRef<HTMLCanvasElement>(null);
     const [driverSignatureData, setDriverSignatureData] = useState<string | null>(null);
-    const [isDrawingClient, setIsDrawingClient] = useState(false);
-    const [isDrawingDriver, setIsDrawingDriver] = useState(false);
+    
+    // Canvas refs
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const driverCanvasRef = useRef<HTMLCanvasElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const isDrawing = useRef(false);
 
-    const clientName = trip?.members?.[0]?.member ? `${trip.members[0].member.firstName} ${trip.members[0].member.lastName}` : 'Client';
-    const pickupAddr = trip?.stops?.find((s: any) => s.stopType === 'PICKUP')?.address?.split(',')[0] || 'Pickup';
-    const dropoffAddr = trip?.stops?.find((s: any) => s.stopType === 'DROPOFF')?.address?.split(',')[0] || 'Dropoff';
-
-    const [calculatedMiles, setCalculatedMiles] = useState<number>(12.4);
-
-    useEffect(() => {
-        if (trip?.stops?.length >= 2) {
-            const dist = calculateTripDistance(trip.stops);
-            setCalculatedMiles(dist || 12.4);
-        }
-    }, [trip]);
-
-    useEffect(() => {
-        if (!odometer && startOdometer > 0 && calculatedMiles > 0) {
-            setOdometer(Math.ceil(startOdometer + calculatedMiles).toString());
-        }
-    }, [startOdometer, calculatedMiles]);
-
-    // Signature Pad Logic & Resize
-    useEffect(() => {
-        const resizeCanvases = () => {
-             // Resize Client Canvas
-             if (tab === 0 && canvasRef.current && containerRef.current) {
-                const canvas = canvasRef.current;
-                const container = containerRef.current;
-                canvas.width = container.clientWidth;
-                canvas.height = container.clientHeight;
-                const ctx = canvas.getContext('2d');
-                if (ctx) {
-                    ctx.lineWidth = 3;
-                    ctx.lineCap = 'round';
-                    ctx.strokeStyle = '#000';
-                }
-            }
-            // Resize Driver Canvas
-            if (tab === 2 && driverCanvasRef.current && containerRef.current) {
-                const canvas = driverCanvasRef.current;
-                const container = containerRef.current;
-                canvas.width = container.clientWidth;
-                canvas.height = container.clientHeight;
-                const ctx = canvas.getContext('2d');
-                if (ctx) {
-                    ctx.lineWidth = 3;
-                    ctx.lineCap = 'round';
-                    ctx.strokeStyle = '#000';
-                }
-            }
-        };
-
-        resizeCanvases();
-        window.addEventListener('resize', resizeCanvases);
-        return () => window.removeEventListener('resize', resizeCanvases);
-    }, [tab]);
-
+    // Signature logic
     const startDrawing = (e: any) => {
+        isDrawing.current = true;
         const canvas = tab === 2 ? driverCanvasRef.current : canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
+        const ctx = canvas?.getContext('2d');
+        if (!ctx || !canvas) return;
 
         const rect = canvas.getBoundingClientRect();
         const x = (e.clientX || e.touches[0].clientX) - rect.left;
@@ -89,18 +40,13 @@ export default function DropoffWorkflow({ onComplete, startOdometer = 0, trip }:
 
         ctx.beginPath();
         ctx.moveTo(x, y);
-        if (tab === 2) setIsDrawingDriver(true);
-        else setIsDrawingClient(true);
     };
 
     const draw = (e: any) => {
-        const isDrawing = tab === 2 ? isDrawingDriver : isDrawingClient;
-        if (!isDrawing) return;
-        
+        if (!isDrawing.current) return;
         const canvas = tab === 2 ? driverCanvasRef.current : canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
+        const ctx = canvas?.getContext('2d');
+        if (!ctx || !canvas) return;
 
         const rect = canvas.getBoundingClientRect();
         const x = (e.clientX || e.touches[0].clientX) - rect.left;
@@ -111,30 +57,31 @@ export default function DropoffWorkflow({ onComplete, startOdometer = 0, trip }:
     };
 
     const stopDrawing = () => {
-        if (tab === 2) {
-            if (!isDrawingDriver) return;
-            setIsDrawingDriver(false);
-            if (driverCanvasRef.current) setDriverSignatureData(driverCanvasRef.current.toDataURL());
-        } else {
-            if (!isDrawingClient) return;
-            setIsDrawingClient(false);
-            if (canvasRef.current) setSignatureData(canvasRef.current.toDataURL());
+        if (!isDrawing.current) return;
+        isDrawing.current = false;
+        saveSignature();
+    };
+
+    const saveSignature = () => {
+        const canvas = tab === 2 ? driverCanvasRef.current : canvasRef.current;
+        if (canvas) {
+            const dataUrl = canvas.toDataURL();
+            if (tab === 2) {
+                setDriverSignatureData(dataUrl);
+            } else {
+                setSignatureData(dataUrl);
+            }
         }
     };
 
     const clearSignature = () => {
-        if (tab === 2) {
-            const canvas = driverCanvasRef.current;
-            if (canvas) {
-                const ctx = canvas.getContext('2d');
-                ctx?.clearRect(0, 0, canvas.width, canvas.height);
+        const canvas = tab === 2 ? driverCanvasRef.current : canvasRef.current;
+        const ctx = canvas?.getContext('2d');
+        if (ctx && canvas) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (tab === 2) {
                 setDriverSignatureData(null);
-            }
-        } else {
-            const canvas = canvasRef.current;
-            if (canvas) {
-                const ctx = canvas.getContext('2d');
-                ctx?.clearRect(0, 0, canvas.width, canvas.height);
+            } else {
                 setSignatureData(null);
             }
         }
@@ -144,17 +91,48 @@ export default function DropoffWorkflow({ onComplete, startOdometer = 0, trip }:
         setSignatureData('saved_signature_v1');
     };
 
+    // Resize canvas on mount/tab change
+    useEffect(() => {
+        const resizeCanvas = (canvas: HTMLCanvasElement | null) => {
+            if (canvas && containerRef.current) {
+                canvas.width = containerRef.current.offsetWidth;
+                canvas.height = containerRef.current.offsetHeight;
+                
+                // Restore line style
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.lineWidth = 2;
+                    ctx.lineCap = 'round';
+                    ctx.strokeStyle = '#000';
+                }
+            }
+        };
+
+        if (tab === 0 || tab === 2) {
+            // Small timeout to allow render
+            setTimeout(() => {
+                resizeCanvas(tab === 2 ? driverCanvasRef.current : canvasRef.current);
+            }, 50);
+        }
+    }, [tab]);
+
     const handleSubmit = () => {
         onComplete({
             signature: signatureData || 'saved_signature',
+            driverSignature: driverSignatureData,
             odometer: parseFloat(odometer) || 0,
             notes
         });
     };
 
+    const clientName = trip?.members?.[0]?.member ? `${trip.members[0].member.firstName} ${trip.members[0].member.lastName}` : 'Guest';
+    const pickupAddr = trip?.stops?.find((s: any) => s.stopType === 'PICKUP')?.address || 'Unknown';
+    const dropoffAddr = trip?.stops?.find((s: any) => s.stopType === 'DROPOFF')?.address || 'Unknown';
+    const calculatedMiles = trip?.estimatedDistance || 0;
+
     return (
-        <Box sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <Box sx={{ flex: 1, overflowY: 'auto', p: 2, pb: 12 }}>
+        <Box sx={{ width: '100%', minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ flex: 1 }}> {/* Content wrapper */}
                 
                 {/* 1. Trip Recap Header */}
                 <Typography variant="h5" fontWeight={900} sx={{ mt: 1, mb: 2, letterSpacing: -0.5 }}>Review & Finalize</Typography>
@@ -309,14 +287,19 @@ export default function DropoffWorkflow({ onComplete, startOdometer = 0, trip }:
                 </Paper>
             </Box>
 
-            {/* Fixed Bottom Action Area */}
+            {/* Sticky Bottom Action Area */}
             <Box sx={{ 
+                mt: 'auto',
+                position: 'sticky',
+                bottom: 0,
                 p: 2, 
-                pb: 6, // Increased padding for mobile hit area
+                pb: 4, // Increased padding
                 bgcolor: 'white', 
                 borderTop: '1px solid #f0f0f0',
                 boxShadow: '0 -10px 30px rgba(0,0,0,0.05)',
-                zIndex: 50
+                zIndex: 50,
+                mx: -3,
+                px: 3
             }}>
                 <Button
                     fullWidth

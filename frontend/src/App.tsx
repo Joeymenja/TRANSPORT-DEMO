@@ -32,6 +32,7 @@ import TripExecutionPage from './pages/driver/TripExecutionPage';
 import TripReportPage from './pages/driver/report/TripReportPage';
 import TripDetailScreen from './pages/driver/TripDetailScreen';
 import MobileDriverDashboard from './components/dashboard/MobileDriverDashboard';
+import DesktopDriverDashboard from './components/dashboard/DesktopDriverDashboard';
 import ClientTripPage from './pages/ClientTripPage';
 import DriverRegistrationPage from './pages/driver/DriverRegistrationPage';
 import DriverWelcomePage from './pages/driver/DriverWelcomePage';
@@ -42,6 +43,7 @@ import DriverSchedulePage from './pages/driver/DriverSchedulePage';
 import DriverProfilePage from './pages/driver/DriverProfilePage';
 import DriverSettingsPage from './pages/driver/DriverSettingsPage';
 import DriverCreateTripPage from './pages/driver/DriverCreateTripPage';
+import BackfillTripPage from './pages/driver/BackfillTripPage';
 import AppLayout from './components/AppLayout';
 import { KeyboardNavigation } from './components/KeyboardNavigation';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -137,7 +139,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 
 function RootRedirect() {
     const user = useAuthStore((state) => state.user);
-    if (user?.role === 'DRIVER') {
+    if (user?.role === 'DRIVER' || user?.role === 'HOUSE_MANAGER') {
         return <Navigate to="/driver/dashboard" replace />;
     }
     return <Navigate to="/dashboard" replace />;
@@ -145,7 +147,7 @@ function RootRedirect() {
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
     const user = useAuthStore((state) => state.user);
-    if (user?.role === 'DRIVER') {
+    if (user?.role === 'DRIVER' || user?.role === 'HOUSE_MANAGER') {
         return <Navigate to="/driver/dashboard" replace />;
     }
     return <>{children}</>;
@@ -176,8 +178,8 @@ function AppRoutes() {
                     <PrivateRoute>
                         <DriverLayout>
                             <Routes>
-                                <Route path="/" element={<DesktopDriverDashboard />} />
-                                <Route path="dashboard" element={<DesktopDriverDashboard />} />
+                                <Route path="/" element={<DashboardPage />} />
+                                <Route path="dashboard" element={<DashboardPage />} />
                                 <Route path="updates" element={<DriverUpdatesPage />} />
                                 <Route path="trips" element={<DriverTripsPage />} />
                                 <Route path="trips/:tripId" element={<TripDetailScreen />} />
@@ -189,6 +191,7 @@ function AppRoutes() {
                                 <Route path="settings" element={<DriverSettingsPage />} />
                                 <Route path="compliance" element={<CompliancePage />} />
                                 <Route path="create-trip" element={<DriverCreateTripPage />} />
+                                <Route path="backfill" element={<BackfillTripPage />} />
                             </Routes>
                         </DriverLayout>
                     </PrivateRoute>

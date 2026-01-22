@@ -7,6 +7,7 @@ export enum UserRole {
     ORG_ADMIN = 'ORG_ADMIN',
     DISPATCHER = 'DISPATCHER',
     DRIVER = 'DRIVER',
+    HOUSE_MANAGER = 'HOUSE_MANAGER',
 }
 
 @Entity('users')
@@ -63,6 +64,16 @@ export class User {
 
     @Column({ name: 'address_zip', nullable: true })
     addressZip: string;
+
+    // License Info
+    @Column({ name: 'license_number', nullable: true })
+    licenseNumber: string;
+
+    @Column({ name: 'license_state', nullable: true })
+    licenseState: string;
+
+    @Column({ name: 'license_expiry', nullable: true })
+    licenseExpiry: string;
 
     // Emergency Contact (Denormalized here for easy access, or sync with Driver entity)
     @Column({ name: 'emergency_contact_name', nullable: true })

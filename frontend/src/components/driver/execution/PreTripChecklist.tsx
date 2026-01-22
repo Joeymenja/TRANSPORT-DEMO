@@ -117,21 +117,34 @@ export default function PreTripChecklist({ lastOdometer = 0, onComplete, onCance
                     </Button>
                 </Box>
 
-                <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-                    <Button variant="outlined" fullWidth onClick={onCancel}>
-                        Cancel
-                    </Button>
-                    <Button
-                        variant="contained"
-                        fullWidth
-                        size="large"
-                        onClick={handleSubmit}
-                        disabled={!odometer} // Basic check, full validation in submit
-                    >
-                        Confirm & Start Trip
-                    </Button>
-                </Box>
             </CardContent>
+
+            <Box sx={{ 
+                mt: 'auto',
+                position: 'sticky',
+                bottom: 0,
+                bgcolor: 'white',
+                zIndex: 10,
+                p: 3, 
+                borderTop: '1px solid rgba(0,0,0,0.05)',
+                display: 'flex', 
+                gap: 2,
+                pb: 2
+            }}>
+                <Button variant="outlined" fullWidth onClick={onCancel} sx={{ height: 56 }}>
+                    Cancel
+                </Button>
+                <Button
+                    variant="contained"
+                    fullWidth
+                    size="large"
+                    onClick={handleSubmit}
+                    disabled={!odometer}
+                    sx={{ height: 56, borderRadius: 28 }}
+                >
+                    Confirm & Start Trip
+                </Button>
+            </Box>
         </Card>
     );
 }

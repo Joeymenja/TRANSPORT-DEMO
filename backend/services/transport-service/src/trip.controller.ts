@@ -131,13 +131,64 @@ export class TripController {
     }
 
     @Post(':id/report/submit')
+    @UseInterceptors(FileInterceptor('pdf'))
     async submitReport(
         @Param('id') id: string,
-        @Body() reportPayload: { tripData: any, signatureData: any },
+        @Body() body: any,
+        @UploadedFile() pdf: Express.Multer.File,
         @Request() req
     ) {
         const organizationId = req.headers['x-organization-id'];
         const userId = req.headers['x-user-id'];
+        
+        // Parse reportData from string if it came as form-data
+        let reportPayload = body;
+        if (body.reportData && typeof body.reportData === 'string') {
+            try {
+                reportPayload = JSON.parse(body.reportData);
+            } catch (e) {
+                console.error('Failed to parse reportData JSON', e);
+            }
+        }
+
+        // Save PDF if present
+        if (pdf) {
+            console.log('Received PDF in submitReport:', { 
+                originalname: pdf.originalname, 
+                mimetype: pdf.mimetype, 
+                size: pdf.size, 
+                hasBuffer: !!pdf.buffer,
+                path: pdf.path 
+            });
+
+            const fs = require('fs');
+            const path = require('path');
+            const uploadDir = path.join(process.cwd(), 'uploads', 'reports');
+            if (!fs.existsSync(uploadDir)) {
+                fs.mkdirSync(uploadDir, { recursive: true });
+            }
+            const filename = `trip-report-${id}-${Date.now()}.pdf`;
+            const filePath = path.join(uploadDir, filename);
+            
+            if (pdf.buffer) {
+                fs.writeFileSync(filePath, pdf.buffer);
+            } else if (pdf.path) {
+                // If using DiskStorage or temp file, copy/move it
+                fs.copyFileSync(pdf.path, filePath);
+            } else {
+                console.error('Uploaded PDF has no buffer or path');
+                // Even with no PDF file saved, we might want to proceed with just data? 
+                // Or throw error? For now, let's proceed but warn.
+            }
+
+            // Add path to payload if file was written
+            if (fs.existsSync(filePath)) {
+                reportPayload = { ...reportPayload, pdfPath: filePath };
+            }
+        } else {
+            console.log('No PDF file received in submitReport');
+        }
+        
         return this.tripService.submitReport(id, organizationId, userId, reportPayload);
     }
 

@@ -5,10 +5,10 @@ export class Organization {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column()
+    @Column({ nullable: true })
     name: string;
 
-    @Column({ unique: true })
+    @Column({ unique: true, nullable: true })
     subdomain: string;
 
     @Column({ name: 'ensora_api_key', nullable: true })

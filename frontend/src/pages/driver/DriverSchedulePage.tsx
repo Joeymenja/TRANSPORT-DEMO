@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Paper, List, ListItem, ListItemText, Divider, Tabs, Tab, CircularProgress, Chip, Snackbar, Alert } from '@mui/material';
-import { ChevronRight, History, CalendarMonth } from '@mui/icons-material';
+import { Box, Typography, Paper, List, ListItem, ListItemText, Divider, Tabs, Tab, CircularProgress, Chip, Snackbar, Alert, IconButton } from '@mui/material';
+import { ChevronRight, History, CalendarMonth, Menu as MenuIcon, Add } from '@mui/icons-material';
 import ActiveTripCard from '../../components/dashboard/ActiveTripCard';
 import { format } from 'date-fns';
 import { useAuthStore } from '../../store/auth';
@@ -93,36 +93,126 @@ export default function DriverSchedulePage() {
     );
 
     return (
-        <Box sx={{ p: 2 }}>
-            <Typography variant="h5" fontWeight={700} gutterBottom>My Schedule</Typography>
+        <Box sx={{ width: '100%' }}>
+            {/* Secondary Header */}
+            <Box sx={{ 
+                height: 60, 
+                display: 'flex', 
+                alignItems: 'center', 
+                px: 2, 
+                borderBottom: '1px solid #f0f0f0',
+                bgcolor: 'white',
+                position: 'relative'
+            }}>
+                <IconButton size="small">
+                    <MenuIcon sx={{ color: '#333' }} />
+                </IconButton>
+                <Typography sx={{ 
+                    position: 'absolute', 
+                    left: '50%', 
+                    transform: 'translateX(-50%)',
+                    fontWeight: 700,
+                    color: '#333',
+                    fontSize: '1.1rem'
+                }}>
+                    My Schedule
+                </Typography>
+            </Box>
 
-            <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid #eee', mb: 2 }}>
-                <Tabs value={tabValue} onChange={handleTabChange} variant="fullWidth">
-                    <Tab icon={<CalendarMonth fontSize="small" />} iconPosition="start" label="Upcoming" />
-                    <Tab icon={<History fontSize="small" />} iconPosition="start" label="History" />
-                </Tabs>
-            </Paper>
+            <Box sx={{ p: 4, maxWidth: 1100, mx: 'auto' }}>
+                <Paper elevation={0} sx={{ 
+                    borderRadius: 4, 
+                    border: '1px solid #eee', 
+                    overflow: 'hidden',
+                    bgcolor: 'white'
+                }}>
+                    <Box sx={{ borderBottom: '1px solid #eee' }}>
+                        <Tabs 
+                            value={tabValue} 
+                            onChange={handleTabChange} 
+                            variant="fullWidth"
+                            sx={{
+                                '& .MuiTab-root': {
+                                    py: 3,
+                                    color: '#999',
+                                    fontWeight: 600,
+                                    textTransform: 'uppercase',
+                                    fontSize: '0.85rem'
+                                },
+                                '& .Mui-selected': {
+                                    color: '#0096D6 !important'
+                                },
+                                '& .MuiTabs-indicator': {
+                                    backgroundColor: '#0096D6',
+                                    height: 3
+                                }
+                            }}
+                        >
+                            <Tab icon={<CalendarMonth fontSize="small" />} iconPosition="start" label="Upcoming" />
+                            <Tab icon={<History fontSize="small" />} iconPosition="start" label="History" />
+                        </Tabs>
+                    </Box>
 
-            <Paper elevation={0} sx={{ borderRadius: 3, overflow: 'hidden', border: tabValue === 1 ? '1px solid #eee' : 'none', bgcolor: 'transparent' }}>
-                {tabValue === 0 ? (
-                    upcomingTrips.length === 0 ? (
-                        <Box sx={{ p: 4, textAlign: 'center', color: 'text.secondary', bgcolor: 'white', borderRadius: 3, border: '1px solid #eee' }}>
-                            <Typography>No upcoming trips.</Typography>
+                    <Box sx={{ p: 4 }}>
+                        {tabValue === 0 && (
+                            <Paper 
+                                onClick={() => navigate('/driver/backfill')}
+                                sx={{ 
+                                    p: 2.5, 
+                                    mb: 4, 
+                                    bgcolor: 'white', 
+                                    border: '1px solid #eee', 
+                                    borderRadius: 4,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 2.5,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    '&:hover': { bgcolor: '#fbfbfb', border: '1px solid #0096D6' }
+                                }}
+                            >
+                                <Box sx={{ 
+                                    bgcolor: 'rgba(0,150,214,0.08)', 
+                                    color: '#0096D6', 
+                                    width: 44, 
+                                    height: 44, 
+                                    borderRadius: '50%', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center' 
+                                }}>
+                                    <Add />
+                                </Box>
+                                <Box>
+                                    <Typography fontWeight={700} color="#333" sx={{ fontSize: '1rem' }}>Log a Past Trip</Typography>
+                                    <Typography variant="body2" color="text.secondary">Create a report for a completed trip</Typography>
+                                </Box>
+                            </Paper>
+                        )}
+
+                        <Box>
+                            {tabValue === 0 ? (
+                                upcomingTrips.length === 0 ? (
+                                    <Box sx={{ py: 8, textAlign: 'center', color: 'text.secondary' }}>
+                                        <Typography>No upcoming trips.</Typography>
+                                    </Box>
+                                ) : (
+                                    upcomingTrips.map((trip, index) => (
+                                        <ActiveTripCard
+                                            key={trip.id}
+                                            trip={trip}
+                                            isNext={index === 0}
+                                            compact={true}
+                                            onViewDetails={() => navigate(`/driver/trips/${trip.id}`)}
+                                            onStartTrip={() => navigate(`/driver/trips/${trip.id}/execute`)}
+                                        />
+                                    ))
+                                )
+                            ) : renderTripList(pastTrips)}
                         </Box>
-                    ) : (
-                        upcomingTrips.map((trip, index) => (
-                            <ActiveTripCard
-                                key={trip.id}
-                                trip={trip}
-                                isNext={index === 0}
-                                compact={true} // User requested smaller cards
-                                onViewDetails={() => navigate(`/driver/trips/${trip.id}`)}
-                                onStartTrip={() => navigate(`/driver/trips/${trip.id}/execute`)}
-                            />
-                        ))
-                    )
-                ) : renderTripList(pastTrips)}
-            </Paper>
+                    </Box>
+                </Paper>
+            </Box>
 
             <Snackbar
                 open={showNotification}

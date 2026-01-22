@@ -26,7 +26,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
                 password: configService.get('DB_PASSWORD'),
                 database: configService.get('DB_DATABASE'),
                 entities: [User, Organization, DriverDocument],
-                synchronize: false, // Use migrations in production
+                synchronize: true, // Use migrations in production
                 logging: configService.get('NODE_ENV') === 'development',
             }),
             inject: [ConfigService],

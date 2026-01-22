@@ -24,7 +24,9 @@ import {
     Card,
     CardContent,
     Collapse,
-    Chip
+    Chip,
+    ToggleButtonGroup,
+    ToggleButton
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers';
 import TimeWheelSelector from '../../components/common/TimeWheelSelector';
@@ -89,10 +91,10 @@ export default function BackfillTripPage() {
         );
     }
 
-    // Member & Vehicle selection
+    // Member selection
     const [selectedMember, setSelectedMember] = useState<any>(null);
-    const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
     const [date, setDate] = useState<Date | null>(new Date());
+    const [tripType, setTripType] = useState<'ONE_WAY' | 'ROUND_TRIP'>('ONE_WAY');
 
     // Multi-leg state
     const [legs, setLegs] = useState<TripLeg[]>([
@@ -117,8 +119,10 @@ export default function BackfillTripPage() {
         lastName: '',
         memberId: '',
         dateOfBirth: '',
-        address: '',
+        address: '', // House Address
+        mailingAddress: '',
         phone: '',
+        reasonForRide: 'Behavioral Health / Counseling',
         mobilityRequirement: MobilityRequirement.AMBULATORY
     });
 
@@ -127,10 +131,59 @@ export default function BackfillTripPage() {
         queryFn: memberApi.getMembers
     });
 
-    const { data: vehicles = [], isLoading: loadingVehicles } = useQuery({
-        queryKey: ['vehicles'],
-        queryFn: vehicleApi.getVehicles
+    const createMemberMutation = useMutation({
+        mutationFn: (data: any) => memberApi.createMember(data),
+        onSuccess: (newMember) => {
+            queryClient.invalidateQueries({ queryKey: ['members'] });
+            setSelectedMember(newMember);
+            if (newMember.address) updateLeg(0, { pickupAddress: newMember.address });
+            if (newMemberData.reasonForRide) updateLeg(0, { reasonForVisit: newMemberData.reasonForRide });
+            setIsAddMemberOpen(false);
+            setNewMemberData({
+                firstName: '',
+                lastName: '',
+                memberId: '',
+                dateOfBirth: '',
+                address: '',
+                mailingAddress: '',
+                phone: '',
+                reasonForRide: 'Behavioral Health / Counseling',
+                mobilityRequirement: MobilityRequirement.AMBULATORY
+            });
+        },
+        onError: (err: any) => {
+            setError(err.message || 'Failed to create member');
+        }
     });
+
+
+    const handleTripTypeChange = (_: any, newType: 'ONE_WAY' | 'ROUND_TRIP') => {
+        if (!newType) return;
+        setTripType(newType);
+
+        if (newType === 'ROUND_TRIP' && legs.length === 1) {
+            // Auto-add return leg
+            const firstLeg = legs[0];
+            setLegs([
+                { ...firstLeg, isExpanded: false },
+                {
+                    pickupAddress: firstLeg.dropoffAddress,
+                    dropoffAddress: firstLeg.pickupAddress,
+                    pickupTime: format(addMinutes(parse(firstLeg.dropoffTime, 'HH:mm', new Date()), 60), 'HH:mm'),
+                    dropoffTime: format(addMinutes(parse(firstLeg.dropoffTime, 'HH:mm', new Date()), 90), 'HH:mm'),
+                    startOdometer: firstLeg.endOdometer,
+                    endOdometer: '',
+                    reasonForVisit: firstLeg.reasonForVisit,
+                    isExpanded: true
+                }
+            ]);
+        } else if (newType === 'ONE_WAY' && legs.length > 1) {
+            // Keep first leg only if user specifically asked for one way? 
+            // Better to just let them keep what they have but maybe collapse them.
+            // Actually usually toggling one-way/round-trip in booking apps is more rigid.
+            // If they have >2 legs, it's already "MULTIPLE_STOPS".
+        }
+    };
 
     const handleAddLeg = () => {
         if (legs.length >= 6) return;
@@ -160,7 +213,6 @@ export default function BackfillTripPage() {
     const createTripMutation = useMutation({
         mutationFn: async () => {
             if (!selectedMember) throw new Error('Member selection is missing');
-            if (!selectedVehicle) throw new Error('Vehicle selection is missing');
             if (!user) throw new Error('User session not found');
 
             // Construct stops from legs
@@ -185,7 +237,6 @@ export default function BackfillTripPage() {
             const tripPayload: any = {
                 tripDate: date || new Date(),
                 assignedDriverId: user.id,
-                assignedVehicleId: selectedVehicle.id,
                 status: 'COMPLETED',
                 tripType: legs.length > 2 ? 'MULTIPLE_STOPS' : (legs.length === 2 ? 'ROUND_TRIP' : 'ONE_WAY'),
                 reasonForVisit: legs[0].reasonForVisit, // Primary reason
@@ -225,11 +276,6 @@ export default function BackfillTripPage() {
             window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
         }
-        if (!selectedVehicle) {
-            setError('Please select the vehicle used for this trip');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            return;
-        }
         
         const invalidLeg = legs.find(l => !l.pickupAddress || !l.dropoffAddress || !l.startOdometer || !l.endOdometer);
         if (invalidLeg) {
@@ -246,16 +292,15 @@ export default function BackfillTripPage() {
             <Button startIcon={<ArrowBack />} onClick={() => navigate('/driver')} sx={{ mb: 2 }}>Back</Button>
 
             <Box sx={{ mb: 4, textAlign: 'center' }}>
-                <Route sx={{ fontSize: 48, color: '#007aff', mb: 1 }} />
-                <Typography variant="h5" fontWeight={800}>Log Completed Service</Typography>
-                <Typography variant="body2" color="text.secondary">Record up to 6 trip legs for this member.</Typography>
+                <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5 }}>Log Completed Service</Typography>
+                <Typography variant="body2" color="text.secondary">Record up to 6 trip legs for this member</Typography>
             </Box>
 
             {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
             {/* Member & Vehicle Card */}
             <Paper sx={{ p: 3, mb: 3, borderRadius: 4, border: '1px solid #e0e0e0' }}>
-                <Typography variant="overline" color="text.secondary" fontWeight={700} sx={{ mb: 2, display: 'block' }}>BASICS</Typography>
+                <Typography variant="subtitle2" color="text.secondary" fontWeight={700} sx={{ mb: 2, display: 'block' }}>Basics</Typography>
                 <Autocomplete
                     options={members}
                     isOptionEqualToValue={(option, value) => option.id === value.id}
@@ -279,14 +324,6 @@ export default function BackfillTripPage() {
                     }}
                     renderInput={(p) => <TextField {...p} label="Member *" sx={{ mb: 2 }} />}
                 />
-                <Autocomplete
-                    options={vehicles}
-                    isOptionEqualToValue={(option, value) => option.id === value.id}
-                    getOptionLabel={(o: any) => `${o.vehicleNumber} - ${o.make} (${o.licensePlate})`}
-                    value={selectedVehicle}
-                    onChange={(_, v) => setSelectedVehicle(v)}
-                    renderInput={(p) => <TextField {...p} label="Vehicle *" sx={{ mb: 2 }} />}
-                />
                 <DatePicker
                     label="Service Date"
                     value={date}
@@ -295,8 +332,44 @@ export default function BackfillTripPage() {
                 />
             </Paper>
 
+            {/* Trip Type Selector */}
+            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'center' }}>
+                <ToggleButtonGroup
+                    value={tripType}
+                    exclusive
+                    onChange={handleTripTypeChange}
+                    sx={{ 
+                        bgcolor: '#f5f5f5',
+                        borderRadius: 50, // Pill shape
+                        p: 0.5,
+                        border: 'none',
+                        '& .MuiToggleButton-root': {
+                            px: 3,
+                            py: 1,
+                            borderRadius: 50,
+                            border: 'none !important',
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            color: '#757575',
+                            fontSize: '0.9rem',
+                            transition: 'all 0.2s',
+                            '&.Mui-selected': {
+                                bgcolor: 'white',
+                                color: '#0096D6',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                                '&:hover': { bgcolor: 'white' }
+                            },
+                            '&:hover': { bgcolor: 'rgba(255,255,255,0.5)' }
+                        }
+                    }}
+                >
+                    <ToggleButton value="ONE_WAY">One Way</ToggleButton>
+                    <ToggleButton value="ROUND_TRIP">Round Trip</ToggleButton>
+                </ToggleButtonGroup>
+            </Box>
+
             {/* Legs Section */}
-            <Typography variant="overline" color="text.secondary" fontWeight={700} sx={{ mb: 1, ml: 1, display: 'block' }}>TRIP LEGS ({legs.length}/6)</Typography>
+            <Typography variant="subtitle2" color="text.secondary" fontWeight={700} sx={{ mb: 1.5, ml: 1, display: 'block' }}>Trip Legs ({legs.length}/6)</Typography>
             
             {legs.map((leg, index) => (
                 <Card key={index} sx={{ mb: 2, borderRadius: 3, border: '1px solid #e0e0e0', overflow: 'hidden' }}>
@@ -409,22 +482,105 @@ export default function BackfillTripPage() {
                 size="large"
                 onClick={handleCreate}
                 disabled={createTripMutation.isPending}
-                sx={{ height: 60, borderRadius: 4, bgcolor: '#34c759', fontWeight: 800, fontSize: '1.1rem' }}
+                sx={{ 
+                    height: 56, 
+                    borderRadius: 3, 
+                    bgcolor: '#0096D6', 
+                    fontWeight: 700, 
+                    fontSize: '1rem',
+                    boxShadow: '0 4px 12px rgba(0,150,214,0.2)',
+                    '&:hover': { bgcolor: '#007bb0' }
+                }}
             >
                 {createTripMutation.isPending ? 'Saving...' : 'Review & Sign Packets'}
             </Button>
 
             {/* Add Member Dialog */}
-            <Dialog open={isAddMemberOpen} onClose={() => setIsAddMemberOpen(false)} fullWidth maxWidth="xs">
-                <DialogTitle>Add New Member</DialogTitle>
+            <Dialog open={isAddMemberOpen} onClose={() => setIsAddMemberOpen(false)} fullWidth maxWidth="sm">
+                <DialogTitle sx={{ fontWeight: 800 }}>Add New Member</DialogTitle>
                 <DialogContent>
-                    <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <TextField label="First Name" fullWidth value={newMemberData.firstName} onChange={(e) => setNewMemberData(p => ({ ...p, firstName: e.target.value }))} />
-                        <TextField label="Last Name" fullWidth value={newMemberData.lastName} onChange={(e) => setNewMemberData(p => ({ ...p, lastName: e.target.value }))} />
-                        <TextField label="Member ID" fullWidth value={newMemberData.memberId} onChange={(e) => setNewMemberData(p => ({ ...p, memberId: e.target.value }))} />
+                    <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                        <Grid container spacing={2}>
+                            <Grid item xs={6}>
+                                <TextField label="First Name *" fullWidth value={newMemberData.firstName} onChange={(e) => setNewMemberData(p => ({ ...p, firstName: e.target.value }))} />
+                            </Grid>
+                            <Grid item xs={6}>
+                                <TextField label="Last Name *" fullWidth value={newMemberData.lastName} onChange={(e) => setNewMemberData(p => ({ ...p, lastName: e.target.value }))} />
+                            </Grid>
+                        </Grid>
+                        
+                        <Grid container spacing={2}>
+                            <Grid item xs={6}>
+                                <TextField label="Member ID *" fullWidth value={newMemberData.memberId} onChange={(e) => setNewMemberData(p => ({ ...p, memberId: e.target.value }))} />
+                            </Grid>
+                            <Grid item xs={6}>
+                                <TextField 
+                                    label="Date of Birth *" 
+                                    type="date" 
+                                    fullWidth 
+                                    InputLabelProps={{ shrink: true }}
+                                    value={newMemberData.dateOfBirth} 
+                                    onChange={(e) => setNewMemberData(p => ({ ...p, dateOfBirth: e.target.value }))} 
+                                />
+                            </Grid>
+                        </Grid>
+
+                        <TextField 
+                            label="House Address (Pickup Default) *" 
+                            fullWidth 
+                            placeholder="Street, City, Zip"
+                            value={newMemberData.address} 
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                setNewMemberData(p => ({ 
+                                    ...p, 
+                                    address: val,
+                                    mailingAddress: p.mailingAddress === p.address ? val : p.mailingAddress
+                                }));
+                            }} 
+                        />
+
+                        <TextField 
+                            label="Mailing Address" 
+                            fullWidth 
+                            placeholder="Street, City, Zip"
+                            value={newMemberData.mailingAddress} 
+                            onChange={(e) => setNewMemberData(p => ({ ...p, mailingAddress: e.target.value }))} 
+                        />
+
+                        <Autocomplete
+                            freeSolo
+                            options={REASONS_FOR_VISIT}
+                            value={newMemberData.reasonForRide}
+                            onInputChange={(_, v) => setNewMemberData(p => ({ ...p, reasonForRide: v }))}
+                            renderInput={(p) => <TextField {...p} label="Default Reason for Ride" />}
+                        />
+
+                        <FormControl fullWidth>
+                            <InputLabel>Mobility Requirement</InputLabel>
+                            <Select
+                                value={newMemberData.mobilityRequirement}
+                                label="Mobility Requirement"
+                                onChange={(e) => setNewMemberData(p => ({ ...p, mobilityRequirement: e.target.value as MobilityRequirement }))}
+                            >
+                                <MenuItem value={MobilityRequirement.AMBULATORY}>Ambulatory</MenuItem>
+                                <MenuItem value={MobilityRequirement.WHEELCHAIR}>Wheelchair</MenuItem>
+                                <MenuItem value={MobilityRequirement.STRETCHER}>Stretcher</MenuItem>
+                            </Select>
+                        </FormControl>
                     </Box>
                 </DialogContent>
-                <DialogActions sx={{ p: 3 }}><Button onClick={() => setIsAddMemberOpen(false)}>Cancel</Button><Button variant="contained" onClick={() => createMemberMutation.mutate(newMemberData)}>Save</Button></DialogActions>
+                <DialogActions sx={{ p: 3 }}>
+                    <Button onClick={() => setIsAddMemberOpen(false)} sx={{ fontWeight: 600 }}>Cancel</Button>
+                    <Button 
+                        variant="contained" 
+                        onClick={() => createMemberMutation.mutate(newMemberData)}
+                        disabled={!newMemberData.firstName || !newMemberData.lastName || !newMemberData.memberId || !newMemberData.address}
+                        sx={{ borderRadius: 2, px: 4, fontWeight: 700 }}
+                    >
+                        {createMemberMutation.isPending ? 'Saving...' : 'Add Member'}
+                    </Button>
+                </DialogActions>
             </Dialog>
         </Container>
     );

@@ -19,7 +19,7 @@ export class User {
 
     @Column({
         type: 'enum',
-        enum: ['SUPER_ADMIN', 'ORG_ADMIN', 'DISPATCHER', 'DRIVER'],
+        enum: ['SUPER_ADMIN', 'ORG_ADMIN', 'DISPATCHER', 'DRIVER', 'HOUSE_MANAGER'],
         default: 'DRIVER'
     })
     role: string;
@@ -62,6 +62,15 @@ export class User {
 
     @Column({ name: 'address_zip', nullable: true })
     addressZip: string;
+
+    @Column({ name: 'license_number', nullable: true })
+    licenseNumber: string;
+
+    @Column({ name: 'license_state', nullable: true })
+    licenseState: string;
+
+    @Column({ name: 'license_expiry', nullable: true })
+    licenseExpiry: string;
 
     @Column({ name: 'emergency_contact_name', nullable: true })
     emergencyContactName: string;

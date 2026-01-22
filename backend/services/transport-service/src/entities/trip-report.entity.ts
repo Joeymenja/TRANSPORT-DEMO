@@ -44,6 +44,9 @@ export class TripReport {
     @Column({ name: 'passenger_signature', type: 'text', nullable: true })
     passengerSignature: string;
 
+    @Column({ name: 'driver_signature', type: 'text', nullable: true })
+    driverSignature: string;
+
     @Column({ name: 'passenger_signed_at', nullable: true })
     passengerSignedAt: Date;
 

@@ -23,8 +23,12 @@ import { useAuthStore } from '../store/auth';
 import api from '../lib/api';
 import { format } from 'date-fns';
 import { useState, ReactNode } from 'react';
+import { useTheme, useMediaQuery } from '@mui/material';
 import DriverStatusToggle from '../components/driver/DriverStatusToggle';
 import MobileDriverDashboard from '../components/dashboard/MobileDriverDashboard';
+import DesktopDriverDashboard from '../components/dashboard/DesktopDriverDashboard';
+import HouseManagerDashboard from '../components/dashboard/HouseManagerDashboard';
+import MobileCaseManagerDashboard from '../components/dashboard/MobileCaseManagerDashboard';
 import UnassignedTripsList from '../components/dispatch/UnassignedTripsList';
 import LiveMap from '../components/dashboard/LiveMap';
 import ActivityFeed from '../components/dashboard/ActivityFeed';
@@ -33,9 +37,15 @@ export default function DashboardPage() {
     const queryClient = useQueryClient();
     const user = useAuthStore((state) => state.user);
 
-    // For now, return Desktop Dashboard for everyone (Driver and House Manager)
-    if (user?.role === 'DRIVER' || user?.role === 'HOUSE_MANAGER') {
-        return <DesktopDriverDashboard />;
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+    // For now, return appropriate Dashboard
+    if (user?.role === 'DRIVER') {
+        return isMobile ? <MobileDriverDashboard /> : <DesktopDriverDashboard />;
+    }
+    if (user?.role === 'HOUSE_MANAGER') {
+        return isMobile ? <MobileCaseManagerDashboard /> : <HouseManagerDashboard />;
     }
 
     const today = format(new Date(), 'yyyy-MM-dd');

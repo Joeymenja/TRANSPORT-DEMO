@@ -74,7 +74,8 @@ import { OrganizationService } from './organization.service';
                  * Changed to: Only sync when NOT in production
                  */
                 synchronize: configService.get('NODE_ENV') !== 'production',
-                logging: configService.get('NODE_ENV') === 'development',
+                logging: configService.get('NODE_ENV') === 'development' ? 'all' : ['error', 'warn', 'query'],
+                logger: configService.get('NODE_ENV') === 'production' ? 'file' : 'advanced-console',
             }),
             inject: [ConfigService],
         }),

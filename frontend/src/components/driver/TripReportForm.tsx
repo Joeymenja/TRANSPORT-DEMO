@@ -91,7 +91,10 @@ interface TripReportFormProps {
     onCancel: () => void;
     defaultReviewMode?: boolean;
     isSubmitting?: boolean;
-    readOnly?: boolean;
+    initialSignatures?: {
+        member?: string | null;
+        driver?: string | null;
+    };
 }
 
 export default function TripReportForm({
@@ -99,6 +102,7 @@ export default function TripReportForm({
     driverInfo,
     startOdometer,
     preFill,
+    initialSignatures,
     onSubmit,
     onCancel,
     defaultReviewMode = false,
@@ -130,8 +134,8 @@ export default function TripReportForm({
     const [differentLocations, setDifferentLocations] = useState(false);
     const [reportDate, setReportDate] = useState<Date | null>(new Date());
 
-    const [signatureData, setSignatureData] = useState<string | null>(null);
-    const [driverSignatureData, setDriverSignatureData] = useState<string | null>(null);
+    const [signatureData, setSignatureData] = useState<string | null>(initialSignatures?.member || null);
+    const [driverSignatureData, setDriverSignatureData] = useState<string | null>(initialSignatures?.driver || null);
     const [memberUnableToSign, setMemberUnableToSign] = useState(false);
     const [proxySignerType, setProxySignerType] = useState('');
     const [refusalReason] = useState('');
@@ -144,7 +148,7 @@ export default function TripReportForm({
     const [viewerOpen, setViewerOpen] = useState(false);
     const [showSignaturePad, setShowSignaturePad] = useState(false);
     const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
-    const [isReviewing, setIsReviewing] = useState(defaultReviewMode);
+    const [isReviewing, setIsReviewing] = useState(defaultReviewMode || (!!initialSignatures?.member && !!initialSignatures?.driver));
 
     const [showDriverSignaturePad, setShowDriverSignaturePad] = useState(false);
 

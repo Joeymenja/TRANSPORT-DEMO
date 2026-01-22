@@ -43,8 +43,8 @@ export default function DriverOnboardingPage() {
     };
 
     const handleExit = () => {
-        logout();
-        navigate('/login');
+        // Just redirect to the main driver dashboard, don't logout
+        navigate('/driver');
     };
 
     const renderStepContent = (step: number) => {

@@ -25,6 +25,10 @@ export class CreateTripStopDto {
     @IsDate()
     @Type(() => Date)
     scheduledTime?: Date;
+
+    @IsOptional()
+    @IsNumber()
+    odometerReading?: number;
 }
 
 export class CreateTripMemberDto {
@@ -90,6 +94,10 @@ export class CreateTripDto {
     @IsEnum(MobilityRequirement)
     @IsOptional()
     mobilityRequirement?: MobilityRequirement;
+
+    @IsOptional()
+    @IsNumber()
+    startOdometer?: number;
 }
 
 export class UpdateTripDto {

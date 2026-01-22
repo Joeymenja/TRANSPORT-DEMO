@@ -139,62 +139,58 @@ export default function DriverCreateTripPage() {
                 ))}
             </Stepper>
 
-            <Card sx={{ p: 3 }}>
+            <Card sx={{ p: { xs: 2, md: 3 } }}>
                 {activeStep === 0 && (
-                    <Grid container spacing={3}>
-                         <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                         <Box>
                             <Alert severity="info" sx={{mb: 1}}>
                                 This trip will be assigned to you ({user?.firstName}).
                             </Alert>
-                        </Grid>
-                        <Grid item xs={12}>
-                            <TextField
-                                select
-                                label="Select Member"
-                                fullWidth
-                                value={formData.memberId}
-                                onChange={(e) => handleMemberChange(e.target.value)}
-                            >
-                                <MenuItem value="NEW" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                                    + Create New Member
+                        </Box>
+                        <TextField
+                            select
+                            label="Select Member"
+                            fullWidth
+                            value={formData.memberId}
+                            onChange={(e) => handleMemberChange(e.target.value)}
+                        >
+                            <MenuItem value="NEW" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                                + Create New Member
+                            </MenuItem>
+                            {members?.map(m => (
+                                <MenuItem key={m.id} value={m.id}>
+                                    {m.lastName}, {m.firstName}
                                 </MenuItem>
-                                {members?.map(m => (
-                                    <MenuItem key={m.id} value={m.id}>
-                                        {m.lastName}, {m.firstName}
-                                    </MenuItem>
-                                ))}
-                            </TextField>
-                        </Grid>
-                        <Grid item xs={12}>
-                             <Autocomplete
-                                freeSolo
-                                options={ALL_TRIP_REASONS}
-                                value={formData.reasonForVisit}
-                                onChange={(_, newValue) => setFormData({ ...formData, reasonForVisit: newValue || '' })}
-                                onInputChange={(_, newInputValue) => setFormData({ ...formData, reasonForVisit: newInputValue })}
-                                renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        label="Reason for Visit"
-                                        placeholder="Select or type..."
-                                        fullWidth
-                                    />
-                                )}
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                             <TextField
-                                select
-                                label="Trip Type"
-                                fullWidth
-                                value={formData.tripType}
-                                onChange={(e) => setFormData({ ...formData, tripType: e.target.value })}
-                            >
-                                <MenuItem value="PICK_UP">Pick Up</MenuItem>
-                                <MenuItem value="DROP_OFF">Drop Off</MenuItem>
-                            </TextField>
-                        </Grid>
-                    </Grid>
+                            ))}
+                        </TextField>
+
+                         <Autocomplete
+                            freeSolo
+                            options={ALL_TRIP_REASONS}
+                            value={formData.reasonForVisit}
+                            onChange={(_, newValue) => setFormData({ ...formData, reasonForVisit: newValue || '' })}
+                            onInputChange={(_, newInputValue) => setFormData({ ...formData, reasonForVisit: newInputValue })}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    label="Reason for Visit"
+                                    placeholder="Select or type..."
+                                    fullWidth
+                                />
+                            )}
+                        />
+
+                         <TextField
+                            select
+                            label="Trip Type"
+                            fullWidth
+                            value={formData.tripType}
+                            onChange={(e) => setFormData({ ...formData, tripType: e.target.value })}
+                        >
+                            <MenuItem value="PICK_UP">Pick Up</MenuItem>
+                            <MenuItem value="DROP_OFF">Drop Off</MenuItem>
+                        </TextField>
+                    </Box>
                 )}
 
                 {activeStep === 1 && (

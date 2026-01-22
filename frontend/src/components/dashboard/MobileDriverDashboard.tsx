@@ -21,7 +21,7 @@ export default function MobileDriverDashboard() {
     const navigate = useNavigate();
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [notificationOpen, setNotificationOpen] = useState(false);
-    const [sheetHeight, setSheetHeight] = useState('partial'); // 'collapsed', 'partial', 'expanded'
+    const [sheetHeight, setSheetHeight] = useState('collapsed'); // 'collapsed', 'partial', 'expanded'
     const controls = useAnimation();
     const prevTripsLength = useRef(0);
     const socket = useSocket();
@@ -247,18 +247,26 @@ export default function MobileDriverDashboard() {
             <motion.div
                 drag="y"
                 dragConstraints={{ top: 0, bottom: 0 }}
-                dragElastic={0.1}
+                dragElastic={0.2}
                 onDragEnd={(e, info) => {
-                    if (info.offset.y < -100) setSheetHeight('expanded');
-                    else if (info.offset.y > 100) {
-                        if (sheetHeight === 'expanded') setSheetHeight('partial');
-                        else setSheetHeight('collapsed');
+                    const threshold = 100;
+                    const velocityThreshold = 500;
+                    
+                    // Upward flick or drag past threshold
+                    if (info.velocity.y < -velocityThreshold || info.offset.y < -threshold) {
+                        if (sheetHeight === 'collapsed') setSheetHeight('partial');
+                        else if (sheetHeight === 'partial') setSheetHeight('expanded');
+                    } 
+                    // Downward flick or drag past threshold
+                    else if (info.velocity.y > velocityThreshold || info.offset.y > threshold) {
+                         if (sheetHeight === 'expanded') setSheetHeight('partial');
+                         else if (sheetHeight === 'partial') setSheetHeight('collapsed');
                     }
                 }}
                 animate={sheetHeight}
                 variants={{
-                    collapsed: { y: 'calc(100svh - 180px)' }, // Slightly higher to ensure visibility
-                    partial: { y: 'calc(100svh - 400px)' },
+                    collapsed: { y: 'calc(100svh - 280px)' }, 
+                    partial: { y: 'calc(100svh - 480px)' },
                     expanded: { y: 60 }
                 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
@@ -267,7 +275,7 @@ export default function MobileDriverDashboard() {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    zIndex: 20,
+                    zIndex: 90, // Behind Bottom Nav (zIndex 100)
                     background: 'white',
                     borderTopLeftRadius: 24,
                     borderTopRightRadius: 24,
@@ -398,11 +406,11 @@ export default function MobileDriverDashboard() {
                 </Box>
             </motion.div>
 
-            {/* Log Past Trip FAB */}
+            {/* Create Trip FAB */}
             <Fab
                 color="primary"
-                aria-label="log past trip"
-                onClick={() => navigate('/driver/backfill')}
+                aria-label="create new trip"
+                onClick={() => navigate('/driver/create-trip')}
                 sx={{
                     position: 'absolute',
                     bottom: 24,
@@ -412,7 +420,7 @@ export default function MobileDriverDashboard() {
                     '&:hover': { bgcolor: '#1e293b' }
                 }}
             >
-                <History />
+                <Add />
             </Fab>
 
             {/* Notification Area */}

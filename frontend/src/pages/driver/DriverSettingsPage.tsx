@@ -1,5 +1,5 @@
 import { Box, Typography, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Switch, Divider } from '@mui/material';
-import { Notifications, DarkMode, Language, Security, ChevronRight } from '@mui/icons-material';
+import { Notifications, DarkMode, Language, Security, ChevronRight, Add } from '@mui/icons-material';
 import MobileHeader from '../../components/layout/MobileHeader';
 import DriverSignatureSettings from './settings/DriverSignatureSettings';
 
@@ -37,6 +37,26 @@ export default function DriverSettingsPage() {
                     </ListItemButton>
                 </ListItem>
             </List>
+
+            <Divider />
+            
+            <Box sx={{ px: 2, py: 2 }}>
+                <Typography variant="overline" color="text.secondary" fontWeight={700}>
+                    Testing & Demos
+                </Typography>
+                <List disablePadding>
+                    <ListItem disablePadding>
+                        <ListItemButton onClick={() => window.location.href = '/driver/create-trip'}>
+                            <ListItemIcon><Box sx={{ bgcolor: 'primary.main', borderRadius: '50%', p: 0.5, display: 'flex' }}><Add sx={{ color: '#fff', fontSize: 20 }} /></Box></ListItemIcon>
+                            <ListItemText 
+                                primary="Create Demo Trip" 
+                                secondary="Manually create a trip for testing"
+                            />
+                            <ChevronRight color="action" />
+                        </ListItemButton>
+                    </ListItem>
+                </List>
+            </Box>
 
             <Divider />
             <Box sx={{ px: 2, pb: 2 }}>

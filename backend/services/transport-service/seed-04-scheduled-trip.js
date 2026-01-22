@@ -49,18 +49,18 @@ async function seedScheduledTrip() {
         const stop2Id = uuidv4();
 
         await client.query(
-            `INSERT INTO trip_stops (id, trip_id, stop_type, stop_order, address, scheduled_time, status)
+            `INSERT INTO trip_stops (id, trip_id, stop_type, stop_order, address, scheduled_time, organization_id)
              VALUES 
-             ($1, $3, 'PICKUP', 1, '123 Test St, Phoenix, AZ', NOW() + INTERVAL '1 hour', 'PENDING'),
-             ($2, $3, 'DROPOFF', 2, '456 Hospital Rd, Phoenix, AZ', NOW() + INTERVAL '2 hours', 'PENDING')`,
-            [stop1Id, stop2Id, tripId]
+             ($1, $3, 'PICKUP', 1, '123 Test St, Phoenix, AZ', NOW() + INTERVAL '1 hour', $4),
+             ($2, $3, 'DROPOFF', 2, '456 Hospital Rd, Phoenix, AZ', NOW() + INTERVAL '2 hours', $4)`,
+            [stop1Id, stop2Id, tripId, orgId]
         );
 
         // 4. Create Trip Member
         await client.query(
-            `INSERT INTO trip_members (id, trip_id, member_id, pickup_stop_id, dropoff_stop_id)
-             VALUES ($1, $2, $3, $4, $5)`,
-            [uuidv4(), tripId, memberId, stop1Id, stop2Id]
+            `INSERT INTO trip_members (id, trip_id, member_id, pickup_stop_id, dropoff_stop_id, organization_id)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [uuidv4(), tripId, memberId, stop1Id, stop2Id, orgId]
         );
 
         console.log('--- SCHEDULED TRIP CREATED SUCCESSFULLY ---');

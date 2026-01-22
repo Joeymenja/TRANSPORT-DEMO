@@ -414,7 +414,7 @@ export class TripReportFormatter {
   static toText(report: AHCCCSTripReport): string {
     let text = "";
 
-    text += "========== AHCCCS DAILY TRIP REPORT ==========\n\n";
+    text += "========== DAILY TRIP REPORT ==========\n\n";
 
     // Provider Header
     text += "PROVIDER INFORMATION\n";

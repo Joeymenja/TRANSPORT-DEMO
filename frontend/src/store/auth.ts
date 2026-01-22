@@ -6,7 +6,7 @@ export interface User {
     email: string;
     firstName: string;
     lastName: string;
-    role: 'SUPER_ADMIN' | 'ORG_ADMIN' | 'DISPATCHER' | 'DRIVER';
+    role: 'SUPER_ADMIN' | 'ORG_ADMIN' | 'DISPATCHER' | 'DRIVER' | 'HOUSE_MANAGER';
     organizationId: string;
     orientationId: string;
     defaultVehicleId?: string;

@@ -9,6 +9,8 @@ export enum TripType {
     DROP_OFF = 'DROP_OFF',
     PICK_UP = 'PICK_UP',
     ROUND_TRIP = 'ROUND_TRIP',
+    ONE_WAY = 'ONE_WAY',
+    MULTIPLE_STOPS = 'MULTIPLE_STOPS',
 }
 
 export enum TripStatus {
@@ -27,6 +29,7 @@ export enum MobilityRequirement {
     WHEELCHAIR = 'WHEELCHAIR',
     STRETCHER = 'STRETCHER',
     CAR_SEAT = 'CAR_SEAT',
+    BURIATRIC_WHEELCHAIR = 'BURIATRIC_WHEELCHAIR',
 }
 
 export enum ReportStatus {

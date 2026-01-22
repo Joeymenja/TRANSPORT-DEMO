@@ -10,10 +10,10 @@ interface TripSummaryProps {
 }
 
 export default function TripSummary({ startOdometer, endOdometer, notes, signature, onSubmit }: TripSummaryProps) {
-    const distance = endOdometer && startOdometer ? (endOdometer - startOdometer).toFixed(1) : '0.0';
+    const distance = (endOdometer !== undefined && startOdometer !== undefined) ? (endOdometer - startOdometer).toFixed(1) : '0.0';
 
     return (
-        <Box sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', bgcolor: '#fff' }}>
+        <Box sx={{ p: 3, pb: 6, height: '100%', display: 'flex', flexDirection: 'column', bgcolor: '#fff' }}>
             <Box sx={{ textAlign: 'center', mb: 3, mt: 2 }}>
                 <CheckCircleOutline sx={{ fontSize: 64, color: 'success.main', mb: 1 }} />
                 <Typography variant="h5" fontWeight={700}>Trip Completed!</Typography>

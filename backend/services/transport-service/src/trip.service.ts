@@ -126,7 +126,7 @@ export class TripService {
                 assignedVehicleId: assignedVehicleId,
                 tripType: (createTripDto.tripType as TripType) || TripType.DROP_OFF,
                 isCarpool: createTripDto.isCarpool !== undefined ? createTripDto.isCarpool : (createTripDto.members.length > 1),
-                status: (createTripDto.status as TripStatus) || TripStatus.PENDING_APPROVAL,
+                status: (createTripDto.status as TripStatus) || TripStatus.SCHEDULED,
                 reasonForVisit: createTripDto.reasonForVisit,
                 escortName: createTripDto.escortName,
                 escortRelationship: createTripDto.escortRelationship,
@@ -270,7 +270,7 @@ export class TripService {
 
         const trips = await this.tripRepository.find({
             where: whereClause,
-            relations: ['tripMembers', 'tripStops'],
+            relations: ['tripMembers', 'tripMembers.member', 'tripStops'],
             order: { tripDate: 'DESC' }, // Newest first for archives
         });
 
@@ -317,7 +317,7 @@ export class TripService {
                 assignedDriverId: resolvedDriverId,
                 tripDate: Between(today, new Date(today.getTime() + 86400000)),
             },
-            relations: ['tripMembers', 'tripStops'],
+            relations: ['tripMembers', 'tripMembers.member', 'tripStops'],
             order: { tripDate: 'ASC' },
         });
 
@@ -777,18 +777,36 @@ export class TripService {
                     zipCode: '85000'
                 }
             });
+        } else {
+             // Fallback to payload data if member not linked to trip
+             const data = reportPayload.tripData;
+             builder.withMember({
+                ahcccsId: data.memberId || 'MISSING_ID',
+                name: data.memberName || 'Guest Member',
+                dateOfBirth: new Date('1980-01-01'), // Fallback DOB
+                mailingAddress: {
+                    street: 'Unknown Address',
+                    city: 'Phoenix',
+                    state: 'AZ',
+                    zipCode: '85000'
+                }
+            });
         }
 
         // -- Trip Legs --
         // Construct from Actual Data in Payload
         const data = reportPayload.tripData;
+        
+        // Frontend sends data in 'legs' array, but we fallback to top-level if missing
+        const legData = (data.legs && data.legs.length > 0) ? data.legs[0] : data;
+
         const leg = TripLegFactory.createOneWayTrip(
-            { physicalAddress: data.pickupAddress || 'Pickup Loc', city: 'Phoenix', zipCode: '' }, // pickup
-            data.pickupTime ? new Date(data.pickupTime) : new Date(),
-            data.startOdometer || 0,
-            { physicalAddress: data.dropoffAddress || 'Dropoff Loc', city: 'Phoenix', zipCode: '' }, // dropoff
-            data.dropoffTime ? new Date(data.dropoffTime) : new Date(),
-            data.endOdometer || 0,
+            { physicalAddress: legData.pickupAddress || 'Pickup Loc', city: 'Phoenix', zipCode: '' }, // pickup
+            legData.pickupTime ? new Date(legData.pickupTime) : new Date(),
+            legData.startOdometer || 0,
+            { physicalAddress: legData.dropoffAddress || 'Dropoff Loc', city: 'Phoenix', zipCode: '' }, // dropoff
+            legData.dropoffTime ? new Date(legData.dropoffTime) : new Date(),
+            legData.endOdometer || 0,
             trip.reasonForVisit || 'Medical',
             undefined // Escort
         );
@@ -816,11 +834,18 @@ export class TripService {
 
         const builtReport = builder.build();
 
-        // 3. Generate PDF
-        const pdfPath = await PDFGenerator.generatePDF(builtReport.report, {
-            outputPath: `./reports/${tripId}_${Date.now()}.pdf`, 
-            addSignatures: true
-        });
+        // 3. Generate PDF or Use Uploaded
+        let pdfPath: string;
+        if (reportPayload.pdfPath) {
+            console.log(`Using uploaded PDF at: ${reportPayload.pdfPath}`);
+            pdfPath = reportPayload.pdfPath;
+        } else {
+             console.log('Generating PDF from data...');
+             pdfPath = await PDFGenerator.generatePDF(builtReport.report, {
+                outputPath: `./reports/${tripId}_${Date.now()}.pdf`, 
+                addSignatures: true
+            });
+        }
 
         // 4. Create/Update TripReport Entity
         let tripReport = await this.tripReportRepository.findOne({ where: { trip: { id: tripId } } });
@@ -828,20 +853,26 @@ export class TripService {
         if (!tripReport) {
             tripReport = this.tripReportRepository.create({
                 trip,
-                pickupTime: data.pickupTime ? new Date(data.pickupTime) : undefined,
-                dropoffTime: data.dropoffTime ? new Date(data.dropoffTime) : undefined,
-                startOdometer: data.startOdometer,
-                endOdometer: data.endOdometer,
-                totalMiles: data.totalMiles,
+                pickupTime: legData.pickupTime ? new Date(legData.pickupTime) : undefined,
+                dropoffTime: legData.dropoffTime ? new Date(legData.dropoffTime) : undefined,
+                startOdometer: legData.startOdometer,
+                endOdometer: legData.endOdometer,
+                totalMiles: legData.totalMiles,
                 serviceVerified: data.serviceVerified,
                 clientArrived: data.clientArrived,
                 incidentReported: data.incidentReported,
                 incidentDescription: data.incidentDescription,
-                notes: data.notes,
+                notes: data.additionalInfo, // Mapped from frontend 'additionalInfo'
                 status: TripReportStatus.SUBMITTED,
                 submissionMethod: 'APP',
                 submittedAt: new Date(),
-                submittedBy: userId
+                submittedBy: userId,
+                organizationId,
+                passengerSignature: reportPayload.signatureData?.member,
+                driverSignature: reportPayload.signatureData?.driver,
+                driverAttestation: !!reportPayload.signatureData?.driver,
+                driverAttestedAt: reportPayload.signatureData?.driver ? new Date() : undefined,
+                passengerSignedAt: reportPayload.signatureData?.member ? new Date() : undefined,
             });
         } else {
             // Update existing
@@ -859,6 +890,11 @@ export class TripService {
             tripReport.submissionMethod = 'APP';
             tripReport.submittedAt = new Date();
             tripReport.submittedBy = userId;
+            tripReport.passengerSignature = reportPayload.signatureData?.member;
+            tripReport.driverSignature = reportPayload.signatureData?.driver;
+            tripReport.driverAttestation = !!reportPayload.signatureData?.driver;
+            tripReport.driverAttestedAt = reportPayload.signatureData?.driver ? new Date() : undefined;
+            tripReport.passengerSignedAt = reportPayload.signatureData?.member ? new Date() : undefined;
         }
 
         await this.tripReportRepository.save(tripReport);
@@ -1002,29 +1038,35 @@ export class TripService {
 
         // -- Signatures --
         // Load from TripMember entity
-        if (tripMember?.memberSignatureBase64) {
+        if (tripMember?.memberSignatureBase64 || reportEntity?.passengerSignature) {
+             const signerName = tripMember?.isProxySignature 
+                ? `${tripMember.proxySignerName} (Proxy for ${member?.firstName} ${member?.lastName})`
+                : (member ? `${member.firstName} ${member.lastName}` : 'Member');
+                
              builder.withMemberSignature({
-                name: member ? `${member.firstName} ${member.lastName}` : 'Member',
-                method: 'DIGITAL',
-                timestamp: new Date(),
-                signatureBase64: tripMember.memberSignatureBase64
+                name: signerName,
+                method: SignatureMethod.MEMBER_SIGNATURE,
+                timestamp: reportEntity?.passengerSignedAt || new Date(),
+                signatureBase64: reportEntity?.passengerSignature || tripMember?.memberSignatureBase64
             });
         }
         
-        // Driver signature is harder, usually stored in tripReport or separate. 
-        // Current 'saveMemberSignature' only saves member/proxy.
-        // But 'submitReport' payload had driver signature. 
-        // Let's check where driver sig is persisted. 
-        // It doesn't look like it's persisted on Trip entity firmly, strictly speaking.
-        // Wait, `submitReport` saves `TripReport` entity but `TripReport` entity fields (lines 830-845) don't seem to have signature columns?
-        // Let's create a placeholder or check if I missed columns in `TripReport` entity.
-        // For now, if we can't find it, we skip it or use text.
-        builder.withDriverSignature({
-            name: driverName,
-            method: 'DIGITAL',
-            timestamp: new Date(),
-            signatureBase64: undefined // We don't have this persisted easily yet if not in TripReport
-        });
+        // Driver signature
+        if (reportEntity?.driverSignature) {
+            builder.withDriverSignature({
+                name: driverName,
+                method: SignatureMethod.PROVIDER_SIGNATURE,
+                timestamp: reportEntity?.driverAttestedAt || new Date(),
+                signatureBase64: reportEntity.driverSignature
+            });
+        } else {
+            builder.withDriverSignature({
+                name: driverName,
+                method: SignatureMethod.PROVIDER_SIGNATURE,
+                timestamp: new Date(),
+                signatureBase64: undefined
+            });
+        }
 
 
         const builtReport = builder.build();

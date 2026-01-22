@@ -15,6 +15,12 @@ export default defineConfig({
     server: {
         host: true, // Listen on all addresses (0.0.0.0)
         port: 3000,
+        allowedHosts: [
+            '549899463eae10.lhr.life',
+            'rotten-colts-bake.loca.lt',
+            'localhost',
+            '127.0.0.1'
+        ],
         proxy: {
             '/api/auth': {
                 target: 'http://localhost:8081',

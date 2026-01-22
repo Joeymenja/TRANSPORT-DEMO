@@ -104,6 +104,18 @@ export class UpdateProfileDto {
 
     @IsString()
     @IsOptional()
+    licenseNumber?: string;
+
+    @IsString()
+    @IsOptional()
+    licenseState?: string;
+
+    @IsString()
+    @IsOptional()
+    licenseExpiry?: string;
+
+    @IsString()
+    @IsOptional()
     emergencyContactName?: string;
 
     @IsString()

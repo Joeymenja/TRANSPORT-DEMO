@@ -9,7 +9,7 @@ interface PickupWorkflowProps {
 
 export default function PickupWorkflow({ clientName, onConfirmPickup, onNoShow }: PickupWorkflowProps) {
     return (
-        <Box sx={{ p: 2, textAlign: 'center' }}>
+        <Box sx={{ p: 2, textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column' }}>
             <Typography variant="h5" fontWeight={700} gutterBottom>Arrived at Pickup</Typography>
             <Typography color="text.secondary" paragraph>
                 You are at the pickup location. locating client...
@@ -26,24 +26,38 @@ export default function PickupWorkflow({ clientName, onConfirmPickup, onNoShow }
                 </Box>
             </Paper>
 
-            <Button
-                fullWidth
-                variant="contained"
-                size="large"
-                onClick={() => onConfirmPickup({})}
-                sx={{ borderRadius: 3, height: 56, fontSize: '1.1rem', mb: 2 }}
-            >
-                Confirm Client Picked Up
-            </Button>
+            <Box sx={{ 
+                mt: 'auto',
+                position: 'sticky',
+                bottom: 0,
+                zIndex: 100,
+                bgcolor: 'white',
+                pb: 2,
+                pt: 2,
+                borderTop: '1px solid rgba(0,0,0,0.05)',
+                mx: -3,
+                px: 3,
+                width: '100%'
+            }}>
+                <Button
+                    fullWidth
+                    variant="contained"
+                    size="large"
+                    onClick={() => onConfirmPickup({})}
+                    sx={{ borderRadius: 3, height: 56, fontSize: '1.1rem', mb: 2 }}
+                >
+                    Confirm Client Picked Up
+                </Button>
 
-            <Button
-                fullWidth
-                variant="text"
-                color="error"
-                onClick={() => onNoShow({})}
-            >
-                Client No-Show
-            </Button>
+                <Button
+                    fullWidth
+                    variant="text"
+                    color="error"
+                    onClick={() => onNoShow({})}
+                >
+                    Client No-Show
+                </Button>
+            </Box>
         </Box>
     );
 }

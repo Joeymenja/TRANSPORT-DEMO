@@ -72,7 +72,8 @@ export default function TripExecutionPage() {
         startOdometer: 0,
         endOdometer: 0,
         notes: '',
-        signature: null as string | null
+        signature: null as string | null,
+        driverSignature: null as string | null
     });
 
     const { data: trip, isLoading } = useQuery({
@@ -218,7 +219,7 @@ export default function TripExecutionPage() {
                 left: 0, 
                 right: 0, 
                 p: 2, 
-                pt: 7, // Safe area distance
+                pt: 8, // Safe area distance + extra padding
                 zIndex: 2000, 
                 display: 'flex', 
                 alignItems: 'center' 
@@ -250,28 +251,48 @@ export default function TripExecutionPage() {
                 elevation={6}
                 sx={{
                     position: 'absolute',
-                    top: '30%',
+                    top: '25%', // Increased visible map area
                     left: 0,
                     right: 0,
                     bottom: 0,
                     bgcolor: 'white',
                     borderRadius: '24px 24px 0 0',
-                    overflowY: 'auto',
-                    zIndex: 10
+                    zIndex: 10,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden' // Manage overflow in children
                 }}
             >
-                <Container maxWidth="sm" sx={{ pt: 1, pb: 24 }}>
-                    {/* Stepped Progress Indicator */}
-                    <Box sx={{ px: 2, display: 'flex', justifyContent: 'space-between', mb: 4, position: 'relative' }}>
-                        <Box sx={{ position: 'absolute', top: 16, left: 40, right: 40, height: 2, bgcolor: '#e0e0e0', zIndex: -1 }} />
-                        
-                        <TripStep label="START" status={viewState === 'PRE_TRIP' ? 'ACTIVE' : 'COMPLETED'} />
-                        <TripStep label="PICKUP" status={['PRE_TRIP', 'EN_ROUTE_PICKUP'].includes(viewState) ? 'PENDING' : viewState === 'AT_PICKUP' ? 'ACTIVE' : 'COMPLETED'} />
-                        <TripStep label="DROPOFF" status={['PRE_TRIP', 'EN_ROUTE_PICKUP', 'AT_PICKUP', 'EN_ROUTE_DROPOFF'].includes(viewState) ? 'PENDING' : viewState === 'AT_DROPOFF' ? 'ACTIVE' : 'COMPLETED'} />
-                        <TripStep label="FINISH" status={viewState === 'COMPLETED' ? 'COMPLETED' : ['TRIP_REPORT', 'COMPLETED'].includes(viewState) ? 'ACTIVE' : 'PENDING'} />
+                <Container maxWidth="sm" sx={{ 
+                    height: '100%', 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    p: '0 !important' // Override default padding to handle scrolling internally
+                }}>
+                    {/* Stepped Progress Indicator - Fixed Header */}
+                    <Box sx={{ 
+                        p: 3, 
+                        pb: 2,
+                        bgcolor: 'white',
+                        zIndex: 20
+                    }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', position: 'relative' }}>
+                            <Box sx={{ position: 'absolute', top: 16, left: 40, right: 40, height: 2, bgcolor: '#e0e0e0', zIndex: -1 }} />
+                            
+                            <TripStep label="START" status={viewState === 'PRE_TRIP' ? 'ACTIVE' : 'COMPLETED'} />
+                            <TripStep label="PICKUP" status={['PRE_TRIP', 'EN_ROUTE_PICKUP'].includes(viewState) ? 'PENDING' : viewState === 'AT_PICKUP' ? 'ACTIVE' : 'COMPLETED'} />
+                            <TripStep label="DROPOFF" status={['PRE_TRIP', 'EN_ROUTE_PICKUP', 'AT_PICKUP', 'EN_ROUTE_DROPOFF'].includes(viewState) ? 'PENDING' : viewState === 'AT_DROPOFF' ? 'ACTIVE' : 'COMPLETED'} />
+                            <TripStep label="FINISH" status={viewState === 'COMPLETED' ? 'COMPLETED' : ['TRIP_REPORT', 'COMPLETED'].includes(viewState) ? 'ACTIVE' : 'PENDING'} />
+                        </Box>
                     </Box>
 
-                    <Box sx={{ px: 2 }}>
+                    <Box sx={{ 
+                        flex: 1, 
+                        overflowY: 'auto',
+                        position: 'relative',
+                        px: 3,
+                        pb: 4 
+                    }}>
                         {viewState === 'PRE_TRIP' && (
                             <PreTripChecklist
                                 lastOdometer={trip.assignedVehicle?.odometer || 0}
@@ -331,11 +352,13 @@ export default function TripExecutionPage() {
                                         ...prev,
                                         endOdometer: data.odometer,
                                         notes: data.notes,
-                                        signature: data.signature
+                                        signature: data.signature,
+                                        driverSignature: data.driverSignature || null
                                     }));
                                     handleSignatureSave({
                                         signatureBase64: data.signature
                                     });
+                                    // TODO: Save driver signature too if API supports it here, but it's handled in final report submit too
                                     completeStopMutation.mutate({
                                         stopId: dropoffStop?.id,
                                         odometer: data.odometer
@@ -366,6 +389,10 @@ export default function TripExecutionPage() {
                                     name: userAuth ? `${userAuth.firstName} ${userAuth.lastName}` : 'John Driver'
                                 }}
                                 startOdometer={tripReport.startOdometer}
+                                initialSignatures={{
+                                    member: tripReport.signature,
+                                    driver: tripReport.driverSignature
+                                }}
                                 onSubmit={(data) => {
                                     if (data.pdfBlob) {
                                         submitReportMutation.mutate({

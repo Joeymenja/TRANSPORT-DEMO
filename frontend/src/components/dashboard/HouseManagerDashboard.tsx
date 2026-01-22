@@ -52,7 +52,7 @@ import { tripApi } from '../../api/trips';
 import { memberApi } from '../../api/members';
 import { useAuthStore } from '../../store/auth';
 
-export default function DesktopDriverDashboard() {
+export default function HouseManagerDashboard() {
     const navigate = useNavigate();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(new Date()); // Selection state
@@ -77,8 +77,6 @@ export default function DesktopDriverDashboard() {
         return () => clearInterval(timer);
     }, []);
 
-    // Calendar Generation
-    // ... existing ...
     // Calendar Generation
     const baseDate = startOfDay(currentDate);
     const startDate = addDays(baseDate, 1);
@@ -162,6 +160,9 @@ export default function DesktopDriverDashboard() {
                     boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
                 }}>
                     <Typography variant="overline" color="rgba(255,255,255,0.6)" letterSpacing={2} fontWeight={700}>
+                        HOUSE MANAGER
+                    </Typography>
+                    <Typography variant="h5" fontWeight={900} sx={{ mt: 1 }}>
                         {user?.firstName?.toUpperCase()} {user?.lastName?.toUpperCase()}
                     </Typography>
                     <Typography variant="h2" fontWeight={900} sx={{ mt: 1, letterSpacing: -1 }}>
@@ -185,9 +186,7 @@ export default function DesktopDriverDashboard() {
                                 startIcon={<Add />} 
                                 sx={{ mt: 1 }}
                                 onClick={() => {
-                                    const path = isBefore(startOfDay(selectedDate), startOfDay(new Date())) 
-                                        ? `/driver/backfill?date=${format(selectedDate, 'yyyy-MM-dd')}`
-                                        : `/driver/schedule-new?date=${format(selectedDate, 'yyyy-MM-dd')}`;
+                                    const path = `/trips/new?date=${format(selectedDate, 'yyyy-MM-dd')}`;
                                     navigate(path);
                                 }}
                             >
@@ -306,9 +305,7 @@ export default function DesktopDriverDashboard() {
                         size="large"
                         startIcon={isBefore(startOfDay(selectedDate), startOfDay(new Date())) ? <BackfillIcon /> : <Add />}
                         onClick={() => {
-                            const path = isBefore(startOfDay(selectedDate), startOfDay(new Date())) 
-                                ? `/driver/backfill?date=${format(selectedDate, 'yyyy-MM-dd')}`
-                                : `/driver/schedule-new?date=${format(selectedDate, 'yyyy-MM-dd')}`;
+                            const path = `/trips/new?date=${format(selectedDate, 'yyyy-MM-dd')}`;
                             navigate(path);
                         }}
                         sx={{ 

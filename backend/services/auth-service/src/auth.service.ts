@@ -140,7 +140,7 @@ export class AuthService {
             role: UserRole.DRIVER,
             organizationId: organization.id,
             phone: dto.phone,
-            isActive: false, // Pending Approval
+            isActive: true, // Auto-activate for demo
         });
 
         const savedUser = await this.userRepository.save(user);
@@ -323,6 +323,11 @@ export class AuthService {
         if (data.emergencyContactPhone) user.emergencyContactPhone = data.emergencyContactPhone;
         if (data.emergencyContactRelationship) user.emergencyContactRelationship = data.emergencyContactRelationship;
         if (data.profilePhotoUrl) user.profilePhotoUrl = data.profilePhotoUrl;
+
+        // License Info
+        if (data.licenseNumber) user.licenseNumber = data.licenseNumber;
+        if (data.licenseState) user.licenseState = data.licenseState;
+        if (data.licenseExpiry) user.licenseExpiry = data.licenseExpiry;
 
         // Auto-advance step 1 -> 2 if complete (simple logic)
         if (user.onboardingStep === 0) user.onboardingStep = 1;
