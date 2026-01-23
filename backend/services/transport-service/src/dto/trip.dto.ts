@@ -98,6 +98,16 @@ export class CreateTripDto {
     @IsOptional()
     @IsNumber()
     startOdometer?: number;
+
+    @IsOptional()
+    @IsDate()
+    @Type(() => Date)
+    startedAt?: Date;
+
+    @IsOptional()
+    @IsDate()
+    @Type(() => Date)
+    completedAt?: Date;
 }
 
 export class UpdateTripDto {
@@ -173,7 +183,10 @@ export class TripResponseDto {
     members: any[];
     reports?: TripReportDto[];
     mobilityRequirement: MobilityRequirement;
+    mobilityRequirement: MobilityRequirement;
     createdAt: Date;
+    startedAt?: Date;
+    completedAt?: Date;
 }
 export class UpdateStopDto {
     @IsOptional()

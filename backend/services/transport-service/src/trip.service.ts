@@ -41,6 +41,10 @@ export class TripService {
         private readonly billingService: BillingService,
         @InjectRepository(Organization)
         private readonly organizationRepository: Repository<Organization>,
+        @InjectRepository(Driver)
+        private readonly driverRepository: Repository<Driver>,
+        @InjectRepository(Vehicle)
+        private readonly vehicleRepository: Repository<Vehicle>,
     ) { }
 
 // ... existing methods ...
@@ -78,6 +82,26 @@ export class TripService {
             // Auto-assign vehicle if driver is assigned but vehicle is not
             let assignedVehicleId = createTripDto.assignedVehicleId;
             let assignedDriverId = createTripDto.assignedDriverId;
+
+            // Auto-dispatch: If no driver assigned, find an available active driver
+            if (!assignedDriverId) {
+                const availableDriver = await this.driverRepository.findOne({
+                    where: { 
+                        organizationId, 
+                        isActive: true 
+                    },
+                    // In a real app, we would use more sophisticated logic (location, schedule, etc.)
+                    // For now, we take the first active driver found
+                });
+
+                if (availableDriver) {
+                    assignedDriverId = availableDriver.id;
+                    // Auto-assign vehicle if driver has one and none specified
+                    if (!assignedVehicleId && availableDriver.assignedVehicleId) {
+                        assignedVehicleId = availableDriver.assignedVehicleId;
+                    }
+                }
+            }
 
             if (assignedDriverId) {
                 // Resolve User ID to Driver ID if necessary
@@ -132,8 +156,18 @@ export class TripService {
                 escortRelationship: createTripDto.escortRelationship,
                 reportStatus: ReportStatus.PENDING,
                 mobilityRequirement: createTripDto.mobilityRequirement || MobilityRequirement.AMBULATORY,
+                mobilityRequirement: createTripDto.mobilityRequirement || MobilityRequirement.AMBULATORY,
                 createdById: userId,
+                startedAt: createTripDto.startedAt,
+                completedAt: createTripDto.completedAt,
             });
+
+            // For past trips, ensure dates are consistent
+            if (createTripDto.status === TripStatus.COMPLETED) {
+                if (!trip.startedAt) trip.startedAt = createTripDto.tripDate;
+                if (!trip.completedAt) trip.completedAt = new Date(trip.startedAt.getTime() + 30 * 60000); // Default 30 min duration
+                trip.finalizedAt = new Date();
+            }
 
             const savedTrip = await this.tripRepository.save(trip);
 
@@ -238,6 +272,10 @@ export class TripService {
             reports: trip.tripReports || [],
             mobilityRequirement: trip.mobilityRequirement,
             createdAt: trip.createdAt,
+            mobilityRequirement: trip.mobilityRequirement,
+            createdAt: trip.createdAt,
+            startedAt: trip.startedAt,
+            completedAt: trip.completedAt,
         };
     }
 
@@ -297,6 +335,10 @@ export class TripService {
             reports: trip.tripReports || [],
             mobilityRequirement: trip.mobilityRequirement,
             createdAt: trip.createdAt,
+            mobilityRequirement: trip.mobilityRequirement,
+            createdAt: trip.createdAt,
+            startedAt: trip.startedAt,
+            completedAt: trip.completedAt,
         }));
     }
 
@@ -344,6 +386,10 @@ export class TripService {
             reports: trip.tripReports || [],
             mobilityRequirement: trip.mobilityRequirement,
             createdAt: trip.createdAt,
+            mobilityRequirement: trip.mobilityRequirement,
+            createdAt: trip.createdAt,
+            startedAt: trip.startedAt,
+            completedAt: trip.completedAt,
         }));
     }
 

@@ -17,7 +17,10 @@ export default defineConfig({
         port: 3000,
         allowedHosts: [
             '549899463eae10.lhr.life',
+            '6fc5554f43275f.lhr.life',
             'rotten-colts-bake.loca.lt',
+            'chatty-houses-learn.loca.lt',
+            'moody-ads-kiss.loca.lt',
             'localhost',
             '127.0.0.1'
         ],

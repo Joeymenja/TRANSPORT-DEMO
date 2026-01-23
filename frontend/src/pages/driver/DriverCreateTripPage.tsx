@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Box, Container, Typography, Card, Button, TextField, Grid, MenuItem, Stepper, Step, StepLabel, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, FormControlLabel, Switch } from '@mui/material';
+import { Box, Container, Typography, Card, Button, TextField, Grid, MenuItem, Stepper, Step, StepLabel, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, FormControlLabel, Switch, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import { MobileDatePicker, MobileTimePicker } from '@mui/x-date-pickers';
 import { format } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { tripApi, CreateTripData } from '../../api/trips';
 import { memberApi, MobilityRequirement } from '../../api/members';
+import { driverApi } from '../../api/drivers';
 import { useAuthStore } from '../../store/auth';
 import { ALL_TRIP_REASONS } from '../../constants/trip-reasons';
 
@@ -13,6 +14,7 @@ export default function DriverCreateTripPage() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const user = useAuthStore((state) => state.user);
+    const [bookingMode, setBookingMode] = useState<'FUTURE' | 'PAST'>('FUTURE');
     const [activeStep, setActiveStep] = useState(0);
     const [openMemberDialog, setOpenMemberDialog] = useState(false);
     
@@ -29,6 +31,7 @@ export default function DriverCreateTripPage() {
         memberId: '',
         date: new Date().toLocaleDateString('en-CA'), // Use local date YYYY-MM-DD
         time: '09:00',
+        endTime: '10:00',
         pickupAddress: '',
         dropoffAddress: '',
         tripType: 'DROP_OFF',
@@ -36,11 +39,13 @@ export default function DriverCreateTripPage() {
         escortName: '',
         escortRelationship: '',
         startNow: true, // Default to true per user feedback
+        assignedDriverId: '',
     });
 
     const steps = ['Trip Details', 'Route & Schedule'];
 
     const { data: members } = useQuery({ queryKey: ['members'], queryFn: () => memberApi.getMembers() });
+    const { data: drivers } = useQuery({ queryKey: ['drivers'], queryFn: () => driverApi.getDrivers(), enabled: user?.role === 'HOUSE_MANAGER' });
 
     const createMemberMutation = useMutation({
         mutationFn: async () => {
@@ -71,19 +76,44 @@ export default function DriverCreateTripPage() {
 
             const tripDate = new Date(`${formData.date}T${formData.time}`);
             
+
+            let status = formData.startNow ? 'IN_PROGRESS' : 'PENDING_APPROVAL';
+            let assignedDriverId = user?.role === 'DRIVER' ? user.id : undefined;
+            let startedAt, completedAt;
+
+            if (bookingMode === 'PAST') {
+                 status = 'COMPLETED';
+                 startedAt = tripDate;
+                 // Calculate end date (handle overnight if needed, here simplified)
+                 const endDate = new Date(`${formData.date}T${formData.endTime}`);
+                 if (endDate < tripDate) endDate.setDate(endDate.getDate() + 1);
+                 completedAt = endDate;
+                 
+                 // Required driver for past trip logging
+                 if (user?.role === 'HOUSE_MANAGER') {
+                     assignedDriverId = formData.assignedDriverId || undefined; 
+                 }
+            } else if (user?.role === 'HOUSE_MANAGER') {
+                 // Future booking for HM
+                 status = 'SCHEDULED'; // Strict scheduling
+                 assignedDriverId = undefined; // Auto-dispatch
+            }
+            
             const tripData: CreateTripData = {
                 tripDate,
                 tripType: formData.tripType as any,
                 reasonForVisit: formData.reasonForVisit,
                 escortName: formData.escortName,
                 escortRelationship: formData.escortRelationship,
-                assignedDriverId: user.id, 
+                assignedDriverId,
                 members: [{ memberId: formData.memberId }],
                 stops: [
                     { stopType: 'PICKUP', stopOrder: 1, address: formData.pickupAddress, scheduledTime: tripDate },
                     { stopType: 'DROPOFF', stopOrder: 2, address: formData.dropoffAddress, scheduledTime: new Date(tripDate.getTime() + 3600000) }
                 ],
-                status: formData.startNow ? 'IN_PROGRESS' : 'PENDING_APPROVAL',
+                status: status,
+                startedAt,
+                completedAt,
             };
 
             return tripApi.createTrip(tripData);
@@ -139,12 +169,38 @@ export default function DriverCreateTripPage() {
                 ))}
             </Stepper>
 
+            {user?.role === 'HOUSE_MANAGER' && (
+                <Box sx={{ mb: 3, textAlign: 'center' }}>
+                    <ToggleButtonGroup
+                        color="primary"
+                        value={bookingMode}
+                        exclusive
+                        onChange={(_, newMode) => newMode && setBookingMode(newMode)}
+                        aria-label="Booking Mode"
+                    >
+                        <ToggleButton value="FUTURE">Book New Ride</ToggleButton>
+                        <ToggleButton value="PAST">Log Past Trip</ToggleButton>
+                    </ToggleButtonGroup>
+                </Box>
+            )}
+
             <Card sx={{ p: { xs: 2, md: 3 } }}>
                 {activeStep === 0 && (
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                          <Box>
                             <Alert severity="info" sx={{mb: 1}}>
-                                This trip will be assigned to you ({user?.firstName}).
+                                {user?.role === 'DRIVER' 
+                                    ? `This trip will be assigned to you (${user?.firstName}).`
+                                    : 'This trip will be automatically dispatched to an available driver.'}
+                            </Alert>
+                         <Box>
+                            <Alert severity="info" sx={{mb: 1}}>
+                                {bookingMode === 'PAST' 
+                                    ? 'Log a completed trip for records.'
+                                    : (user?.role === 'DRIVER' 
+                                        ? `This trip will be assigned to you (${user?.firstName}).`
+                                        : 'This trip will be automatically dispatched to an available driver.')
+                                }
                             </Alert>
                         </Box>
                         <TextField
@@ -163,6 +219,22 @@ export default function DriverCreateTripPage() {
                                 </MenuItem>
                             ))}
                         </TextField>
+
+                        {bookingMode === 'PAST' && user?.role === 'HOUSE_MANAGER' && (
+                             <TextField
+                                select
+                                label="Select Driver (Who drove?)"
+                                fullWidth
+                                value={formData.assignedDriverId}
+                                onChange={(e) => setFormData({ ...formData, assignedDriverId: e.target.value })}
+                            >
+                                {drivers?.map(d => (
+                                    <MenuItem key={d.id} value={d.id}>
+                                        {d.user?.lastName}, {d.user?.firstName} ({d.assignedVehicle?.vehicleNumber || 'No Vehicle'})
+                                    </MenuItem>
+                                ))}
+                            </TextField>
+                        )}
 
                          <Autocomplete
                             freeSolo
@@ -219,6 +291,20 @@ export default function DriverCreateTripPage() {
                                 slotProps={{ textField: { fullWidth: true } }}
                             />
                         </Grid>
+                        {bookingMode === 'PAST' && (
+                            <Grid item xs={12} sm={6}>
+                                <MobileTimePicker
+                                    label="End Time"
+                                    value={new Date(`2000-01-01T${formData.endTime}`)}
+                                    onChange={(newValue) => {
+                                        if (newValue) {
+                                            setFormData({ ...formData, endTime: format(newValue, 'HH:mm') });
+                                        }
+                                    }}
+                                    slotProps={{ textField: { fullWidth: true } }}
+                                />
+                            </Grid>
+                        )}
                         <Grid item xs={12}>
                             <TextField
                                 label="Pickup Address"
@@ -235,25 +321,28 @@ export default function DriverCreateTripPage() {
                                 onChange={(e) => setFormData({ ...formData, dropoffAddress: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12}>
-                            <FormControlLabel
-                                control={
-                                    <Switch
-                                        checked={formData.startNow}
-                                        onChange={(e) => setFormData({ ...formData, startNow: e.target.checked })}
-                                        color="primary"
-                                    />
-                                }
-                                label={
-                                    <Box>
-                                        <Typography variant="body1" fontWeight={500}>Start Trip Immediately</Typography>
-                                        <Typography variant="caption" color="text.secondary">
-                                            Trip will be created and properly started immediately.
-                                        </Typography>
-                                    </Box>
-                                }
-                            />
-                        </Grid>
+
+                        {bookingMode === 'FUTURE' && user?.role === 'DRIVER' && (
+                             <Grid item xs={12}>
+                                <FormControlLabel
+                                    control={
+                                        <Switch
+                                            checked={formData.startNow}
+                                            onChange={(e) => setFormData({ ...formData, startNow: e.target.checked })}
+                                            color="primary"
+                                        />
+                                    }
+                                    label={
+                                        <Box>
+                                            <Typography variant="body1" fontWeight={500}>Start Trip Immediately</Typography>
+                                            <Typography variant="caption" color="text.secondary">
+                                                Trip will be created and properly started immediately.
+                                            </Typography>
+                                        </Box>
+                                    }
+                                />
+                            </Grid>
+                        )}
                     </Grid>
                 )}
 
@@ -266,7 +355,7 @@ export default function DriverCreateTripPage() {
                         onClick={handleNext}
                         disabled={activeStep === 0 && !formData.memberId}
                     >
-                        {activeStep === steps.length - 1 ? (createMutation.isPending ? 'Starting...' : (formData.startNow ? 'Start Trip Now' : 'Schedule Trip')) : 'Next'}
+                        {activeStep === steps.length - 1 ? (createMutation.isPending ? 'Processing...' : (bookingMode === 'PAST' ? 'Log Trip' : (formData.startNow ? 'Start Trip Now' : 'Schedule Trip'))) : 'Next'}
                     </Button>
                 </Box>
             </Card>
