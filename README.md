@@ -24,7 +24,7 @@ GVBH Transportation Platform Demo
 | Admin Dashboard | Complete | 90% |
 | Driver Dashboard | Complete | 85% |
 | House Manager Dashboard | Complete | 80% |
-| Mobile UI | In Progress | 30% |
+| Mobile UI | In Progress | 60% |
 | Billing Integration | Not Started | 0% |
 | Test Coverage | Not Started | 0% |
 
@@ -41,10 +41,15 @@ GVBH Transportation Platform Demo
 - Live fleet map with driver tracking
 - Multi-organization support
 - Desktop responsive UI
+- Mobile dashboard with bottom sheet UI
+- Mobile header navigation for driver pages
+- Mobile-optimized trip creation flow
+- Mobile-optimized trip execution (full-screen map + bottom sheet)
+- Mobile schedule and trips list views
 
 ### In Progress
 
-- Mobile-optimized views
+- Mobile onboarding flow optimization
 - Authentication guard enforcement
 - Complete Member CRUD operations
 - Error handling improvements

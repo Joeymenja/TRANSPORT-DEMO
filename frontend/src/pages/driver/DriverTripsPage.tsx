@@ -1,14 +1,17 @@
-import { Box, Card, CardContent, Chip, Container, Typography, Button } from '@mui/material';
+import { Box, Card, CardContent, Chip, Container, Typography, useTheme, useMediaQuery } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { tripApi } from '../../api/trips';
 import { useAuthStore } from '../../store/auth';
 import { format } from 'date-fns';
 import { ChevronRight, Schedule, Person } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import MobileHeader from '../../components/layout/MobileHeader';
 
 export default function DriverTripsPage() {
     const navigate = useNavigate();
     const user = useAuthStore((state) => state.user);
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const today = new Date();
 
     const { data: trips = [], isLoading } = useQuery({
@@ -23,33 +26,47 @@ export default function DriverTripsPage() {
 
     if (isLoading) {
         return (
-            <Container sx={{ py: 4, textAlign: 'center' }}>
-                <Typography>Loading today's schedule...</Typography>
-            </Container>
+            <>
+                {isMobile && <MobileHeader title="My Trips" />}
+                <Container sx={{ py: 4, textAlign: 'center' }}>
+                    <Typography>Loading today's schedule...</Typography>
+                </Container>
+            </>
         );
     }
 
     if (trips.length === 0) {
         return (
-            <Container sx={{ py: 4, textAlign: 'center' }}>
-                <Typography variant="h6" color="text.secondary">
-                    No trips assigned for today.
-                </Typography>
-            </Container>
+            <>
+                {isMobile && <MobileHeader title="My Trips" />}
+                <Container sx={{ py: 4, textAlign: 'center' }}>
+                    <Typography variant="h6" color="text.secondary">
+                        No trips assigned for today.
+                    </Typography>
+                </Container>
+            </>
         );
     }
 
     return (
-        <Container sx={{ py: 2 }}>
-            <Button variant="text" onClick={() => navigate('/driver')} sx={{ mb: 2 }}>
-                ← Back to Driver Home
-            </Button>
-            <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>
-                Today's Schedule
-            </Typography>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 3 }}>
-                {format(today, 'EEEE, MMMM d')}
-            </Typography>
+        <>
+            {isMobile && <MobileHeader title="My Trips" />}
+            <Container sx={{ py: 2 }}>
+                {!isMobile && (
+                    <>
+                        <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>
+                            Today's Schedule
+                        </Typography>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 3 }}>
+                            {format(today, 'EEEE, MMMM d')}
+                        </Typography>
+                    </>
+                )}
+                {isMobile && (
+                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2, mt: 1 }}>
+                        {format(today, 'EEEE, MMMM d')}
+                    </Typography>
+                )}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {trips.map((trip) => (
                     <Card
@@ -100,5 +117,6 @@ export default function DriverTripsPage() {
                 ))}
             </Box>
         </Container>
+        </>
     );
 }

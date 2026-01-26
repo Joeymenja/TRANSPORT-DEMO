@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Paper, List, ListItem, ListItemText, Divider, Tabs, Tab, CircularProgress, Chip, Snackbar, Alert, IconButton } from '@mui/material';
+import { Box, Typography, Paper, List, ListItem, ListItemText, Divider, Tabs, Tab, CircularProgress, Chip, Snackbar, Alert, IconButton, useTheme, useMediaQuery } from '@mui/material';
 import { ChevronRight, History, CalendarMonth, Menu as MenuIcon, Add } from '@mui/icons-material';
 import ActiveTripCard from '../../components/dashboard/ActiveTripCard';
 import { format } from 'date-fns';
@@ -8,10 +8,13 @@ import { driverApi } from '../../api/drivers';
 import { tripApi, Trip } from '../../api/trips';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import MobileHeader from '../../components/layout/MobileHeader';
 
 export default function DriverSchedulePage() {
     const { user } = useAuthStore();
     const navigate = useNavigate();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const [tabValue, setTabValue] = useState(0);
     const [showNotification, setShowNotification] = useState(false);
     const [lastTripCount, setLastTripCount] = useState(0);
@@ -48,7 +51,12 @@ export default function DriverSchedulePage() {
     };
 
     if (isLoading && !trips.length) {
-        return <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>;
+        return (
+            <>
+                {isMobile && <MobileHeader title="Schedule" />}
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
+            </>
+        );
     }
 
     const renderTripList = (tripList: Trip[]) => (
@@ -93,33 +101,37 @@ export default function DriverSchedulePage() {
     );
 
     return (
-        <Box sx={{ width: '100%' }}>
-            {/* Secondary Header */}
-            <Box sx={{ 
-                height: 60, 
-                display: 'flex', 
-                alignItems: 'center', 
-                px: 2, 
-                borderBottom: '1px solid #f0f0f0',
-                bgcolor: 'white',
-                position: 'relative'
-            }}>
-                <IconButton size="small">
-                    <MenuIcon sx={{ color: '#333' }} />
-                </IconButton>
-                <Typography sx={{ 
-                    position: 'absolute', 
-                    left: '50%', 
-                    transform: 'translateX(-50%)',
-                    fontWeight: 700,
-                    color: '#333',
-                    fontSize: '1.1rem'
-                }}>
-                    My Schedule
-                </Typography>
-            </Box>
+        <>
+            {isMobile && <MobileHeader title="Schedule" />}
+            <Box sx={{ width: '100%' }}>
+                {/* Secondary Header - Desktop only */}
+                {!isMobile && (
+                    <Box sx={{
+                        height: 60,
+                        display: 'flex',
+                        alignItems: 'center',
+                        px: 2,
+                        borderBottom: '1px solid #f0f0f0',
+                        bgcolor: 'white',
+                        position: 'relative'
+                    }}>
+                        <IconButton size="small">
+                            <MenuIcon sx={{ color: '#333' }} />
+                        </IconButton>
+                        <Typography sx={{
+                            position: 'absolute',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            fontWeight: 700,
+                            color: '#333',
+                            fontSize: '1.1rem'
+                        }}>
+                            My Schedule
+                        </Typography>
+                    </Box>
+                )}
 
-            <Box sx={{ p: 4, maxWidth: 1100, mx: 'auto' }}>
+                <Box sx={{ p: isMobile ? 2 : 4, maxWidth: 1100, mx: 'auto' }}>
                 <Paper elevation={0} sx={{ 
                     borderRadius: 4, 
                     border: '1px solid #eee', 
@@ -225,5 +237,6 @@ export default function DriverSchedulePage() {
                 </Alert>
             </Snackbar>
         </Box>
+        </>
     );
 }

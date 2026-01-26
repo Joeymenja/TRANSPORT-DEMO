@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { 
-    Box, 
-    Container, 
-    Typography, 
-    TextField, 
-    Button, 
-    Paper, 
-    Autocomplete, 
+import {
+    Box,
+    Container,
+    Typography,
+    TextField,
+    Button,
+    Paper,
+    Autocomplete,
     CircularProgress,
     Divider,
     Alert,
@@ -26,7 +26,9 @@ import {
     Collapse,
     Chip,
     ToggleButtonGroup,
-    ToggleButton
+    ToggleButton,
+    useTheme,
+    useMediaQuery
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers';
 import TimeWheelSelector from '../../components/common/TimeWheelSelector';
@@ -37,18 +39,19 @@ import { tripApi } from '../../api/trips';
 import { vehicleApi } from '../../api/vehicles';
 import { useAuthStore } from '../../store/auth';
 import { format, addMinutes, parse } from 'date-fns';
-import { 
-    ArrowBack, 
-    HistoryEdu, 
-    PersonAdd, 
-    LocationOn, 
-    AddCircleOutline, 
-    DeleteOutline, 
-    ExpandMore, 
+import {
+    ArrowBack,
+    HistoryEdu,
+    PersonAdd,
+    LocationOn,
+    AddCircleOutline,
+    DeleteOutline,
+    ExpandMore,
     ExpandLess,
     Route
 } from '@mui/icons-material';
 import { COMMON_LOCATIONS } from '../../constants/locations';
+import MobileHeader from '../../components/layout/MobileHeader';
 
 const REASONS_FOR_VISIT = [
     'Primary Care (PCP)',
@@ -80,14 +83,19 @@ export default function BackfillTripPage() {
     const user = useAuthStore(state => state.user);
     const isAuthenticated = useAuthStore(state => state.isAuthenticated);
     const queryClient = useQueryClient();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
     // Fix for "User session not found" - redirect or show loading if store isn't hydrated
     if (isAuthenticated && !user) {
         return (
-            <Container sx={{ py: 10, textAlign: 'center' }}>
-                <CircularProgress />
-                <Typography sx={{ mt: 2 }}>Loading driver profile...</Typography>
-            </Container>
+            <>
+                {isMobile && <MobileHeader title="Log Trip" />}
+                <Container sx={{ py: 10, textAlign: 'center' }}>
+                    <CircularProgress />
+                    <Typography sx={{ mt: 2 }}>Loading driver profile...</Typography>
+                </Container>
+            </>
         );
     }
 
@@ -288,13 +296,17 @@ export default function BackfillTripPage() {
     };
 
     return (
-        <Container maxWidth="sm" sx={{ py: 4, pb: 12 }}>
-            <Button startIcon={<ArrowBack />} onClick={() => navigate('/driver')} sx={{ mb: 2 }}>Back</Button>
+        <>
+            {isMobile && <MobileHeader title="Log Trip" backRoute="/driver" />}
+            <Container maxWidth="sm" sx={{ py: isMobile ? 2 : 4, pb: 12 }}>
+                {!isMobile && (
+                    <Button startIcon={<ArrowBack />} onClick={() => navigate('/driver')} sx={{ mb: 2 }}>Back</Button>
+                )}
 
-            <Box sx={{ mb: 4, textAlign: 'center' }}>
-                <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5 }}>Log Completed Service</Typography>
-                <Typography variant="body2" color="text.secondary">Record up to 6 trip legs for this member</Typography>
-            </Box>
+                <Box sx={{ mb: isMobile ? 3 : 4, textAlign: 'center' }}>
+                    <Typography variant={isMobile ? 'h6' : 'h5'} fontWeight={700} sx={{ mb: 0.5 }}>Log Completed Service</Typography>
+                    <Typography variant="body2" color="text.secondary">Record up to 6 trip legs for this member</Typography>
+                </Box>
 
             {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
@@ -583,5 +595,6 @@ export default function BackfillTripPage() {
                 </DialogActions>
             </Dialog>
         </Container>
+        </>
     );
 }

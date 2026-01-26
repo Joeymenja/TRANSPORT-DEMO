@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Container, Typography, Card, Button, TextField, Grid, MenuItem, Stepper, Step, StepLabel, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, FormControlLabel, Switch, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { Box, Container, Typography, Card, Button, TextField, Grid, MenuItem, Stepper, Step, StepLabel, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, FormControlLabel, Switch, ToggleButton, ToggleButtonGroup, useTheme, useMediaQuery } from '@mui/material';
 import { MobileDatePicker, MobileTimePicker } from '@mui/x-date-pickers';
 import { format } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -9,11 +9,14 @@ import { memberApi, MobilityRequirement } from '../../api/members';
 import { driverApi } from '../../api/drivers';
 import { useAuthStore } from '../../store/auth';
 import { ALL_TRIP_REASONS } from '../../constants/trip-reasons';
+import MobileHeader from '../../components/layout/MobileHeader';
 
 export default function DriverCreateTripPage() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const user = useAuthStore((state) => state.user);
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const [bookingMode, setBookingMode] = useState<'FUTURE' | 'PAST'>('FUTURE');
     const [activeStep, setActiveStep] = useState(0);
     const [openMemberDialog, setOpenMemberDialog] = useState(false);
@@ -155,13 +158,19 @@ export default function DriverCreateTripPage() {
     };
 
     return (
-        <Container maxWidth="md" sx={{ py: 2 }}>
-            <Button variant="text" onClick={() => navigate('/driver')}>
-                Cancel
-            </Button>
-            <Typography variant="h5" sx={{ mb: 3, mt: 1 }}>New Trip Entry</Typography>
+        <>
+            {isMobile && <MobileHeader title="New Trip" backRoute="/driver" />}
+            <Container maxWidth="md" sx={{ py: 2 }}>
+                {!isMobile && (
+                    <>
+                        <Button variant="text" onClick={() => navigate('/driver')}>
+                            Cancel
+                        </Button>
+                        <Typography variant="h5" sx={{ mb: 3, mt: 1 }}>New Trip Entry</Typography>
+                    </>
+                )}
 
-            <Stepper activeStep={activeStep} sx={{ mb: 4 }} alternativeLabel>
+                <Stepper activeStep={activeStep} sx={{ mb: isMobile ? 3 : 4 }} alternativeLabel>
                 {steps.map((label) => (
                     <Step key={label}>
                         <StepLabel>{label}</StepLabel>
@@ -187,17 +196,11 @@ export default function DriverCreateTripPage() {
             <Card sx={{ p: { xs: 2, md: 3 } }}>
                 {activeStep === 0 && (
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                         <Box>
+                        <Box>
                             <Alert severity="info" sx={{mb: 1}}>
-                                {user?.role === 'DRIVER' 
-                                    ? `This trip will be assigned to you (${user?.firstName}).`
-                                    : 'This trip will be automatically dispatched to an available driver.'}
-                            </Alert>
-                         <Box>
-                            <Alert severity="info" sx={{mb: 1}}>
-                                {bookingMode === 'PAST' 
+                                {bookingMode === 'PAST'
                                     ? 'Log a completed trip for records.'
-                                    : (user?.role === 'DRIVER' 
+                                    : (user?.role === 'DRIVER'
                                         ? `This trip will be assigned to you (${user?.firstName}).`
                                         : 'This trip will be automatically dispatched to an available driver.')
                                 }
@@ -417,5 +420,6 @@ export default function DriverCreateTripPage() {
                 </DialogActions>
             </Dialog>
         </Container>
+        </>
     );
 }
