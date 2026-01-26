@@ -529,7 +529,7 @@ export default function ScheduleTripPage() {
              <Box sx={{ mb: 3 }}>
                 <Typography variant="overline" color="text.secondary" fontWeight={700} sx={{ mb: 1, ml: 1, display: 'block' }}>TRIP TYPE</Typography>
                 <Grid container spacing={2}>
-                    <Grid item xs={6}>
+                    <Grid size={6}>
                         <Paper 
                             sx={{ 
                                 p: 2, 
@@ -545,7 +545,7 @@ export default function ScheduleTripPage() {
                             <Typography variant="subtitle2" fontWeight={700} color={tripType === 'ONE_WAY' ? 'primary' : 'text.primary'}>One Way →</Typography>
                         </Paper>
                     </Grid>
-                    <Grid item xs={6}>
+                    <Grid size={6}>
                         <Paper 
                             sx={{ 
                                 p: 2, 
@@ -632,14 +632,14 @@ export default function ScheduleTripPage() {
                             <Divider sx={{ mb: 2 }} />
                             
                             <Grid container spacing={2} sx={{ mb: 2 }}>
-                                <Grid item xs={6}>
+                                <Grid size={6}>
                                     <TimeWheelSelector
                                         label="Pickup Time"
                                         value={leg.pickupTime}
                                         onChange={(newValue) => updateLeg(index, { pickupTime: newValue })}
                                     />
                                 </Grid>
-                                <Grid item xs={6}>
+                                <Grid size={6}>
                                     <TimeWheelSelector
                                         label="Dropoff Time"
                                         value={leg.dropoffTime}

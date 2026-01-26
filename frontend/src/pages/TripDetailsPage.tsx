@@ -51,27 +51,27 @@ export default function TripDetailsPage() {
             </Box>
 
             <Grid container spacing={3}>
-                <Grid item xs={12} md={8}>
+                <Grid size={{ xs: 12, md: 8 }}>
                     <Card sx={{ p: 3, mb: 3 }}>
                         <Typography variant="h6" gutterBottom>Trip Details</Typography>
                         <Grid container spacing={2}>
-                            <Grid item xs={12} sm={6}>
+                            <Grid size={{ xs: 12, sm: 6 }}>
                                 <Typography variant="subtitle2" color="text.secondary">Member</Typography>
                                 <Typography variant="body1">
                                     {trip.members?.map((m: any) => `${m.member?.firstName} ${m.member?.lastName}`).join(', ')}
                                 </Typography>
                             </Grid>
-                            <Grid item xs={12} sm={6}>
+                            <Grid size={{ xs: 12, sm: 6 }}>
                                 <Typography variant="subtitle2" color="text.secondary">Reason for Visit</Typography>
                                 <Typography variant="body1">{trip.reasonForVisit || 'N/A'}</Typography>
                             </Grid>
-                            <Grid item xs={12} sm={6}>
+                            <Grid size={{ xs: 12, sm: 6 }}>
                                 <Typography variant="subtitle2" color="text.secondary">Escort</Typography>
                                 <Typography variant="body1">
                                     {trip.escortName ? `${trip.escortName} (${trip.escortRelationship})` : 'None'}
                                 </Typography>
                             </Grid>
-                            <Grid item xs={12} sm={6}>
+                            <Grid size={{ xs: 12, sm: 6 }}>
                                 <Typography variant="subtitle2" color="text.secondary">Type</Typography>
                                 <Typography variant="body1">{trip.tripType.replace('_', ' ')}</Typography>
                             </Grid>
@@ -107,7 +107,7 @@ export default function TripDetailsPage() {
                     </Card>
                 </Grid>
 
-                <Grid item xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                     <Card sx={{ p: 3, mb: 3 }}>
                         <Typography variant="h6" gutterBottom>Assignment</Typography>
                         <Box mb={2}>

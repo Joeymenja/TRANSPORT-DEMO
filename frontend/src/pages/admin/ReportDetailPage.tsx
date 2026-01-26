@@ -90,7 +90,7 @@ export default function ReportDetailPage() {
 
             <Grid container spacing={3}>
                 {/* Trip Info */}
-                <Grid item xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                     <Paper sx={{ p: 3, height: '100%' }}>
                         <Typography variant="h6" gutterBottom>Trip Details</Typography>
                         <Box mb={2}>
@@ -113,18 +113,18 @@ export default function ReportDetailPage() {
                 </Grid>
 
                 {/* Report Data */}
-                <Grid item xs={12} md={8}>
+                <Grid size={{ xs: 12, md: 8 }}>
                     <Paper sx={{ p: 3, minHeight: 400 }}>
                         <Typography variant="h6" gutterBottom>Execution Data</Typography>
                         {report ? (
                             <Box>
                                 <Grid container spacing={4}>
-                                    <Grid item xs={6}>
+                                    <Grid size={6}>
                                         <Typography variant="caption" color="text.secondary">Actual Times</Typography>
                                         <Typography>Pickup: {report.pickupTime ? new Date(report.pickupTime).toLocaleTimeString() : '--'}</Typography>
                                         <Typography>Dropoff: {report.dropoffTime ? new Date(report.dropoffTime).toLocaleTimeString() : '--'}</Typography>
                                     </Grid>
-                                    <Grid item xs={6}>
+                                    <Grid size={6}>
                                         <Typography variant="caption" color="text.secondary">Mileage</Typography>
                                         <Typography>Start: {report.startOdometer}</Typography>
                                         <Typography>End: {report.endOdometer}</Typography>

@@ -143,7 +143,7 @@ export default function SignaturePad({ open, onClose, onSave, title = 'Sign Belo
 
                 {isProxy && (
                     <Grid container spacing={2} sx={{ mb: 2 }}>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 fullWidth
                                 label="Signer Name"
@@ -153,7 +153,7 @@ export default function SignaturePad({ open, onClose, onSave, title = 'Sign Belo
                                 required
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 fullWidth
                                 label="Relationship"
@@ -164,7 +164,7 @@ export default function SignaturePad({ open, onClose, onSave, title = 'Sign Belo
                                 required
                             />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 fullWidth
                                 label="Reason Client Unable to Sign"

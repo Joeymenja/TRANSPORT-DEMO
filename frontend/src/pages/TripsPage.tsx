@@ -76,7 +76,7 @@ export default function TripsPage() {
 
             <Card sx={{ p: 2, mb: 4 }}>
                 <Grid container spacing={2} alignItems="center">
-                    <Grid item xs={12} sm={3}>
+                    <Grid size={{ xs: 12, sm: 3 }}>
                         <TextField
                             label="Date"
                             type="date"
@@ -87,7 +87,7 @@ export default function TripsPage() {
                             onChange={(e) => setFilters({ ...filters, date: e.target.value })}
                         />
                     </Grid>
-                    <Grid item xs={12} sm={3}>
+                    <Grid size={{ xs: 12, sm: 3 }}>
                         <TextField
                             select
                             label="Driver"
@@ -104,7 +104,7 @@ export default function TripsPage() {
                             ))}
                         </TextField>
                     </Grid>
-                    <Grid item xs={12} sm={3}>
+                    <Grid size={{ xs: 12, sm: 3 }}>
                         <TextField
                             select
                             label="Member"
@@ -121,7 +121,7 @@ export default function TripsPage() {
                             ))}
                         </TextField>
                     </Grid>
-                    <Grid item xs={12} sm={3}>
+                    <Grid size={{ xs: 12, sm: 3 }}>
                         <TextField
                             select
                             label="Status"

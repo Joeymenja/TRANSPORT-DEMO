@@ -421,14 +421,14 @@ export default function BackfillTripPage() {
                             <Divider sx={{ mb: 2 }} />
                             
                             <Grid container spacing={2} sx={{ mb: 2 }}>
-                                <Grid item xs={6}>
+                                <Grid size={6}>
                                     <TimeWheelSelector
                                         label="Pickup Time"
                                         value={leg.pickupTime}
                                         onChange={(newValue) => updateLeg(index, { pickupTime: newValue })}
                                     />
                                 </Grid>
-                                <Grid item xs={6}>
+                                <Grid size={6}>
                                     <TimeWheelSelector
                                         label="Dropoff Time"
                                         value={leg.dropoffTime}
@@ -456,10 +456,10 @@ export default function BackfillTripPage() {
                             />
 
                             <Grid container spacing={2} sx={{ mb: 2 }}>
-                                <Grid item xs={6}>
+                                <Grid size={6}>
                                     <TextField label="Start Odo" type="number" fullWidth value={leg.startOdometer} onChange={(e) => updateLeg(index, { startOdometer: e.target.value })} />
                                 </Grid>
-                                <Grid item xs={6}>
+                                <Grid size={6}>
                                     <TextField label="End Odo" type="number" fullWidth value={leg.endOdometer} onChange={(e) => updateLeg(index, { endOdometer: e.target.value })} />
                                 </Grid>
                             </Grid>
@@ -513,19 +513,19 @@ export default function BackfillTripPage() {
                 <DialogContent>
                     <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
                         <Grid container spacing={2}>
-                            <Grid item xs={6}>
+                            <Grid size={6}>
                                 <TextField label="First Name *" fullWidth value={newMemberData.firstName} onChange={(e) => setNewMemberData(p => ({ ...p, firstName: e.target.value }))} />
                             </Grid>
-                            <Grid item xs={6}>
+                            <Grid size={6}>
                                 <TextField label="Last Name *" fullWidth value={newMemberData.lastName} onChange={(e) => setNewMemberData(p => ({ ...p, lastName: e.target.value }))} />
                             </Grid>
                         </Grid>
                         
                         <Grid container spacing={2}>
-                            <Grid item xs={6}>
+                            <Grid size={6}>
                                 <TextField label="Member ID *" fullWidth value={newMemberData.memberId} onChange={(e) => setNewMemberData(p => ({ ...p, memberId: e.target.value }))} />
                             </Grid>
-                            <Grid item xs={6}>
+                            <Grid size={6}>
                                 <TextField 
                                     label="Date of Birth *" 
                                     type="date" 

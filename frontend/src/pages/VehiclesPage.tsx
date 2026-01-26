@@ -215,7 +215,7 @@ export default function VehiclesPage() {
             ) : (
                 <Grid container spacing={3}>
                     {vehicles.map((v: Vehicle) => (
-                        <Grid item xs={12} sm={6} md={4} key={v.id}>
+                        <Grid size={{ xs: 12, sm: 6, md: 4 }}key={v.id}>
                             <Card
                                 sx={{
                                     borderRadius: 2,
@@ -326,7 +326,7 @@ export default function VehiclesPage() {
                 </DialogTitle>
                 <DialogContent dividers>
                     <Grid container spacing={2}>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <TextField
                                 label="Make"
                                 fullWidth
@@ -334,7 +334,7 @@ export default function VehiclesPage() {
                                 onChange={(e) => setFormData({ ...formData, make: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <TextField
                                 label="Model"
                                 fullWidth
@@ -342,7 +342,7 @@ export default function VehiclesPage() {
                                 onChange={(e) => setFormData({ ...formData, model: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <TextField
                                 label="Year"
                                 type="number"
@@ -351,7 +351,7 @@ export default function VehiclesPage() {
                                 onChange={(e) => setFormData({ ...formData, year: Number(e.target.value) })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <TextField
                                 label="Color"
                                 fullWidth
@@ -359,7 +359,7 @@ export default function VehiclesPage() {
                                 onChange={(e) => setFormData({ ...formData, color: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <TextField
                                 label="License Plate"
                                 fullWidth
@@ -367,7 +367,7 @@ export default function VehiclesPage() {
                                 onChange={(e) => setFormData({ ...formData, licensePlate: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <TextField
                                 label="Vehicle Number"
                                 fullWidth
@@ -375,7 +375,7 @@ export default function VehiclesPage() {
                                 onChange={(e) => setFormData({ ...formData, vehicleNumber: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <TextField
                                 label="Capacity"
                                 type="number"
@@ -384,7 +384,7 @@ export default function VehiclesPage() {
                                 onChange={(e) => setFormData({ ...formData, capacity: Number(e.target.value) })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <FormControl fullWidth>
                                 <InputLabel>Condition</InputLabel>
                                 <Select
@@ -398,7 +398,7 @@ export default function VehiclesPage() {
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Purchase Date"
                                 type="date"
@@ -408,7 +408,7 @@ export default function VehiclesPage() {
                                 onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <FormControlLabel
                                 control={
                                     <Checkbox
@@ -419,7 +419,7 @@ export default function VehiclesPage() {
                                 label="Wheelchair Accessible"
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <FormControl fullWidth>
                                 <InputLabel>Initial Status</InputLabel>
                                 <Select

@@ -169,7 +169,7 @@ export default function CreateTripPage() {
             <Card sx={{ p: 4 }}>
                 {activeStep === 0 && (
                     <Grid container spacing={3}>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 select
                                 label="Member"
@@ -187,7 +187,7 @@ export default function CreateTripPage() {
                                 ))}
                             </TextField>
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 select
                                 label="Reason for Visit"
@@ -202,7 +202,7 @@ export default function CreateTripPage() {
                                 ))}
                             </TextField>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Escort Name (Optional)"
                                 fullWidth
@@ -210,7 +210,7 @@ export default function CreateTripPage() {
                                 onChange={(e) => setFormData({ ...formData, escortName: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Relationship"
                                 fullWidth
@@ -223,7 +223,7 @@ export default function CreateTripPage() {
 
                 {activeStep === 1 && (
                     <Grid container spacing={3}>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Date"
                                 type="date"
@@ -233,7 +233,7 @@ export default function CreateTripPage() {
                                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Pickup Time"
                                 type="time"
@@ -243,14 +243,14 @@ export default function CreateTripPage() {
                                 onChange={(e) => setFormData({ ...formData, time: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <FormControlLabel
                                 control={<Checkbox checked={formData.isRoundTrip} onChange={(e) => setFormData({ ...formData, isRoundTrip: e.target.checked })} />}
                                 label="Round Trip"
                             />
                         </Grid>
                         {formData.isRoundTrip && (
-                            <Grid item xs={12} sm={6}>
+                            <Grid size={{ xs: 12, sm: 6 }}>
                                 <TextField
                                     label="Return Time"
                                     type="time"
@@ -261,7 +261,7 @@ export default function CreateTripPage() {
                                 />
                             </Grid>
                         )}
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 label="Pickup Address"
                                 fullWidth
@@ -270,7 +270,7 @@ export default function CreateTripPage() {
                                 onChange={(e) => setFormData({ ...formData, pickupAddress: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 label="Drop-off Address"
                                 fullWidth
@@ -284,12 +284,12 @@ export default function CreateTripPage() {
 
                 {activeStep === 2 && (
                     <Grid container spacing={3}>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <Alert severity="info" sx={{ mb: 2 }}>
                                 Optional: You can assign a driver and vehicle now, or leave it for later.
                             </Alert>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <Box display="flex" alignItems="center" gap={1}>
                                 <TextField
                                     select
@@ -323,7 +323,7 @@ export default function CreateTripPage() {
                                 label="I will drive this trip (Take It Now)"
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 select
                                 label="Assign Vehicle"
@@ -369,7 +369,7 @@ export default function CreateTripPage() {
                         Quick add member. Full details can be added later in the Members tab.
                     </Typography>
                     <Grid container spacing={2}>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="First Name"
                                 fullWidth
@@ -378,7 +378,7 @@ export default function CreateTripPage() {
                                 onChange={(e) => setNewMember({ ...newMember, firstName: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Last Name"
                                 fullWidth
@@ -387,7 +387,7 @@ export default function CreateTripPage() {
                                 onChange={(e) => setNewMember({ ...newMember, lastName: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Date of Birth"
                                 type="date"
@@ -398,7 +398,7 @@ export default function CreateTripPage() {
                                 onChange={(e) => setNewMember({ ...newMember, dateOfBirth: e.target.value })}
                             />
                         </Grid>
-                         <Grid item xs={12} sm={6}>
+                         <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Phone (Optional)"
                                 fullWidth
@@ -406,7 +406,7 @@ export default function CreateTripPage() {
                                 onChange={(e) => setNewMember({ ...newMember, phone: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 label="Member ID / Insurance ID (Optional)"
                                 fullWidth

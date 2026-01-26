@@ -2,10 +2,10 @@ import { Box, Button, Card, CardContent, IconButton, Typography, Chip, Divider, 
 import { CalendarMonthOutlined, ChatBubbleOutline, PersonOutline, NavigationOutlined, PhoneOutlined } from '@mui/icons-material'; // Outlined icons
 import { format } from 'date-fns';
 
-interface ActiveTripCardProps {
+export interface ActiveTripCardProps {
     trip: any;
     onViewDetails: (id: string) => void;
-    onStartTrip: (id: string, odometer: number) => void;
+    onStartTrip?: (id: string, odometer: number) => void;
     isNext?: boolean;
     showActions?: boolean;
 }
@@ -83,7 +83,7 @@ export default function ActiveTripCard({ trip, onViewDetails, onStartTrip, isNex
                     </Box>
 
                     {/* Right: Action - ONLY Mobile + Driver */}
-                    {showActions && !isDesktop && (
+                    {showActions && !isDesktop && onStartTrip && (
                         <Box>
                             <Button
                                 variant="contained"
@@ -188,7 +188,7 @@ export default function ActiveTripCard({ trip, onViewDetails, onStartTrip, isNex
                 </Box>
 
                 {/* Start Trip Button - ONLY Mobile + Driver */}
-                {showActions && !isDesktop && (
+                {showActions && !isDesktop && onStartTrip && (
                     <Button
                         fullWidth
                         variant="contained"

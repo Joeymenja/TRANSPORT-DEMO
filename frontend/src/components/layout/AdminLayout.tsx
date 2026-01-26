@@ -1,4 +1,4 @@
-import { Box, AppBar, Toolbar, Typography, Button, IconButton, Drawer, List, ListItem, ListItemIcon, ListItemText, useMediaQuery, useTheme } from '@mui/material';
+import { Box, AppBar, Toolbar, Typography, Button, IconButton, Drawer, List, ListItemButton, ListItemIcon, ListItemText, useMediaQuery, useTheme } from '@mui/material';
 import { Menu as MenuIcon, Dashboard as DashboardIcon, Assignment as AssignmentIcon, People as PeopleIcon, DirectionsCar as CarIcon } from '@mui/icons-material';
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -88,8 +88,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 >
                     <List>
                         {menuItems.map((item) => (
-                            <ListItem
-                                button
+                            <ListItemButton
                                 key={item.text}
                                 onClick={() => handleNavigate(item.path)}
                                 sx={{
@@ -103,11 +102,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                         fontSize: { xs: '0.95rem', sm: '1rem' }
                                     }}
                                 />
-                            </ListItem>
+                            </ListItemButton>
                         ))}
                         {isMobile && (
-                            <ListItem
-                                button
+                            <ListItemButton
                                 onClick={handleLogout}
                                 sx={{ py: 1.5, borderTop: '1px solid #e0e0e0', mt: 2 }}
                             >
@@ -118,7 +116,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                         color: 'error.main'
                                     }}
                                 />
-                            </ListItem>
+                            </ListItemButton>
                         )}
                     </List>
                 </Box>

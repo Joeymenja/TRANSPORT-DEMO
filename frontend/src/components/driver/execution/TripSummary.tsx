@@ -28,15 +28,15 @@ export default function TripSummary({ startOdometer, endOdometer, notes, signatu
                     Trip Details
                 </Typography>
                 <Grid container spacing={2}>
-                    <Grid item xs={6}>
+                    <Grid size={6}>
                         <Typography variant="caption" color="text.secondary">Start Odometer</Typography>
                         <Typography variant="body1" fontWeight={500}>{startOdometer} mi</Typography>
                     </Grid>
-                    <Grid item xs={6}>
+                    <Grid size={6}>
                         <Typography variant="caption" color="text.secondary">End Odometer</Typography>
                         <Typography variant="body1" fontWeight={500}>{endOdometer || '--'} mi</Typography>
                     </Grid>
-                    <Grid item xs={12}>
+                    <Grid size={12}>
                         <Divider sx={{ my: 1 }} />
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Typography variant="body2" color="text.secondary">Total Distance</Typography>

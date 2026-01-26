@@ -201,7 +201,7 @@ export const DriversPage = () => {
             ) : (
                 <Grid container spacing={3}>
                     {filteredDrivers.map(driver => (
-                        <Grid item xs={12} md={6} lg={4} key={driver.id}>
+                        <Grid size={{ xs: 12, md: 6, lg: 4 }}key={driver.id}>
                             <Card sx={{
                                 height: '100%',
                                 display: 'flex',
@@ -233,7 +233,7 @@ export const DriversPage = () => {
                                     </Box>
 
                                     <Grid container spacing={2} sx={{ mb: 2 }}>
-                                        <Grid item xs={12}>
+                                        <Grid size={12}>
                                             <Box display="flex" alignItems="center" gap={1} color="text.secondary">
                                                 <Badge fontSize="small" />
                                                 <Typography variant="body2">
@@ -241,7 +241,7 @@ export const DriversPage = () => {
                                                 </Typography>
                                             </Box>
                                         </Grid>
-                                        <Grid item xs={12}>
+                                        <Grid size={12}>
                                             <Box display="flex" alignItems="center" gap={1} color="text.secondary">
                                                 <AssignmentInd fontSize="small" />
                                                 <Typography variant="body2">
@@ -249,7 +249,7 @@ export const DriversPage = () => {
                                                 </Typography>
                                             </Box>
                                         </Grid>
-                                        <Grid item xs={12}>
+                                        <Grid size={12}>
                                             <Box sx={{ p: 1.5, bgcolor: '#f5f7fa', borderRadius: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
                                                 <LocalTaxi fontSize="small" color={driver.assignedVehicle ? "primary" : "disabled"} />
                                                 <Box>
@@ -290,7 +290,7 @@ export const DriversPage = () => {
                         </Grid>
                     ))}
                     {filteredDrivers.length === 0 && (
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <Box textAlign="center" py={10} color="text.secondary">
                                 <Search sx={{ fontSize: 48, mb: 1, opacity: 0.5 }} />
                                 <Typography>No drivers found matching your criteria.</Typography>

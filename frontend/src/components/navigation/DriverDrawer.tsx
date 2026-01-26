@@ -11,7 +11,7 @@ import { useAuthStore } from '../../store/auth';
 interface DriverDrawerProps {
     open: boolean;
     onClose: () => void;
-    driver: any;
+    driver?: any;
 }
 
 export default function DriverDrawer({ open, onClose, driver }: DriverDrawerProps) {

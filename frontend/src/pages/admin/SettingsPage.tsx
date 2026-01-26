@@ -65,7 +65,7 @@ export default function SettingsPage() {
                 </Typography>
 
                 <Grid container spacing={3}>
-                    <Grid item xs={12}>
+                    <Grid size={12}>
                         <Box display="flex" alignItems="center" justifyContent="space-between">
                             <Box display="flex" alignItems="center" gap={2}>
                                 <Receipt color={features.billing ? 'primary' : 'disabled'} />
@@ -84,7 +84,7 @@ export default function SettingsPage() {
                         <Divider sx={{ my: 2 }} />
                     </Grid>
 
-                    <Grid item xs={12}>
+                    <Grid size={12}>
                         <Box display="flex" alignItems="center" justifyContent="space-between">
                             <Box display="flex" alignItems="center" gap={2}>
                                 <Paid color={features.payroll ? 'primary' : 'disabled'} />
@@ -103,7 +103,7 @@ export default function SettingsPage() {
                         <Divider sx={{ my: 2 }} />
                     </Grid>
 
-                    <Grid item xs={12}>
+                    <Grid size={12}>
                         <Box display="flex" alignItems="center" justifyContent="space-between">
                             <Box display="flex" alignItems="center" gap={2}>
                                 <DirectionsCar color={features.driverView ? 'primary' : 'disabled'} />
@@ -140,7 +140,7 @@ export default function SettingsPage() {
                 )}
 
                 <Grid container spacing={3}>
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                         <TextField
                             fullWidth
                             label="AHCCCS Provider ID"
@@ -149,7 +149,7 @@ export default function SettingsPage() {
                             placeholder="e.g. 123456"
                         />
                     </Grid>
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                         <TextField
                             fullWidth
                             label="Phone Number"
@@ -158,7 +158,7 @@ export default function SettingsPage() {
                             placeholder="(602) 555-0123"
                         />
                     </Grid>
-                    <Grid item xs={12}>
+                    <Grid size={12}>
                         <TextField
                             fullWidth
                             label="Company Address"
@@ -167,7 +167,7 @@ export default function SettingsPage() {
                             placeholder="e.g. 123 Business St, Phoenix, AZ 85000"
                         />
                     </Grid>
-                    <Grid item xs={12}>
+                    <Grid size={12}>
                         <Button
                             variant="contained"
                             onClick={handleSaveOrg}

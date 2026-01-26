@@ -283,10 +283,10 @@ export default function DashboardPage() {
             {/* Live Operations Section */}
             {!driver && (
                 <Grid container spacing={3} sx={{ mb: 4, height: 500 }}>
-                    <Grid item xs={12} md={4} sx={{ height: '100%' }}>
+                    <Grid size={{ xs: 12, md: 4 }}sx={{ height: '100%' }}>
                         <UnassignedTripsList trips={trips} drivers={drivers} />
                     </Grid>
-                    <Grid item xs={12} md={8} sx={{ height: '100%' }}>
+                    <Grid size={{ xs: 12, md: 8 }}sx={{ height: '100%' }}>
                         <Card sx={{ borderRadius: 2, height: '100%' }}>
                             <CardContent sx={{ p: '0 !important', height: '100%' }}>
                                 <Box sx={{ p: 2, borderBottom: '1px solid #eee' }}>
@@ -302,10 +302,10 @@ export default function DashboardPage() {
 
             {/* Main Content Area: Stats/List Left, Activity Feed Right */}
             <Grid container spacing={3}>
-                <Grid item xs={12} md={8} lg={9}>
+                <Grid size={{ xs: 12, md: 8, lg: 9 }}>
                     {/* Stats Grid */}
                     <Grid container spacing={3} sx={{ mb: 4 }}>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                             <StatCard
                                 title="Active Trips"
                                 value={stats.active}
@@ -313,7 +313,7 @@ export default function DashboardPage() {
                                 color="#FF9800"
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                             <StatCard
                                 title="Pending Approval"
                                 value={stats.pending}
@@ -321,7 +321,7 @@ export default function DashboardPage() {
                                 color="#F44336"
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                             <StatCard
                                 title="Scheduled"
                                 value={stats.scheduled}
@@ -329,7 +329,7 @@ export default function DashboardPage() {
                                 color="#0096D6"
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                             <StatCard
                                 title="Completed"
                                 value={stats.completed}
@@ -478,7 +478,7 @@ export default function DashboardPage() {
                                                     <Box sx={{ mt: 3 }}>
                                                         <Divider sx={{ mb: 2 }} />
                                                         <Grid container spacing={3}>
-                                                            <Grid item xs={12} md={6}>
+                                                            <Grid size={{ xs: 12, md: 6 }}>
                                                                 <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, color: '#0096D6' }}>
                                                                     <VerifiedUser fontSize="small" /> Member Compliance (Signatures)
                                                                 </Typography>
@@ -527,7 +527,7 @@ export default function DashboardPage() {
                                                                     ))}
                                                                 </List>
                                                             </Grid>
-                                                            <Grid item xs={12} md={6}>
+                                                            <Grid size={{ xs: 12, md: 6 }}>
                                                                 <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, color: '#FF9800' }}>
                                                                     <GpsFixed fontSize="small" /> Stop Audit Log (GPS)
                                                                 </Typography>
@@ -564,7 +564,7 @@ export default function DashboardPage() {
                 </Grid>
 
                 {/* Activity Feed Sidebar */}
-                <Grid item xs={12} md={4} lg={3} order={{ xs: 2, md: 2 }}>
+                <Grid size={{ xs: 12, md: 4, lg: 3 }}order={{ xs: 2, md: 2 }}>
                     <Box sx={{ height: 600 }}>
                         <ActivityFeed trips={trips} />
                     </Box>
@@ -607,7 +607,7 @@ export default function DashboardPage() {
                 <DialogTitle>Create New Trip</DialogTitle>
                 <DialogContent dividers>
                     <Grid container spacing={2}>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Date"
                                 type="date"
@@ -617,7 +617,7 @@ export default function DashboardPage() {
                                 onChange={(e) => setTripForm({ ...tripForm, date: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Time"
                                 type="time"
@@ -627,7 +627,7 @@ export default function DashboardPage() {
                                 onChange={(e) => setTripForm({ ...tripForm, time: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <FormControlLabel
                                 control={
                                     <Checkbox
@@ -639,7 +639,7 @@ export default function DashboardPage() {
                             />
                         </Grid>
                         {tripForm.isRoundTrip && (
-                            <Grid item xs={12} sm={6}>
+                            <Grid size={{ xs: 12, sm: 6 }}>
                                 <TextField
                                     label="Return Pickup Time"
                                     type="time"
@@ -650,7 +650,7 @@ export default function DashboardPage() {
                                 />
                             </Grid>
                         )}
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 select
                                 label="Mobility Requirement"
@@ -664,7 +664,7 @@ export default function DashboardPage() {
                                 <MenuItem value="CAR_SEAT">Car Seat</MenuItem>
                             </TextField>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 select
                                 label="Select Member"
@@ -679,7 +679,7 @@ export default function DashboardPage() {
                                 ))}
                             </TextField>
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 label="Pickup Address"
                                 fullWidth
@@ -692,7 +692,7 @@ export default function DashboardPage() {
                                 helperText="Example: 123 Main St, Phoenix, AZ 85001"
                             />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 label="Dropoff Address"
                                 fullWidth
@@ -774,7 +774,7 @@ function AssignDispatchDialog({ open, onClose, tripId, drivers, vehicles, onAssi
             <DialogTitle>Assign Dispatch - Trip #{tripId.slice(0, 8)}</DialogTitle>
             <DialogContent dividers>
                 <Grid container spacing={3}>
-                    <Grid item xs={12}>
+                    <Grid size={12}>
                         <FormControl fullWidth>
                             <InputLabel>Assign Driver</InputLabel>
                             <Select
@@ -803,7 +803,7 @@ function AssignDispatchDialog({ open, onClose, tripId, drivers, vehicles, onAssi
                             </Select>
                         </FormControl>
                     </Grid>
-                    <Grid item xs={12}>
+                    <Grid size={12}>
                         <FormControl fullWidth>
                             <InputLabel>Assign Vehicle</InputLabel>
                             <Select

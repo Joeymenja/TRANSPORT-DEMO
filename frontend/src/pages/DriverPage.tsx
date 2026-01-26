@@ -3,9 +3,9 @@ import { Box, Container, Typography, Card, CardContent, Button, Accordion, Accor
 import { ExpandMore, DirectionsCar, AccessTime, LocationOn, PlayArrow, CalendarMonth } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { tripApi, Trip, TripStatus } from '../../api/trips';
-import { useAuthStore } from '../../store/auth';
-import LoadingOverlay from '../../components/LoadingOverlay';
+import { tripApi, Trip } from '../api/trips';
+import { useAuthStore } from '../store/auth';
+import LoadingOverlay from '../components/LoadingOverlay';
 
 export default function DriverPage() {
     const navigate = useNavigate();

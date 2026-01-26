@@ -299,28 +299,28 @@ export default function VehicleDetailsPage() {
 
             <TabPanel value={tabValue} index={0}>
                 <Grid container spacing={3}>
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                         <Card>
                             <CardContent>
                                 <Typography variant="h6" gutterBottom>Vehicle Information</Typography>
                                 <Grid container spacing={2}>
-                                    <Grid item xs={6}>
+                                    <Grid size={6}>
                                         <Typography variant="body2" color="text.secondary">Year</Typography>
                                         <Typography variant="body1">{vehicle.year || 'N/A'}</Typography>
                                     </Grid>
-                                    <Grid item xs={6}>
+                                    <Grid size={6}>
                                         <Typography variant="body2" color="text.secondary">Capacity</Typography>
                                         <Typography variant="body1">{vehicle.capacity} Passengers</Typography>
                                     </Grid>
-                                    <Grid item xs={6}>
+                                    <Grid size={6}>
                                         <Typography variant="body2" color="text.secondary">Purchase Date</Typography>
                                         <Typography variant="body1">{vehicle.purchaseDate ? new Date(vehicle.purchaseDate).toLocaleDateString() : 'N/A'}</Typography>
                                     </Grid>
-                                    <Grid item xs={6}>
+                                    <Grid size={6}>
                                         <Typography variant="body2" color="text.secondary">Wheelchair Accessible</Typography>
                                         <Typography variant="body1">{vehicle.wheelchairAccessible ? 'Yes' : 'No'}</Typography>
                                     </Grid>
-                                    <Grid item xs={12}>
+                                    <Grid size={12}>
                                         <Typography variant="body2" color="text.secondary">Notes</Typography>
                                         <Typography variant="body1">{vehicle.notes || 'No notes available'}</Typography>
                                     </Grid>
@@ -328,16 +328,16 @@ export default function VehicleDetailsPage() {
                             </CardContent>
                         </Card>
                     </Grid>
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                         <Card>
                             <CardContent>
                                 <Typography variant="h6" gutterBottom>Status & Condition</Typography>
                                 <Grid container spacing={2}>
-                                    <Grid item xs={6}>
+                                    <Grid size={6}>
                                         <Typography variant="body2" color="text.secondary">Current Status</Typography>
                                         <Typography variant="body1">{vehicle.status}</Typography>
                                     </Grid>
-                                    <Grid item xs={6}>
+                                    <Grid size={6}>
                                         <Typography variant="body2" color="text.secondary">Condition</Typography>
                                         <Typography variant="body1" color={vehicle.conditionStatus === 'GOOD' ? 'success.main' : 'error.main'}>
                                             {vehicle.conditionStatus}
@@ -495,7 +495,7 @@ export default function VehicleDetailsPage() {
                     {/* ... content ... */}
                     <Grid container spacing={2}>
                         {/* ... form fields reused strictly ... */}
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 select
                                 label="Maintenance Type"
@@ -514,7 +514,7 @@ export default function VehicleDetailsPage() {
                                 <option value="Other">Other</option>
                             </TextField>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Date"
                                 type="date"
@@ -524,7 +524,7 @@ export default function VehicleDetailsPage() {
                                 onChange={(e) => setMaintenanceForm({ ...maintenanceForm, serviceDate: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Cost"
                                 type="number"
@@ -534,7 +534,7 @@ export default function VehicleDetailsPage() {
                                 onChange={(e) => setMaintenanceForm({ ...maintenanceForm, cost: Number(e.target.value) })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Mileage"
                                 type="number"
@@ -543,7 +543,7 @@ export default function VehicleDetailsPage() {
                                 onChange={(e) => setMaintenanceForm({ ...maintenanceForm, mileageAtService: Number(e.target.value) })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Next Service Mileage"
                                 type="number"
@@ -552,7 +552,7 @@ export default function VehicleDetailsPage() {
                                 onChange={(e) => setMaintenanceForm({ ...maintenanceForm, nextServiceMileage: Number(e.target.value) })}
                             />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 label="Performed By"
                                 fullWidth
@@ -561,7 +561,7 @@ export default function VehicleDetailsPage() {
                                 onChange={(e) => setMaintenanceForm({ ...maintenanceForm, performedBy: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 label="Description"
                                 fullWidth
@@ -590,7 +590,7 @@ export default function VehicleDetailsPage() {
                 <DialogTitle>Upload Document</DialogTitle>
                 <DialogContent dividers>
                     <Grid container spacing={2}>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <Typography variant="caption" gutterBottom>Select File</Typography>
                             <TextField
                                 type="file"
@@ -598,7 +598,7 @@ export default function VehicleDetailsPage() {
                                 onChange={(e: any) => setDocumentForm({ ...documentForm, file: e.target.files[0] })}
                             />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 select
                                 label="Document Type"
@@ -612,7 +612,7 @@ export default function VehicleDetailsPage() {
                                 <option value="OTHER">Other</option>
                             </TextField>
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 label="Expiration Date"
                                 type="date"
@@ -622,7 +622,7 @@ export default function VehicleDetailsPage() {
                                 onChange={(e) => setDocumentForm({ ...documentForm, expiresAt: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 label="Notes"
                                 fullWidth
@@ -650,7 +650,7 @@ export default function VehicleDetailsPage() {
                 <DialogTitle>Edit Vehicle</DialogTitle>
                 <DialogContent dividers>
                     <Grid container spacing={2}>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <TextField
                                 label="Make"
                                 fullWidth
@@ -658,7 +658,7 @@ export default function VehicleDetailsPage() {
                                 onChange={(e) => setEditForm({ ...editForm, make: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <TextField
                                 label="Model"
                                 fullWidth
@@ -666,7 +666,7 @@ export default function VehicleDetailsPage() {
                                 onChange={(e) => setEditForm({ ...editForm, model: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <TextField
                                 label="Year"
                                 type="number"
@@ -675,7 +675,7 @@ export default function VehicleDetailsPage() {
                                 onChange={(e) => setEditForm({ ...editForm, year: Number(e.target.value) })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <TextField
                                 label="Color"
                                 fullWidth
@@ -683,7 +683,7 @@ export default function VehicleDetailsPage() {
                                 onChange={(e) => setEditForm({ ...editForm, color: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <TextField
                                 label="License Plate"
                                 fullWidth
@@ -691,7 +691,7 @@ export default function VehicleDetailsPage() {
                                 onChange={(e) => setEditForm({ ...editForm, licensePlate: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <TextField
                                 label="Vehicle Number"
                                 fullWidth
@@ -699,7 +699,7 @@ export default function VehicleDetailsPage() {
                                 onChange={(e) => setEditForm({ ...editForm, vehicleNumber: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <TextField
                                 label="Capacity"
                                 type="number"
@@ -708,7 +708,7 @@ export default function VehicleDetailsPage() {
                                 onChange={(e) => setEditForm({ ...editForm, capacity: Number(e.target.value) })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <TextField
                                 select
                                 label="Status"
@@ -722,7 +722,7 @@ export default function VehicleDetailsPage() {
                                 <option value="MAINTENANCE">Maintenance</option>
                             </TextField>
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <TextField
                                 select
                                 label="Condition"
@@ -736,7 +736,7 @@ export default function VehicleDetailsPage() {
                                 <option value="OUT_OF_SERVICE">Out of Service</option>
                             </TextField>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Purchase Date"
                                 type="date"
@@ -746,7 +746,7 @@ export default function VehicleDetailsPage() {
                                 onChange={(e) => setEditForm({ ...editForm, purchaseDate: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 select
                                 label="Wheelchair Accessible"
@@ -759,7 +759,7 @@ export default function VehicleDetailsPage() {
                                 <option value="yes">Yes</option>
                             </TextField>
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 label="Notes"
                                 fullWidth

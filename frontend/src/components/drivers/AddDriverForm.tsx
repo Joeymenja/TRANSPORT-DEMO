@@ -110,10 +110,10 @@ export const AddDriverForm = ({ onSuccess, onCancel }: AddDriverFormProps) => {
 
                 <form onSubmit={handleSubmit} noValidate>
                     <Grid container spacing={3}>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <Typography variant="subtitle2" color="primary" gutterBottom>Personal Information</Typography>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="First Name"
                                 size="small"
@@ -123,7 +123,7 @@ export const AddDriverForm = ({ onSuccess, onCancel }: AddDriverFormProps) => {
                                 onChange={(e) => handleChange('firstName', e.target.value)}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Last Name"
                                 size="small"
@@ -133,7 +133,7 @@ export const AddDriverForm = ({ onSuccess, onCancel }: AddDriverFormProps) => {
                                 onChange={(e) => handleChange('lastName', e.target.value)}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Email"
                                 type="email"
@@ -144,7 +144,7 @@ export const AddDriverForm = ({ onSuccess, onCancel }: AddDriverFormProps) => {
                                 onChange={(e) => handleChange('email', e.target.value)}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Password"
                                 type="password"
@@ -157,10 +157,10 @@ export const AddDriverForm = ({ onSuccess, onCancel }: AddDriverFormProps) => {
                             />
                         </Grid>
 
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <Typography variant="subtitle2" color="primary" gutterBottom sx={{ mt: 1 }}>Employment & License</Typography>
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <FormControl fullWidth size="small">
                                 <InputLabel>Employment Status</InputLabel>
                                 <Select
@@ -174,7 +174,7 @@ export const AddDriverForm = ({ onSuccess, onCancel }: AddDriverFormProps) => {
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <TextField
                                 label="License Number"
                                 size="small"
@@ -183,7 +183,7 @@ export const AddDriverForm = ({ onSuccess, onCancel }: AddDriverFormProps) => {
                                 onChange={(e) => handleChange('licenseNumber', e.target.value)}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <TextField
                                 label="License State"
                                 size="small"
@@ -192,7 +192,7 @@ export const AddDriverForm = ({ onSuccess, onCancel }: AddDriverFormProps) => {
                                 onChange={(e) => handleChange('licenseState', e.target.value)}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="License Expiry"
                                 type="date"
@@ -204,10 +204,10 @@ export const AddDriverForm = ({ onSuccess, onCancel }: AddDriverFormProps) => {
                             />
                         </Grid>
 
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <Typography variant="subtitle2" color="primary" gutterBottom sx={{ mt: 1 }}>Emergency Contact</Typography>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Contact Name"
                                 size="small"
@@ -216,7 +216,7 @@ export const AddDriverForm = ({ onSuccess, onCancel }: AddDriverFormProps) => {
                                 onChange={(e) => handleChange('emergencyContactName', e.target.value)}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Phone Number"
                                 size="small"
@@ -227,12 +227,12 @@ export const AddDriverForm = ({ onSuccess, onCancel }: AddDriverFormProps) => {
                         </Grid>
 
                         {error && (
-                            <Grid item xs={12}>
+                            <Grid size={12}>
                                 <Alert severity="error">{error}</Alert>
                             </Grid>
                         )}
 
-                        <Grid item xs={12} display="flex" justifyContent="flex-end" gap={2}>
+                        <Grid size={12}display="flex" justifyContent="flex-end" gap={2}>
                             <Button onClick={onCancel}>Cancel</Button>
                             <Button
                                 type="submit"

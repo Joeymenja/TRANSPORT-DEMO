@@ -91,6 +91,7 @@ interface TripReportFormProps {
     onCancel: () => void;
     defaultReviewMode?: boolean;
     isSubmitting?: boolean;
+    readOnly?: boolean;
     initialSignatures?: {
         member?: string | null;
         driver?: string | null;

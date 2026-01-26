@@ -102,20 +102,20 @@ export default function MemberDetailsPage() {
 
             <TabPanel value={tabValue} index={0}>
                 <Grid container spacing={3}>
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                         <Card sx={{ height: '100%' }}>
                             <CardContent>
                                 <Typography variant="h6" gutterBottom>Personal Information</Typography>
                                 <Grid container spacing={2}>
-                                    <Grid item xs={6}>
+                                    <Grid size={6}>
                                         <Typography variant="body2" color="text.secondary">Date of Birth</Typography>
                                         <Typography variant="body1">{new Date(member.dateOfBirth).toLocaleDateString()}</Typography>
                                     </Grid>
-                                    <Grid item xs={6}>
+                                    <Grid size={6}>
                                         <Typography variant="body2" color="text.secondary">Gender</Typography>
                                         <Typography variant="body1">{member.gender || 'Not specified'}</Typography>
                                     </Grid>
-                                    <Grid item xs={12}>
+                                    <Grid size={12}>
                                         <Box display="flex" gap={1} alignItems="center" mt={1}>
                                             <Phone fontSize="small" color="action" />
                                             <Typography variant="body1">{member.phone || 'No phone'}</Typography>
@@ -134,12 +134,12 @@ export default function MemberDetailsPage() {
                         </Card>
                     </Grid>
 
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                         <Card sx={{ height: '100%' }}>
                             <CardContent>
                                 <Typography variant="h6" gutterBottom>Medical & Consent</Typography>
                                 <Grid container spacing={2}>
-                                    <Grid item xs={12}>
+                                    <Grid size={12}>
                                         <Box display="flex" justifyContent="space-between" alignItems="center" p={1} bgcolor="#f5f5f5" borderRadius={1}>
                                             <Box display="flex" alignItems="center" gap={1}>
                                                 <AssignmentTurnedIn color={member.consentOnFile ? 'success' : 'disabled'} />
@@ -150,7 +150,7 @@ export default function MemberDetailsPage() {
                                             </Typography>
                                         </Box>
                                     </Grid>
-                                    <Grid item xs={12}>
+                                    <Grid size={12}>
                                         <Typography variant="subtitle2" gutterBottom display="flex" alignItems="center" gap={1}>
                                             <MedicalServices fontSize="small" /> Medical Notes
                                         </Typography>
@@ -158,7 +158,7 @@ export default function MemberDetailsPage() {
                                             <Typography variant="body2">{member.medicalNotes || 'No medical notes.'}</Typography>
                                         </Paper>
                                     </Grid>
-                                    <Grid item xs={12}>
+                                    <Grid size={12}>
                                         <Typography variant="subtitle2" gutterBottom display="flex" alignItems="center" gap={1}>
                                             <Warning fontSize="small" /> Special Notes
                                         </Typography>
@@ -171,16 +171,16 @@ export default function MemberDetailsPage() {
                         </Card>
                     </Grid>
 
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                         <Card sx={{ height: '100%' }}>
                             <CardContent>
                                 <Typography variant="h6" gutterBottom>Insurance</Typography>
                                 <Grid container spacing={2}>
-                                    <Grid item xs={6}>
+                                    <Grid size={6}>
                                         <Typography variant="body2" color="text.secondary">Provider</Typography>
                                         <Typography variant="body1">{member.insuranceProvider || 'N/A'}</Typography>
                                     </Grid>
-                                    <Grid item xs={6}>
+                                    <Grid size={6}>
                                         <Typography variant="body2" color="text.secondary">Member ID</Typography>
                                         <Typography variant="body1">{member.insuranceId || 'N/A'}</Typography>
                                     </Grid>

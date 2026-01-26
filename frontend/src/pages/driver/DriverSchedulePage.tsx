@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Paper, List, ListItem, ListItemText, Divider, Tabs, Tab, CircularProgress, Chip, Snackbar, Alert, IconButton, useTheme, useMediaQuery } from '@mui/material';
+import { Box, Typography, Paper, List, ListItemButton, ListItemText, Divider, Tabs, Tab, CircularProgress, Chip, Snackbar, Alert, IconButton, useTheme, useMediaQuery } from '@mui/material';
 import { ChevronRight, History, CalendarMonth, Menu as MenuIcon, Add } from '@mui/icons-material';
 import ActiveTripCard from '../../components/dashboard/ActiveTripCard';
 import { format } from 'date-fns';
@@ -68,7 +68,7 @@ export default function DriverSchedulePage() {
             ) : (
                 tripList.map((trip, i) => (
                     <Box key={trip.id}>
-                        <ListItem button onClick={() => navigate(`/driver/trips/${trip.id}`)} sx={{ py: 2 }}>
+                        <ListItemButton onClick={() => navigate(`/driver/trips/${trip.id}`)} sx={{ py: 2 }}>
                             <Box sx={{
                                 bgcolor: tabValue === 0 ? 'primary.light' : '#f5f5f5',
                                 width: 50, height: 50,
@@ -92,7 +92,7 @@ export default function DriverSchedulePage() {
                                 secondary={`${trip.stops.length} Stops • ${trip.tripType.replace('_', ' ')}`}
                             />
                             <ChevronRight color="action" />
-                        </ListItem>
+                        </ListItemButton>
                         {i < tripList.length - 1 && <Divider />}
                     </Box>
                 ))

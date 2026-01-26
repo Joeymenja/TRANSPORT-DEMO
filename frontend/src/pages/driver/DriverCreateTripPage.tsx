@@ -48,7 +48,7 @@ export default function DriverCreateTripPage() {
     const steps = ['Trip Details', 'Route & Schedule'];
 
     const { data: members } = useQuery({ queryKey: ['members'], queryFn: () => memberApi.getMembers() });
-    const { data: drivers } = useQuery({ queryKey: ['drivers'], queryFn: () => driverApi.getDrivers(), enabled: user?.role === 'HOUSE_MANAGER' });
+    const { data: drivers } = useQuery({ queryKey: ['drivers'], queryFn: () => driverApi.getAll(), enabled: user?.role === 'HOUSE_MANAGER' });
 
     const createMemberMutation = useMutation({
         mutationFn: async () => {
@@ -80,7 +80,7 @@ export default function DriverCreateTripPage() {
             const tripDate = new Date(`${formData.date}T${formData.time}`);
             
 
-            let status = formData.startNow ? 'IN_PROGRESS' : 'PENDING_APPROVAL';
+            let status: 'PENDING_APPROVAL' | 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' = formData.startNow ? 'IN_PROGRESS' : 'PENDING_APPROVAL';
             let assignedDriverId = user?.role === 'DRIVER' ? user.id : undefined;
             let startedAt, completedAt;
 
@@ -270,7 +270,7 @@ export default function DriverCreateTripPage() {
 
                 {activeStep === 1 && (
                     <Grid container spacing={3}>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <MobileDatePicker
                                 label="Date"
                                 value={new Date(formData.date + 'T00:00:00')}
@@ -282,7 +282,7 @@ export default function DriverCreateTripPage() {
                                 slotProps={{ textField: { fullWidth: true } }}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <MobileTimePicker
                                 label="Time"
                                 value={new Date(`2000-01-01T${formData.time}`)}
@@ -295,7 +295,7 @@ export default function DriverCreateTripPage() {
                             />
                         </Grid>
                         {bookingMode === 'PAST' && (
-                            <Grid item xs={12} sm={6}>
+                            <Grid size={{ xs: 12, sm: 6 }}>
                                 <MobileTimePicker
                                     label="End Time"
                                     value={new Date(`2000-01-01T${formData.endTime}`)}
@@ -308,7 +308,7 @@ export default function DriverCreateTripPage() {
                                 />
                             </Grid>
                         )}
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 label="Pickup Address"
                                 fullWidth
@@ -316,7 +316,7 @@ export default function DriverCreateTripPage() {
                                 onChange={(e) => setFormData({ ...formData, pickupAddress: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 label="Drop-off Address"
                                 fullWidth
@@ -326,7 +326,7 @@ export default function DriverCreateTripPage() {
                         </Grid>
 
                         {bookingMode === 'FUTURE' && user?.role === 'DRIVER' && (
-                             <Grid item xs={12}>
+                             <Grid size={12}>
                                 <FormControlLabel
                                     control={
                                         <Switch
@@ -372,7 +372,7 @@ export default function DriverCreateTripPage() {
                         </Alert>
                     )}
                     <Grid container spacing={2} sx={{ mt: 1 }}>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="First Name"
                                 fullWidth
@@ -380,7 +380,7 @@ export default function DriverCreateTripPage() {
                                 onChange={(e) => setNewMember({ ...newMember, firstName: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Last Name"
                                 fullWidth
@@ -388,7 +388,7 @@ export default function DriverCreateTripPage() {
                                 onChange={(e) => setNewMember({ ...newMember, lastName: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Date of Birth"
                                 type="date"
@@ -398,7 +398,7 @@ export default function DriverCreateTripPage() {
                                 onChange={(e) => setNewMember({ ...newMember, dateOfBirth: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Member ID / Insurance ID"
                                 fullWidth

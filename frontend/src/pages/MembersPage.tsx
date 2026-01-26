@@ -272,7 +272,7 @@ export default function MembersPage() {
                 </DialogTitle>
                 <DialogContent dividers>
                     <Grid container spacing={2}>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <TextField
                                 label="First Name"
                                 fullWidth
@@ -280,7 +280,7 @@ export default function MembersPage() {
                                 onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <TextField
                                 label="Last Name"
                                 fullWidth
@@ -288,7 +288,7 @@ export default function MembersPage() {
                                 onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={4}>
+                        <Grid size={{ xs: 12, sm: 4 }}>
                             <TextField
                                 select
                                 label="Gender"
@@ -301,7 +301,7 @@ export default function MembersPage() {
                                 <MenuItem value="Other">Other</MenuItem>
                             </TextField>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Date of Birth"
                                 type="date"
@@ -311,7 +311,7 @@ export default function MembersPage() {
                                 onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Member ID (AHCCCS)"
                                 fullWidth
@@ -319,7 +319,7 @@ export default function MembersPage() {
                                 onChange={(e) => setFormData({ ...formData, memberId: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Phone"
                                 fullWidth
@@ -327,7 +327,7 @@ export default function MembersPage() {
                                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 select
                                 label="Report Type"
@@ -339,7 +339,7 @@ export default function MembersPage() {
                                 <MenuItem value="NON_NATIVE">Non-Native</MenuItem>
                             </TextField>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 select
                                 label="Mobility Requirement"
@@ -354,7 +354,7 @@ export default function MembersPage() {
                                 ))}
                             </TextField>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Date of Consent"
                                 type="date"
@@ -364,7 +364,7 @@ export default function MembersPage() {
                                 onChange={(e) => setFormData({ ...formData, consentDate: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6} display="flex" alignItems="center">
+                        <Grid size={{ xs: 12, sm: 6 }}display="flex" alignItems="center">
                             <FormControlLabel
                                 control={
                                     <Checkbox
@@ -375,7 +375,7 @@ export default function MembersPage() {
                                 label="Consent Form On File"
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Insurance Provider"
                                 fullWidth
@@ -383,7 +383,7 @@ export default function MembersPage() {
                                 onChange={(e) => setFormData({ ...formData, insuranceProvider: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Insurance ID"
                                 fullWidth
@@ -391,7 +391,7 @@ export default function MembersPage() {
                                 onChange={(e) => setFormData({ ...formData, insuranceId: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 label="Medical Notes"
                                 fullWidth
@@ -401,7 +401,7 @@ export default function MembersPage() {
                                 onChange={(e) => setFormData({ ...formData, medicalNotes: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 label="Special Notes"
                                 fullWidth
@@ -411,7 +411,7 @@ export default function MembersPage() {
                                 onChange={(e) => setFormData({ ...formData, specialNotes: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 label="Address"
                                 fullWidth

@@ -41,7 +41,7 @@ export default function ArchivePage() {
                 <CardContent>
                     <Grid container spacing={3} alignItems="center">
                         <LocalizationProvider dateAdapter={AdapterDateFns}>
-                            <Grid item xs={12} md={3}>
+                            <Grid size={{ xs: 12, md: 3 }}>
                                 <DatePicker
                                     label="Start Date"
                                     value={startDate}
@@ -49,7 +49,7 @@ export default function ArchivePage() {
                                     slotProps={{ textField: { fullWidth: true, size: 'small' } }}
                                 />
                             </Grid>
-                            <Grid item xs={12} md={3}>
+                            <Grid size={{ xs: 12, md: 3 }}>
                                 <DatePicker
                                     label="End Date"
                                     value={endDate}
@@ -58,7 +58,7 @@ export default function ArchivePage() {
                                 />
                             </Grid>
                         </LocalizationProvider>
-                        <Grid item xs={12} md={2}>
+                        <Grid size={{ xs: 12, md: 2 }}>
                             <Button
                                 variant="contained"
                                 startIcon={<Search />}
