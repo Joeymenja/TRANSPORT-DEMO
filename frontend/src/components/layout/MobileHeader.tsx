@@ -18,7 +18,6 @@ export default function MobileHeader({ title, backRoute, action }: MobileHeaderP
     const user = useAuthStore((state) => state.user);
     const navigate = useNavigate();
 
-    // Fetch driver for drawer
     const { data: driver } = useQuery({
         queryKey: ['driver-profile', user?.id],
         queryFn: () => user?.id ? driverApi.getByUserId(user.id) : null,
@@ -27,18 +26,61 @@ export default function MobileHeader({ title, backRoute, action }: MobileHeaderP
 
     return (
         <>
-            <AppBar position="sticky" elevation={0} sx={{ bgcolor: 'white', borderBottom: '1px solid #f0f0f0', color: '#333' }}>
-                <Toolbar sx={{ pt: 4, pb: 1 }}>
+            <AppBar
+                position="sticky"
+                elevation={0}
+                sx={{
+                    bgcolor: 'rgba(255,255,255,0.92)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    borderBottom: '1px solid rgba(0,0,0,0.06)',
+                    color: '#1e293b',
+                }}
+            >
+                <Toolbar sx={{
+                    pt: 'env(safe-area-inset-top, 16px)',
+                    pb: 0.5,
+                    minHeight: '56px !important',
+                }}>
                     {backRoute ? (
-                        <IconButton edge="start" color="inherit" onClick={() => navigate(backRoute)}>
+                        <IconButton
+                            edge="start"
+                            onClick={() => navigate(backRoute)}
+                            sx={{
+                                color: '#0096D6',
+                                '&:active': { transform: 'scale(0.92)' },
+                                transition: 'transform 0.1s ease',
+                            }}
+                        >
                             <ArrowBack />
                         </IconButton>
                     ) : (
-                        <IconButton edge="start" color="inherit" onClick={() => setDrawerOpen(true)}>
+                        <IconButton
+                            edge="start"
+                            color="inherit"
+                            onClick={() => setDrawerOpen(true)}
+                            sx={{
+                                '&:active': { transform: 'scale(0.92)' },
+                                transition: 'transform 0.1s ease',
+                            }}
+                        >
                             <MenuIcon />
                         </IconButton>
                     )}
-                    <Typography variant="h6" sx={{ flexGrow: 1, textAlign: 'center', fontWeight: 600 }}>
+                    <Typography
+                        variant="subtitle1"
+                        sx={{
+                            flexGrow: 1,
+                            textAlign: 'center',
+                            fontWeight: 700,
+                            fontSize: '1rem',
+                            letterSpacing: '-0.01em',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            mx: 1,
+                        }}
+                    >
                         {title}
                     </Typography>
                     {action ? action : <Box sx={{ width: 40 }} />}

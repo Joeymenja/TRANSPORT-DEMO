@@ -69,58 +69,92 @@ export default function DriverUpdatesPage() {
 
     return (
         <Box sx={{ minHeight: '100vh', bgcolor: '#fff' }}>
-            <MobileHeader title="Trip Updates" />
-            
+            <MobileHeader title="Updates" />
+
             <Container maxWidth="sm" sx={{ py: 2, display: 'flex', flexDirection: 'column' }}>
                 <Box sx={{ mb: 2 }}>
-                    <Typography variant="body2" color="text.secondary">
-                        Real-time alerts about your schedule.
+                    <Typography variant="body2" sx={{ color: '#94a3b8', fontSize: '0.85rem' }}>
+                        Real-time alerts about your schedule
                     </Typography>
                 </Box>
 
                 {notifications.length === 0 ? (
-                    <Box sx={{ textAlign: 'center', py: 8, opacity: 0.6 }}>
-                        <Notifications sx={{ fontSize: 64, color: '#e0e0e0', mb: 2 }} />
-                        <Typography variant="body1" fontWeight="500">No updates yet</Typography>
-                        <Typography variant="caption">You're all caught up.</Typography>
+                    <Box sx={{ textAlign: 'center', py: 8 }}>
+                        <Box sx={{
+                            width: 64,
+                            height: 64,
+                            borderRadius: '50%',
+                            bgcolor: '#f1f5f9',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            mx: 'auto',
+                            mb: 2,
+                        }}>
+                            <Notifications sx={{ fontSize: 32, color: '#94a3b8' }} />
+                        </Box>
+                        <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#334155' }}>
+                            No updates yet
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: '#94a3b8', mt: 0.5 }}>
+                            You're all caught up
+                        </Typography>
                     </Box>
                 ) : (
-                    <List sx={{ width: '100%', bgcolor: 'transparent' }}>
+                    <List sx={{ width: '100%', bgcolor: 'transparent', p: 0 }}>
                         {notifications.map((notification) => (
-                            <Card 
-                                key={notification.id} 
+                            <Card
+                                key={notification.id}
                                 elevation={0}
-                                sx={{ 
-                                    mb: 2, 
+                                sx={{
+                                    mb: 1.5,
                                     border: '1px solid',
-                                    borderColor: notification.status === 'UNREAD' ? 'primary.light' : '#eee',
-                                    bgcolor: notification.status === 'UNREAD' ? '#f0f9ff' : 'white',
-                                    borderRadius: 3,
+                                    borderColor: notification.status === 'UNREAD' ? '#bfdbfe' : '#f0f0f0',
+                                    bgcolor: notification.status === 'UNREAD' ? '#eff6ff' : 'white',
+                                    borderRadius: 2.5,
                                     cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                    '&:hover': { bgcolor: '#fafafa' }
+                                    '&:active': { transform: 'scale(0.99)', bgcolor: '#f8fafc' },
+                                    transition: 'all 0.15s ease',
+                                    overflow: 'hidden',
                                 }}
                                 onClick={() => handleNotificationClick(notification)}
                             >
-                                <CardContent sx={{ py: 2, '&:last-child': { pb: 2 } }}>
-                                    <Box sx={{ display: 'flex', gap: 2 }}>
-                                        <Avatar sx={{ bgcolor: 'white', border: '1px solid #eee' }}>
+                                <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                                    <Box sx={{ display: 'flex', gap: 1.5 }}>
+                                        <Avatar sx={{
+                                            bgcolor: notification.status === 'UNREAD' ? '#dbeafe' : '#f1f5f9',
+                                            border: 'none',
+                                            width: 40,
+                                            height: 40,
+                                        }}>
                                             {getIcon(notification.type)}
                                         </Avatar>
-                                        <Box sx={{ flexGrow: 1 }}>
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
-                                                <Typography variant="subtitle2" fontWeight={notification.status === 'UNREAD' ? 700 : 500}>
+                                        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.25 }}>
+                                                <Typography variant="subtitle2" fontWeight={notification.status === 'UNREAD' ? 700 : 500} sx={{ color: '#1e293b', fontSize: '0.88rem' }} noWrap>
                                                     {notification.title}
                                                 </Typography>
-                                                <Typography variant="caption" color="text.secondary">
+                                                <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '0.7rem', flexShrink: 0, ml: 1 }}>
                                                     {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
                                                 </Typography>
                                             </Box>
-                                            <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.3 }}>
+                                            <Typography variant="body2" sx={{ color: '#64748b', lineHeight: 1.4, fontSize: '0.8rem' }}>
                                                 {notification.message}
                                             </Typography>
                                             {notification.status === 'UNREAD' && (
-                                                <Chip label="New" size="small" color="primary" sx={{ height: 20, fontSize: '0.65rem', mt: 1 }} />
+                                                <Chip
+                                                    label="New"
+                                                    size="small"
+                                                    sx={{
+                                                        height: 18,
+                                                        fontSize: '0.6rem',
+                                                        fontWeight: 800,
+                                                        mt: 0.75,
+                                                        bgcolor: '#0096D6',
+                                                        color: 'white',
+                                                        borderRadius: 1,
+                                                    }}
+                                                />
                                             )}
                                         </Box>
                                     </Box>

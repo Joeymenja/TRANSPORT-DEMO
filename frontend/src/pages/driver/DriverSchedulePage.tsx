@@ -119,32 +119,34 @@ export default function DriverSchedulePage() {
                 </Typography>
             </Box>
 
-            <Box sx={{ p: 4, maxWidth: 1100, mx: 'auto' }}>
-                <Paper elevation={0} sx={{ 
-                    borderRadius: 4, 
-                    border: '1px solid #eee', 
+            <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 1100, mx: 'auto' }}>
+                <Paper elevation={0} sx={{
+                    borderRadius: 3,
+                    border: '1px solid #f0f0f0',
                     overflow: 'hidden',
                     bgcolor: 'white'
                 }}>
-                    <Box sx={{ borderBottom: '1px solid #eee' }}>
-                        <Tabs 
-                            value={tabValue} 
-                            onChange={handleTabChange} 
+                    <Box sx={{ borderBottom: '1px solid #f0f0f0' }}>
+                        <Tabs
+                            value={tabValue}
+                            onChange={handleTabChange}
                             variant="fullWidth"
                             sx={{
                                 '& .MuiTab-root': {
-                                    py: 3,
-                                    color: '#999',
+                                    py: 2,
+                                    color: '#94a3b8',
                                     fontWeight: 600,
-                                    textTransform: 'uppercase',
-                                    fontSize: '0.85rem'
+                                    textTransform: 'none',
+                                    fontSize: '0.85rem',
+                                    minHeight: 48,
                                 },
                                 '& .Mui-selected': {
                                     color: '#0096D6 !important'
                                 },
                                 '& .MuiTabs-indicator': {
                                     backgroundColor: '#0096D6',
-                                    height: 3
+                                    height: 2.5,
+                                    borderRadius: '2px 2px 0 0',
                                 }
                             }}
                         >
@@ -153,39 +155,41 @@ export default function DriverSchedulePage() {
                         </Tabs>
                     </Box>
 
-                    <Box sx={{ p: 4 }}>
+                    <Box sx={{ p: { xs: 2, md: 4 } }}>
                         {tabValue === 0 && (
-                            <Paper 
+                            <Paper
                                 onClick={() => navigate('/driver/backfill')}
-                                sx={{ 
-                                    p: 2.5, 
-                                    mb: 4, 
-                                    bgcolor: 'white', 
-                                    border: '1px solid #eee', 
-                                    borderRadius: 4,
+                                elevation={0}
+                                sx={{
+                                    p: 2,
+                                    mb: 3,
+                                    bgcolor: '#f8fafc',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: 2.5,
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: 2.5,
+                                    gap: 2,
                                     cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                    '&:hover': { bgcolor: '#fbfbfb', border: '1px solid #0096D6' }
+                                    '&:active': { bgcolor: '#f1f5f9' },
+                                    transition: 'all 0.15s ease',
                                 }}
                             >
-                                <Box sx={{ 
-                                    bgcolor: 'rgba(0,150,214,0.08)', 
-                                    color: '#0096D6', 
-                                    width: 44, 
-                                    height: 44, 
-                                    borderRadius: '50%', 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'center' 
+                                <Box sx={{
+                                    bgcolor: '#dbeafe',
+                                    color: '#0096D6',
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: '50%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0,
                                 }}>
-                                    <Add />
+                                    <Add sx={{ fontSize: 20 }} />
                                 </Box>
                                 <Box>
-                                    <Typography fontWeight={700} color="#333" sx={{ fontSize: '1rem' }}>Log a Past Trip</Typography>
-                                    <Typography variant="body2" color="text.secondary">Create a report for a completed trip</Typography>
+                                    <Typography fontWeight={700} sx={{ color: '#1e293b', fontSize: '0.9rem' }}>Log a Past Trip</Typography>
+                                    <Typography variant="body2" sx={{ color: '#94a3b8', fontSize: '0.8rem' }}>Create a report for a completed trip</Typography>
                                 </Box>
                             </Paper>
                         )}

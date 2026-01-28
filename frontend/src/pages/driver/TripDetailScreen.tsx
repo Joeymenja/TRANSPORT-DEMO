@@ -211,9 +211,16 @@ export default function TripDetailScreen() {
             {/* Floating Action Bar - Driver Only (Mobile) */}
             {isMobile && user?.role === 'DRIVER' && !['COMPLETED', 'FINALIZED', 'CANCELLED'].includes(trip.status) && (
                 <Box sx={{
-                    position: 'fixed', bottom: 0, left: 0, right: 0,
-                    p: 2, pb: 4, bgcolor: 'white',
-                    borderTop: '1px solid #f0f0f0'
+                    position: 'fixed',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    p: 2,
+                    pb: 'calc(env(safe-area-inset-bottom, 12px) + 12px)',
+                    bgcolor: 'rgba(255,255,255,0.95)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    borderTop: '1px solid rgba(0,0,0,0.06)',
                 }}>
                     <Button
                         variant="contained"
@@ -223,12 +230,16 @@ export default function TripDetailScreen() {
                         startIcon={<PlayArrow />}
                         onClick={() => navigate(`/driver/trips/${tripId}/execute`)}
                         sx={{
-                            height: 54,
-                            fontSize: '1.1rem',
-                            fontWeight: 600,
-                            borderRadius: 27, // Pill shape
-                            boxShadow: 'none',
-                            bgcolor: 'primary.main'
+                            height: 52,
+                            fontSize: '1rem',
+                            fontWeight: 700,
+                            borderRadius: 26,
+                            boxShadow: '0 2px 12px rgba(0,150,214,0.25)',
+                            bgcolor: '#0096D6',
+                            textTransform: 'none',
+                            '&:hover': { bgcolor: '#0077b5' },
+                            '&:active': { transform: 'scale(0.98)' },
+                            transition: 'all 0.15s ease',
                         }}
                     >
                         {trip.status === 'IN_PROGRESS' ? 'Resume Trip' : 'Start Trip'}

@@ -18,30 +18,41 @@ type ExecutionState = 'LOADING' | 'PRE_TRIP' | 'EN_ROUTE_PICKUP' | 'AT_PICKUP' |
 
 // Factory Step Component
 const TripStep = ({ label, status, onClick }: { label: string, status: 'PENDING' | 'ACTIVE' | 'COMPLETED', onClick?: () => void }) => (
-    <Box 
+    <Box
         onClick={onClick}
-        sx={{ 
-            flex: 1, 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center', 
-            opacity: status === 'PENDING' ? 0.3 : 1,
-            position: 'relative'
+        sx={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            opacity: status === 'PENDING' ? 0.35 : 1,
+            position: 'relative',
+            transition: 'opacity 0.3s ease',
         }}
     >
-        <Box sx={{ 
-            width: 32, 
-            height: 32, 
-            borderRadius: '50%', 
-            bgcolor: status === 'COMPLETED' ? '#4CAF50' : status === 'ACTIVE' ? '#2196F3' : '#9E9E9E',
+        <Box sx={{
+            width: 34,
+            height: 34,
+            borderRadius: '50%',
+            bgcolor: status === 'COMPLETED' ? '#16a34a' : status === 'ACTIVE' ? '#0096D6' : '#d1d5db',
             color: 'white',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             mb: 0.5,
-            fontWeight: 700
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            boxShadow: status === 'ACTIVE' ? '0 0 0 4px rgba(0,150,214,0.15)' : 'none',
+            transition: 'all 0.3s ease',
         }}>
-           {status === 'COMPLETED' ? '✓' : ''}
+            {status === 'COMPLETED' ? '✓' : ''}
         </Box>
-        <Typography variant="caption" sx={{ fontWeight: 700, color: status === 'ACTIVE' ? '#2196F3' : '#666' }}>
+        <Typography variant="caption" sx={{
+            fontWeight: 700,
+            color: status === 'ACTIVE' ? '#0096D6' : status === 'COMPLETED' ? '#16a34a' : '#94a3b8',
+            fontSize: '0.65rem',
+            letterSpacing: '0.03em',
+        }}>
             {label}
         </Typography>
     </Box>
@@ -212,32 +223,35 @@ export default function TripExecutionPage() {
 
     return (
         <Box sx={{ height: '100vh', width: '100vw', bgcolor: '#e5e3df', position: 'relative', overflow: 'hidden' }}>
-            {/* Header Overlay - Clear Navigation */}
-            <Box sx={{ 
-                position: 'absolute', 
-                top: 0, 
-                left: 0, 
-                right: 0, 
-                p: 2, 
-                pt: 8, // Safe area distance + extra padding
-                zIndex: 2000, 
-                display: 'flex', 
-                alignItems: 'center' 
+            {/* Header Overlay */}
+            <Box sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                p: 2,
+                pt: 'calc(env(safe-area-inset-top, 20px) + 8px)',
+                zIndex: 2000,
+                display: 'flex',
+                alignItems: 'center'
             }}>
-                 <IconButton 
-                    onClick={() => {
-                        console.log('[TripExecution] Back to Dashboard');
-                        navigate('/driver');
-                    }}
-                    sx={{ 
-                        bgcolor: 'white', 
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)', 
-                        '&:hover': { bgcolor: '#f5f5f5' },
+                <IconButton
+                    onClick={() => navigate('/driver')}
+                    sx={{
+                        bgcolor: 'rgba(255,255,255,0.95)',
+                        backdropFilter: 'blur(12px)',
+                        WebkitBackdropFilter: 'blur(12px)',
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+                        width: 44,
+                        height: 44,
+                        '&:hover': { bgcolor: 'white' },
+                        '&:active': { transform: 'scale(0.92)' },
+                        transition: 'transform 0.1s ease',
                         zIndex: 2001
                     }}
-                 >
-                    <ArrowBack />
-                 </IconButton>
+                >
+                    <ArrowBack sx={{ fontSize: 22 }} />
+                </IconButton>
             </Box>
 
 

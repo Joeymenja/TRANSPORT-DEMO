@@ -288,12 +288,18 @@ export default function BackfillTripPage() {
     };
 
     return (
-        <Container maxWidth="sm" sx={{ py: 4, pb: 12 }}>
-            <Button startIcon={<ArrowBack />} onClick={() => navigate('/driver')} sx={{ mb: 2 }}>Back</Button>
+        <Container maxWidth="sm" sx={{ py: 2, pb: 12 }}>
+            <Button
+                startIcon={<ArrowBack />}
+                onClick={() => navigate('/driver')}
+                sx={{ mb: 1.5, color: '#64748b', fontWeight: 600, textTransform: 'none' }}
+            >
+                Back
+            </Button>
 
-            <Box sx={{ mb: 4, textAlign: 'center' }}>
-                <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5 }}>Log Completed Service</Typography>
-                <Typography variant="body2" color="text.secondary">Record up to 6 trip legs for this member</Typography>
+            <Box sx={{ mb: 3, textAlign: 'center' }}>
+                <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5, color: '#1e293b' }}>Log Completed Service</Typography>
+                <Typography variant="body2" sx={{ color: '#94a3b8' }}>Record up to 6 trip legs for this member</Typography>
             </Box>
 
             {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}

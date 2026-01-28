@@ -155,16 +155,26 @@ export default function DriverCreateTripPage() {
     };
 
     return (
-        <Container maxWidth="md" sx={{ py: 2 }}>
-            <Button variant="text" onClick={() => navigate('/driver')}>
+        <Container maxWidth="md" sx={{ py: 2, pb: 10 }}>
+            <Button
+                variant="text"
+                onClick={() => navigate('/driver')}
+                sx={{ color: '#64748b', fontWeight: 600, textTransform: 'none', mb: 1 }}
+            >
                 Cancel
             </Button>
-            <Typography variant="h5" sx={{ mb: 3, mt: 1 }}>New Trip Entry</Typography>
+            <Typography variant="h5" sx={{ mb: 3, fontWeight: 700, color: '#1e293b' }}>New Trip Entry</Typography>
 
-            <Stepper activeStep={activeStep} sx={{ mb: 4 }} alternativeLabel>
+            <Stepper activeStep={activeStep} sx={{ mb: 3 }} alternativeLabel>
                 {steps.map((label) => (
                     <Step key={label}>
-                        <StepLabel>{label}</StepLabel>
+                        <StepLabel
+                            sx={{
+                                '& .MuiStepLabel-label': { fontSize: '0.8rem', fontWeight: 600 },
+                            }}
+                        >
+                            {label}
+                        </StepLabel>
                     </Step>
                 ))}
             </Stepper>
@@ -187,17 +197,11 @@ export default function DriverCreateTripPage() {
             <Card sx={{ p: { xs: 2, md: 3 } }}>
                 {activeStep === 0 && (
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                         <Box>
-                            <Alert severity="info" sx={{mb: 1}}>
-                                {user?.role === 'DRIVER' 
-                                    ? `This trip will be assigned to you (${user?.firstName}).`
-                                    : 'This trip will be automatically dispatched to an available driver.'}
-                            </Alert>
-                         <Box>
-                            <Alert severity="info" sx={{mb: 1}}>
-                                {bookingMode === 'PAST' 
+                        <Box>
+                            <Alert severity="info" sx={{ mb: 1, borderRadius: 2 }}>
+                                {bookingMode === 'PAST'
                                     ? 'Log a completed trip for records.'
-                                    : (user?.role === 'DRIVER' 
+                                    : (user?.role === 'DRIVER'
                                         ? `This trip will be assigned to you (${user?.firstName}).`
                                         : 'This trip will be automatically dispatched to an available driver.')
                                 }

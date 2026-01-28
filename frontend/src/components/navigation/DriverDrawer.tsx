@@ -32,14 +32,30 @@ export default function DriverDrawer({ open, onClose, driver }: DriverDrawerProp
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'AVAILABLE': return { bg: '#E8F5E9', color: '#2E7D32' };
-            case 'ON_BREAK': return { bg: '#FFF9C4', color: '#F57F17' };
-            case 'OFF_DUTY': return { bg: '#F5F5F5', color: '#616161' };
-            default: return { bg: '#E3F2FD', color: '#1565C0' };
+            case 'AVAILABLE': return { bg: '#dcfce7', color: '#166534', label: 'Available' };
+            case 'ON_BREAK': return { bg: '#fef9c3', color: '#854d0e', label: 'On Break' };
+            case 'ON_TRIP': return { bg: '#dbeafe', color: '#1e40af', label: 'On Trip' };
+            case 'OFF_DUTY': return { bg: '#f1f5f9', color: '#475569', label: 'Off Duty' };
+            default: return { bg: '#f1f5f9', color: '#475569', label: 'Off Duty' };
         }
     };
 
-    const statusStyle = getStatusColor(driver?.currentStatus || 'OFF_DUTY');
+    const statusInfo = getStatusColor(driver?.currentStatus || 'OFF_DUTY');
+
+    const primaryNav = [
+        { text: 'Dashboard', icon: <HomeOutlined />, path: '/driver' },
+        { text: 'My Schedule', icon: <CalendarMonthOutlined />, path: '/driver/schedule' },
+        { text: 'Trips', icon: <DirectionsCarOutlined />, path: '/driver/trips' },
+        { text: 'Profile', icon: <PersonOutline />, path: '/driver/profile' },
+        { text: 'Log Past Trip', icon: <BackfillIcon />, path: '/driver/backfill' },
+    ];
+
+    const secondaryNav = [
+        { text: 'Documents', icon: <FolderOutlined />, path: '/driver/documents' },
+        { text: 'Compliance', icon: <VerifiedUser />, path: '/driver/compliance' },
+        { text: 'Settings', icon: <SettingsOutlined />, path: '/driver/settings' },
+        { text: 'Help & Support', icon: <HelpOutline />, path: '/driver/help' },
+    ];
 
     return (
         <Drawer
@@ -48,49 +64,111 @@ export default function DriverDrawer({ open, onClose, driver }: DriverDrawerProp
             onClose={onClose}
             PaperProps={{
                 sx: {
-                    width: '80%', maxWidth: 320,
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.12)' // SHADOW-LEVEL-004
+                    width: '82%',
+                    maxWidth: 320,
+                    borderTopRightRadius: 16,
+                    borderBottomRightRadius: 16,
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
                 }
             }}
         >
-            {/* Header: NAV-HEADER-LIGHT-002 */}
-            <Box sx={{ p: 2.5, pt: 6, bgcolor: 'white', borderBottom: '1px solid #f0f0f0' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1.5 }}>
+            {/* Header */}
+            <Box sx={{
+                p: 2.5,
+                pt: 'calc(env(safe-area-inset-top, 24px) + 16px)',
+                bgcolor: '#fafafa',
+                borderBottom: '1px solid #f0f0f0'
+            }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
                     <Avatar
                         src={user?.profileImage}
-                        sx={{ width: 48, height: 48, bgcolor: '#f5f5f5', color: '#666' }}
+                        sx={{
+                            width: 52,
+                            height: 52,
+                            bgcolor: '#e2e8f0',
+                            color: '#64748b',
+                            fontSize: '1.25rem',
+                            fontWeight: 700,
+                        }}
                     >
                         {user?.firstName?.[0]}
                     </Avatar>
-                    <Box>
-                        <Typography variant="h6" fontWeight={600} sx={{ color: '#333' }}>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#1e293b', lineHeight: 1.2 }} noWrap>
                             {user?.firstName} {user?.lastName}
                         </Typography>
-                        <Typography variant="caption" sx={{ color: '#999', display: 'block' }}>
-                            ID: {driver?.id?.slice(0, 5) || '---'}
+                        <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block', mt: 0.25 }}>
+                            ID: {driver?.id?.slice(0, 8) || '---'}
                         </Typography>
                     </Box>
                 </Box>
 
-                {/* Status Badge */}
-                <Box sx={{ display: 'inline-flex', alignItems: 'center', bgcolor: statusStyle.bg, px: 1, py: 0.5, borderRadius: 4 }}>
-                    <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: statusStyle.color, mr: 1 }} />
-                    <Typography variant="caption" fontWeight={600} sx={{ color: statusStyle.color }}>
-                        {driver?.currentStatus?.replace('_', ' ') || 'OFF DUTY'}
+                {/* Status Pill */}
+                <Box sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    bgcolor: statusInfo.bg,
+                    px: 1.5,
+                    py: 0.5,
+                    borderRadius: 20,
+                    gap: 0.75,
+                }}>
+                    <Box sx={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        bgcolor: statusInfo.color,
+                    }} />
+                    <Typography variant="caption" fontWeight={700} sx={{ color: statusInfo.color, fontSize: '0.7rem' }}>
+                        {statusInfo.label}
                     </Typography>
                 </Box>
             </Box>
 
-            {/* Menu Items: NAV-MENU-LIGHT-001 */}
-            <List sx={{ pt: 1, px: 1 }}>
-                {[
-                    { text: 'Dashboard', icon: <HomeOutlined />, path: '/driver' },
-                    { text: 'My Schedule', icon: <CalendarMonthOutlined />, path: '/driver/schedule' },
-                    { text: 'Messages', icon: <ChatBubbleOutline />, path: '/driver/messages', badge: 3 }, // Mock badge
-                    { text: 'Trips', icon: <DirectionsCarOutlined />, path: '/driver/trips' },
-                    { text: 'Profile', icon: <PersonOutline />, path: '/driver/profile' },
-                    { text: 'Log Past Trip', icon: <BackfillIcon />, path: '/driver/backfill' },
-                ].map((item) => {
+            {/* Primary Navigation */}
+            <List sx={{ pt: 1.5, px: 1 }}>
+                {primaryNav.map((item) => {
+                    const isActive = location.pathname === item.path || (item.path === '/driver' && (location.pathname === '/driver/' || location.pathname === '/driver/dashboard'));
+                    return (
+                        <ListItem key={item.text} disablePadding>
+                            <ListItemButton
+                                onClick={() => handleNavigate(item.path)}
+                                sx={{
+                                    borderRadius: 2,
+                                    mb: 0.25,
+                                    py: 1.25,
+                                    bgcolor: isActive ? '#eff6ff' : 'transparent',
+                                    color: isActive ? '#0096D6' : '#334155',
+                                    '&:hover': { bgcolor: isActive ? '#eff6ff' : '#f8fafc' },
+                                    '&:active': { bgcolor: '#e0f2fe' },
+                                    transition: 'background-color 0.15s ease',
+                                }}
+                            >
+                                <ListItemIcon sx={{
+                                    minWidth: 40,
+                                    color: isActive ? '#0096D6' : '#94a3b8',
+                                }}>
+                                    {item.icon}
+                                </ListItemIcon>
+                                <ListItemText
+                                    primary={item.text}
+                                    primaryTypographyProps={{
+                                        fontSize: '0.9rem',
+                                        fontWeight: isActive ? 700 : 500,
+                                    }}
+                                />
+                                <ChevronRight sx={{ fontSize: 18, color: '#cbd5e1' }} />
+                            </ListItemButton>
+                        </ListItem>
+                    );
+                })}
+            </List>
+
+            <Divider sx={{ my: 1, mx: 2.5, borderColor: '#f1f5f9' }} />
+
+            {/* Secondary Navigation */}
+            <List sx={{ px: 1 }}>
+                {secondaryNav.map((item) => {
                     const isActive = location.pathname === item.path;
                     return (
                         <ListItem key={item.text} disablePadding>
@@ -98,67 +176,57 @@ export default function DriverDrawer({ open, onClose, driver }: DriverDrawerProp
                                 onClick={() => handleNavigate(item.path)}
                                 sx={{
                                     borderRadius: 2,
-                                    mb: 0.5,
-                                    bgcolor: isActive ? '#E3F2FD' : 'transparent', // Light Brand Tint active
-                                    color: isActive ? 'primary.main' : '#333',
-                                    '&:hover': { bgcolor: '#F5F5F5' }
+                                    mb: 0.25,
+                                    py: 1,
+                                    color: isActive ? '#0096D6' : '#64748b',
+                                    '&:hover': { bgcolor: '#f8fafc' },
+                                    '&:active': { bgcolor: '#f1f5f9' },
+                                    transition: 'background-color 0.15s ease',
                                 }}
                             >
-                                <ListItemIcon sx={{ minWidth: 40, color: isActive ? 'primary.main' : '#666' }}>
+                                <ListItemIcon sx={{ minWidth: 40, color: '#94a3b8' }}>
                                     {item.icon}
                                 </ListItemIcon>
                                 <ListItemText
                                     primary={item.text}
-                                    primaryTypographyProps={{ fontSize: 15, fontWeight: isActive ? 600 : 500 }}
+                                    primaryTypographyProps={{
+                                        fontSize: '0.85rem',
+                                        fontWeight: 500,
+                                        color: '#64748b',
+                                    }}
                                 />
-                                {item.badge && (
-                                    <Box sx={{
-                                        bgcolor: 'primary.main', color: 'white',
-                                        fontSize: 11, fontWeight: 'bold',
-                                        minWidth: 18, height: 18, borderRadius: '9px',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', px: 0.5, mr: 1
-                                    }}>
-                                        {item.badge}
-                                    </Box>
-                                )}
-                                <ChevronRight sx={{ fontSize: 18, color: '#ccc' }} />
+                                <ChevronRight sx={{ fontSize: 16, color: '#e2e8f0' }} />
                             </ListItemButton>
                         </ListItem>
                     );
                 })}
             </List>
 
-            <Divider sx={{ my: 1, mx: 2, borderColor: '#eee' }} />
-
-            <List sx={{ px: 1 }}>
-                {[
-                    { text: 'Documents', icon: <FolderOutlined />, path: '/driver/documents' },
-                    { text: 'Compliance', icon: <VerifiedUser />, path: '/driver/compliance' },
-                    { text: 'Settings', icon: <SettingsOutlined />, path: '/driver/settings' },
-                    { text: 'Help & Support', icon: <HelpOutline />, path: '/driver/help' },
-                ].map((item) => (
-                    <ListItem key={item.text} disablePadding>
-                        <ListItemButton
-                            onClick={() => handleNavigate(item.path)}
-                            sx={{ borderRadius: 2, mb: 0.5, color: '#333' }}
-                        >
-                            <ListItemIcon sx={{ minWidth: 40, color: '#666' }}>{item.icon}</ListItemIcon>
-                            <ListItemText primary={item.text} primaryTypographyProps={{ fontSize: 15, fontWeight: 500 }} />
-                            <ChevronRight sx={{ fontSize: 18, color: '#ccc' }} />
-                        </ListItemButton>
-                    </ListItem>
-                ))}
-            </List>
-
-            <Box sx={{ mt: 'auto', p: 3 }}>
+            {/* Footer */}
+            <Box sx={{ mt: 'auto', p: 2.5, pb: 'calc(env(safe-area-inset-bottom, 16px) + 12px)' }}>
+                <Divider sx={{ mb: 2, borderColor: '#f1f5f9' }} />
                 <ListItem disablePadding>
-                    <ListItemButton onClick={handleLogout} sx={{ color: '#D32F2F', px: 0 }}>
-                        <ListItemIcon sx={{ minWidth: 40, color: '#D32F2F' }}><Logout /></ListItemIcon>
-                        <ListItemText primary="Logout" primaryTypographyProps={{ fontWeight: 500 }} />
+                    <ListItemButton
+                        onClick={handleLogout}
+                        sx={{
+                            color: '#ef4444',
+                            borderRadius: 2,
+                            py: 1,
+                            '&:hover': { bgcolor: '#fef2f2' },
+                            '&:active': { bgcolor: '#fee2e2' },
+                        }}
+                    >
+                        <ListItemIcon sx={{ minWidth: 40, color: '#ef4444' }}>
+                            <Logout />
+                        </ListItemIcon>
+                        <ListItemText
+                            primary="Log Out"
+                            primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9rem' }}
+                        />
                     </ListItemButton>
                 </ListItem>
-                <Typography variant="caption" sx={{ color: '#ccc', display: 'block', mt: 2, textAlign: 'center' }}>
-                    v1.0.0
+                <Typography variant="caption" sx={{ color: '#cbd5e1', display: 'block', mt: 1.5, textAlign: 'center', fontSize: '0.7rem' }}>
+                    GVBH Transport v1.0.0
                 </Typography>
             </Box>
         </Drawer>

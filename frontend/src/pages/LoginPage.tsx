@@ -91,13 +91,16 @@ export default function LoginPage() {
     return (
         <Box
             sx={{
-                minHeight: '100vh',
+                minHeight: '100svh',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
                 bgcolor: '#f0f4f8',
-                background: 'linear-gradient(135deg, #f0f4f8 0%, #dbeafe 100%)'
+                background: 'linear-gradient(135deg, #f0f4f8 0%, #dbeafe 100%)',
+                px: 2,
+                pt: 'env(safe-area-inset-top, 0px)',
+                pb: 'env(safe-area-inset-bottom, 0px)',
             }}
         >
             <Container maxWidth="xs">

@@ -1,8 +1,8 @@
 import { Box, Button, IconButton, Typography, Paper, AppBar, Toolbar, Snackbar, Alert, Fab, Chip, BottomNavigation, BottomNavigationAction, Stack } from '@mui/material';
-import { Menu as MenuIcon, DirectionsCarOutlined, PersonOutline, MyLocation, Add, CalendarMonth, History, Dashboard, HistoryEdu, KeyboardArrowUp, HorizontalRule } from '@mui/icons-material'; // Outlined icons
+import { Menu as MenuIcon, DirectionsCarOutlined, PersonOutline, MyLocation, Add, CalendarMonth, History, Dashboard, HistoryEdu, KeyboardArrowUp, HorizontalRule, AccessTime, NavigationOutlined } from '@mui/icons-material';
 import { motion, useAnimation, useDragControls } from 'framer-motion';
 import ActiveTripCard from './ActiveTripCard';
-import DriverMap from './DriverMap'; // IMPORTED MAP
+import DriverMap from './DriverMap';
 import DriverDrawer from '../navigation/DriverDrawer';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { driverApi } from '../../api/drivers';
@@ -21,7 +21,7 @@ export default function MobileDriverDashboard() {
     const navigate = useNavigate();
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [notificationOpen, setNotificationOpen] = useState(false);
-    const [sheetHeight, setSheetHeight] = useState('collapsed'); // 'collapsed', 'partial', 'expanded'
+    const [sheetHeight, setSheetHeight] = useState('collapsed');
     const controls = useAnimation();
     const prevTripsLength = useRef(0);
     const socket = useSocket();
@@ -35,21 +35,12 @@ export default function MobileDriverDashboard() {
     // Real-time Location Tracking
     useEffect(() => {
         if (!socket || !driver) return;
-
-        // Determine if we should be tracking
-        // For demo: Track if 'ON_DUTY' or 'ON_TRIP'
         const shouldTrack = driver.currentStatus === 'AVAILABLE' || driver.currentStatus === 'ON_TRIP';
-
         if (!shouldTrack) return;
 
-        console.log('Starting location tracking...');
         const interval = setInterval(() => {
-            // Simulate GPS movement for demo (jitter)
-            // In a real app, use Geolocation API
-            const baseLat = 33.4152; 
+            const baseLat = 33.4152;
             const baseLng = -111.8315;
-            
-            // Add some random movement
             const lat = baseLat + (Math.random() - 0.5) * 0.01;
             const lng = baseLng + (Math.random() - 0.5) * 0.01;
 
@@ -59,7 +50,7 @@ export default function MobileDriverDashboard() {
                 lng,
                 status: driver.currentStatus
             });
-        }, 3000); // Emit every 3 seconds
+        }, 3000);
 
         return () => clearInterval(interval);
     }, [socket, driver]);
@@ -67,15 +58,11 @@ export default function MobileDriverDashboard() {
     // Real-time Trip Updates
     useEffect(() => {
         if (!socket) return;
-
         const handleUpdate = () => {
-            console.log('[Socket] Trip assigned or updated, refetching...');
             queryClient.invalidateQueries({ queryKey: ['trips'] });
         };
-
         socket.on('trip_assigned', handleUpdate);
         socket.on('trip_updated', handleUpdate);
-
         return () => {
             socket.off('trip_assigned', handleUpdate);
             socket.off('trip_updated', handleUpdate);
@@ -91,7 +78,6 @@ export default function MobileDriverDashboard() {
     useEffect(() => {
         if (trips.length > prevTripsLength.current && prevTripsLength.current !== 0) {
             setNotificationOpen(true);
-            // Optional: play sound here if asset available
         }
         prevTripsLength.current = trips.length;
     }, [trips.length]);
@@ -108,19 +94,15 @@ export default function MobileDriverDashboard() {
     const createDemoTripMutation = useMutation({
         mutationFn: async () => {
             if (!user?.id) return;
-
-            // Fetch a real member to avoid FK constraint errors
             const members = await memberApi.getMembers();
             const memberId = members.length > 0 ? members[0].id : null;
-
             if (!memberId) {
                 alert("No members found in system. Please create a member first.");
                 return;
             }
-
             const today = new Date();
             const pickupTime = new Date(today);
-            pickupTime.setMinutes(pickupTime.getMinutes() + 30); // 30 mins from now
+            pickupTime.setMinutes(pickupTime.getMinutes() + 30);
 
             await tripApi.createTrip({
                 tripDate: today,
@@ -159,80 +141,102 @@ export default function MobileDriverDashboard() {
     const handleStartTrip = (id: string) => navigate(`/driver/trips/${id}/execute`);
 
     return (
-        <Box sx={{ 
-            bgcolor: '#000', 
-            height: '100vh', 
-            width: '100vw', 
+        <Box sx={{
+            bgcolor: '#000',
+            height: '100svh',
+            width: '100vw',
             position: 'relative',
             overflow: 'hidden',
-            display: 'flex', 
-            flexDirection: 'column', 
+            display: 'flex',
+            flexDirection: 'column',
         }}>
             {/* 1. Full-Screen Map Background */}
             <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}>
                 <DriverMap activeTrip={activeTrip} />
-                
-                {/* Gradient Overlay for better readability of floating elements */}
-                <Box sx={{ 
-                    position: 'absolute', 
-                    top: 0, 
-                    left: 0, 
-                    right: 0, 
-                    height: 120, 
-                    background: 'linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 100%)',
+
+                {/* Gradient Overlay for readability */}
+                <Box sx={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 140,
+                    background: 'linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 100%)',
                     zIndex: 1
                 }} />
             </Box>
 
-            {/* 2. Floating Header Area (Glassmorphism) */}
-            <Box sx={{ 
-                position: 'absolute', 
-                top: 0, 
-                left: 0, 
-                right: 0, 
-                px: 2, 
-                pt: 6, // INCREASED TOP PADDING
+            {/* 2. Floating Header Area */}
+            <Box sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                px: 2,
+                pt: 'calc(env(safe-area-inset-top, 20px) + 8px)',
                 pb: 2,
                 zIndex: 10,
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
             }}>
-                <IconButton 
+                <IconButton
                     onClick={() => setDrawerOpen(true)}
-                    sx={{ 
-                        bgcolor: 'rgba(255,255,255,0.9)', 
-                        backdropFilter: 'blur(10px)',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                        '&:hover': { bgcolor: 'white' }
+                    sx={{
+                        bgcolor: 'rgba(255,255,255,0.95)',
+                        backdropFilter: 'blur(12px)',
+                        WebkitBackdropFilter: 'blur(12px)',
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+                        width: 44,
+                        height: 44,
+                        '&:hover': { bgcolor: 'white' },
+                        '&:active': { transform: 'scale(0.95)' },
+                        transition: 'transform 0.1s ease',
                     }}
                 >
-                    <MenuIcon sx={{ color: '#333' }} />
+                    <MenuIcon sx={{ color: '#1e293b', fontSize: 22 }} />
                 </IconButton>
 
                 <Box sx={{ display: 'flex', gap: 1 }}>
-                     <Chip 
-                        icon={<Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#ff5252', ml: 1 }} />}
-                        label="LIVE" 
-                        sx={{ 
-                            bgcolor: 'rgba(255,255,255,0.9)', 
-                            backdropFilter: 'blur(10px)',
-                            fontWeight: 900,
-                            color: '#333',
-                            fontSize: '0.65rem',
-                            height: 24,
+                    <Chip
+                        icon={
+                            <Box sx={{
+                                width: 7,
+                                height: 7,
+                                borderRadius: '50%',
+                                bgcolor: '#ef4444',
+                                ml: 1,
+                                animation: 'pulse 2s ease-in-out infinite',
+                                '@keyframes pulse': {
+                                    '0%, 100%': { opacity: 1, transform: 'scale(1)' },
+                                    '50%': { opacity: 0.5, transform: 'scale(0.8)' },
+                                },
+                            }} />
+                        }
+                        label="LIVE"
+                        sx={{
+                            bgcolor: 'rgba(255,255,255,0.95)',
+                            backdropFilter: 'blur(12px)',
+                            WebkitBackdropFilter: 'blur(12px)',
+                            fontWeight: 800,
+                            color: '#1e293b',
+                            fontSize: '0.6rem',
+                            height: 28,
+                            letterSpacing: '0.05em',
                             '& .MuiChip-label': { pl: 0.5 }
-                        }} 
+                        }}
                     />
-                     <Chip 
-                        label={format(new Date(), 'EEE, MMM d')} 
-                        sx={{ 
-                            bgcolor: 'rgba(255,255,255,0.9)', 
-                            backdropFilter: 'blur(10px)',
-                            fontWeight: 700,
-                            color: '#333',
-                            border: '1px solid rgba(255,255,255,0.3)'
-                        }} 
+                    <Chip
+                        label={format(new Date(), 'EEE, MMM d')}
+                        sx={{
+                            bgcolor: 'rgba(255,255,255,0.95)',
+                            backdropFilter: 'blur(12px)',
+                            WebkitBackdropFilter: 'blur(12px)',
+                            fontWeight: 600,
+                            color: '#1e293b',
+                            height: 28,
+                            fontSize: '0.8rem',
+                        }}
                     />
                 </Box>
             </Box>
@@ -243,137 +247,197 @@ export default function MobileDriverDashboard() {
                 driver={driver}
             />
 
-            {/* 3. Sliding iPhone-Style Sheet */}
+            {/* 3. Sliding Bottom Sheet */}
             <motion.div
                 drag="y"
                 dragConstraints={{ top: 0, bottom: 0 }}
-                dragElastic={0.2}
+                dragElastic={0.15}
                 onDragEnd={(e, info) => {
-                    const threshold = 100;
-                    const velocityThreshold = 500;
-                    
-                    // Upward flick or drag past threshold
+                    const threshold = 80;
+                    const velocityThreshold = 400;
+
                     if (info.velocity.y < -velocityThreshold || info.offset.y < -threshold) {
                         if (sheetHeight === 'collapsed') setSheetHeight('partial');
                         else if (sheetHeight === 'partial') setSheetHeight('expanded');
-                    } 
-                    // Downward flick or drag past threshold
+                    }
                     else if (info.velocity.y > velocityThreshold || info.offset.y > threshold) {
-                         if (sheetHeight === 'expanded') setSheetHeight('partial');
-                         else if (sheetHeight === 'partial') setSheetHeight('collapsed');
+                        if (sheetHeight === 'expanded') setSheetHeight('partial');
+                        else if (sheetHeight === 'partial') setSheetHeight('collapsed');
                     }
                 }}
                 animate={sheetHeight}
                 variants={{
-                    collapsed: { y: 'calc(100svh - 280px)' }, 
-                    partial: { y: 'calc(100svh - 480px)' },
-                    expanded: { y: 60 }
+                    collapsed: { y: 'calc(100svh - 260px)' },
+                    partial: { y: 'calc(100svh - 460px)' },
+                    expanded: { y: 80 }
                 }}
-                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                transition={{ type: 'spring', damping: 28, stiffness: 220 }}
                 style={{
                     position: 'absolute',
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    zIndex: 90, // Behind Bottom Nav (zIndex 100)
-                    background: 'white',
-                    borderTopLeftRadius: 24,
-                    borderTopRightRadius: 24,
-                    boxShadow: '0 -10px 40px rgba(0,0,0,0.15)',
+                    zIndex: 20,
+                    background: '#fff',
+                    borderTopLeftRadius: 20,
+                    borderTopRightRadius: 20,
+                    boxShadow: '0 -4px 30px rgba(0,0,0,0.12)',
                     display: 'flex',
                     flexDirection: 'column',
                     maxHeight: 'calc(100svh - 60px)',
-                    height: '100svh', // Force explicit height for better drag tracking
-                    overflow: 'hidden'
+                    height: '100svh',
+                    overflow: 'hidden',
+                    willChange: 'transform',
                 }}
             >
-                {/* Drag Handle Container */}
-                <Box sx={{ width: '100%', py: 1, display: 'flex', justifyContent: 'center', cursor: 'grab', '&:active': { cursor: 'grabbing' } }}>
-                    <Box sx={{ width: 40, height: 5, bgcolor: '#e0e0e0', borderRadius: 2.5 }} />
+                {/* Drag Handle */}
+                <Box sx={{
+                    width: '100%',
+                    py: 1.5,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    cursor: 'grab',
+                    '&:active': { cursor: 'grabbing' },
+                    touchAction: 'none',
+                }}>
+                    <Box sx={{
+                        width: 36,
+                        height: 4,
+                        bgcolor: '#d1d5db',
+                        borderRadius: 2,
+                    }} />
                 </Box>
 
-                {/* Sheet Content Area */}
-                <Box sx={{ flex: 1, overflowY: 'auto', p: 2, pt: 0 }}>
-                    {/* Active/Hero Section */}
+                {/* Sheet Content */}
+                <Box sx={{ flex: 1, overflowY: 'auto', px: 2.5, pt: 0, WebkitOverflowScrolling: 'touch' }}>
+                    {/* Active Trip Section */}
                     {activeTrip ? (
-                        <Box sx={{ mb: 3 }}>
+                        <Box sx={{ mb: 2.5 }}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                                <Typography variant="h6" fontWeight={800} color="primary">Active Trip</Typography>
-                                <Chip 
-                                    label={activeTrip.status.replace('_', ' ')} 
-                                    color={activeTrip.status === 'IN_PROGRESS' ? 'success' : 'primary'}
+                                <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#1e293b', fontSize: '0.95rem' }}>
+                                    {activeTrip.status === 'IN_PROGRESS' ? 'Active Trip' : 'Next Trip'}
+                                </Typography>
+                                <Chip
+                                    label={activeTrip.status === 'IN_PROGRESS' ? 'In Progress' : 'Scheduled'}
                                     size="small"
-                                    sx={{ fontWeight: 700, fontSize: '0.7rem' }}
+                                    sx={{
+                                        fontWeight: 700,
+                                        fontSize: '0.65rem',
+                                        height: 22,
+                                        bgcolor: activeTrip.status === 'IN_PROGRESS' ? '#dcfce7' : '#dbeafe',
+                                        color: activeTrip.status === 'IN_PROGRESS' ? '#166534' : '#1e40af',
+                                    }}
                                 />
                             </Box>
-                            
-                            <Paper 
+
+                            <Paper
                                 elevation={0}
-                                sx={{ 
-                                    p: 2.5, 
-                                    borderRadius: 4, 
-                                    bgcolor: '#0f172a', // Dark theme for active card
+                                sx={{
+                                    p: 2.5,
+                                    borderRadius: 3,
+                                    bgcolor: '#0f172a',
                                     color: 'white',
-                                    mb: 2,
+                                    mb: 1.5,
                                     position: 'relative',
                                     overflow: 'hidden'
                                 }}
                             >
-                                {/* Decorative circle */}
-                                <Box sx={{ position: 'absolute', top: -20, right: -20, width: 100, height: 100, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.05)' }} />
+                                {/* Decorative accent */}
+                                <Box sx={{
+                                    position: 'absolute',
+                                    top: -30,
+                                    right: -30,
+                                    width: 120,
+                                    height: 120,
+                                    borderRadius: '50%',
+                                    bgcolor: 'rgba(56, 189, 248, 0.08)',
+                                }} />
 
-                                <Typography variant="h4" fontWeight={800} sx={{ mb: 1 }}>
-                                    {activeTrip.stops[0]?.scheduledTime ? format(new Date(activeTrip.stops[0].scheduledTime), 'h:mm') : 'Now'}
-                                    <span style={{ fontSize: '0.5em', opacity: 0.7, marginLeft: 4 }}>{activeTrip.stops[0]?.scheduledTime ? format(new Date(activeTrip.stops[0].scheduledTime), 'a') : ''}</span>
-                                </Typography>
+                                {/* Time */}
+                                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, mb: 1.5 }}>
+                                    <Typography variant="h3" fontWeight={800} sx={{ lineHeight: 1, letterSpacing: -1 }}>
+                                        {activeTrip.stops[0]?.scheduledTime ? format(new Date(activeTrip.stops[0].scheduledTime), 'h:mm') : 'Now'}
+                                    </Typography>
+                                    <Typography sx={{ fontSize: '1rem', opacity: 0.5, fontWeight: 600 }}>
+                                        {activeTrip.stops[0]?.scheduledTime ? format(new Date(activeTrip.stops[0].scheduledTime), 'a') : ''}
+                                    </Typography>
+                                </Box>
 
-                                <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#38bdf8', mb: 0.5 }}>
+                                {/* Member name */}
+                                <Typography fontWeight={700} sx={{ color: '#38bdf8', fontSize: '0.95rem', mb: 0.5 }}>
                                     {activeTrip.members?.[0]?.member?.firstName} {activeTrip.members?.[0]?.member?.lastName}
                                 </Typography>
 
-                                <Typography variant="body2" sx={{ opacity: 0.8, mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <MyLocation sx={{ fontSize: 14 }} />
-                                    {activeTrip.stops[0]?.address.split(',')[0]}
-                                </Typography>
+                                {/* Address */}
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 2.5, opacity: 0.7 }}>
+                                    <NavigationOutlined sx={{ fontSize: 14 }} />
+                                    <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+                                        {activeTrip.stops[0]?.address.split(',')[0]}
+                                    </Typography>
+                                </Box>
 
+                                {/* CTA Button */}
                                 {user?.role === 'DRIVER' && (
-                                    <Button 
-                                        variant="contained" 
-                                        fullWidth 
+                                    <Button
+                                        variant="contained"
+                                        fullWidth
                                         size="large"
                                         onClick={() => navigate(`/driver/trips/${activeTrip.id}/execute`)}
-                                        sx={{ 
-                                            bgcolor: 'white', 
-                                            color: '#0f172a', 
+                                        sx={{
+                                            bgcolor: 'white',
+                                            color: '#0f172a',
                                             fontWeight: 800,
-                                            height: 48,
-                                            borderRadius: 24,
-                                            fontSize: '1rem',
-                                            '&:hover': { bgcolor: '#f1f5f9' }
+                                            height: 50,
+                                            borderRadius: 25,
+                                            fontSize: '0.95rem',
+                                            textTransform: 'none',
+                                            letterSpacing: '0.01em',
+                                            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                                            '&:hover': { bgcolor: '#f1f5f9' },
+                                            '&:active': { transform: 'scale(0.98)' },
+                                            transition: 'all 0.15s ease',
                                         }}
                                     >
-                                        {activeTrip.status === 'SCHEDULED' ? 'START TRIP' : 'CONTINUE'}
+                                        {activeTrip.status === 'SCHEDULED' ? 'Start Trip' : 'Continue Trip'}
                                     </Button>
                                 )}
                             </Paper>
                         </Box>
                     ) : (
-                         <Box sx={{ py: 4, textAlign: 'center', opacity: 0.5 }}>
-                            <Typography variant="h6" fontWeight={700}>All Caught Up</Typography>
-                            <Typography variant="body2">No trips currently in progress</Typography>
+                        <Box sx={{ py: 4, textAlign: 'center' }}>
+                            <Box sx={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: '50%',
+                                bgcolor: '#f1f5f9',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                mx: 'auto',
+                                mb: 1.5,
+                            }}>
+                                <DirectionsCarOutlined sx={{ fontSize: 28, color: '#94a3b8' }} />
+                            </Box>
+                            <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#334155' }}>
+                                All Caught Up
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: '#94a3b8', mt: 0.25 }}>
+                                No trips currently scheduled
+                            </Typography>
                         </Box>
                     )}
 
-                    {/* Upcoming List Header */}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="subtitle1" fontWeight={800}>Upcoming Trips</Typography>
-                        <Typography variant="caption" fontWeight={700} color="text.secondary">
-                            {otherTrips.length} SCHEDULED
+                    {/* Upcoming List */}
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                        <Typography variant="subtitle2" fontWeight={700} sx={{ color: '#1e293b', fontSize: '0.85rem' }}>
+                            Upcoming
+                        </Typography>
+                        <Typography variant="caption" fontWeight={600} sx={{ color: '#94a3b8' }}>
+                            {otherTrips.length} trip{otherTrips.length !== 1 ? 's' : ''}
                         </Typography>
                     </Box>
 
-                    {/* Upcoming Scroll List */}
-                    <Stack spacing={1.5}>
+                    <Stack spacing={1}>
                         {otherTrips.length > 0 ? (
                             otherTrips.map(trip => (
                                 <ActiveTripCard
@@ -386,23 +450,29 @@ export default function MobileDriverDashboard() {
                                 />
                             ))
                         ) : (
-                             <Box sx={{ py: 4, textAlign: 'center', bgcolor: '#f8fafc', borderRadius: 3, border: '1px dashed #e2e8f0' }}>
-                                <Typography variant="body2" color="text.secondary">
-                                    No other trips scheduled.
+                            <Box sx={{
+                                py: 3,
+                                textAlign: 'center',
+                                bgcolor: '#f8fafc',
+                                borderRadius: 2.5,
+                                border: '1px dashed #e2e8f0'
+                            }}>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                    No other trips scheduled today
                                 </Typography>
                                 <Button
                                     size="small"
                                     onClick={() => createDemoTripMutation.mutate()}
-                                    sx={{ mt: 1, fontWeight: 700 }}
+                                    sx={{ fontWeight: 600, fontSize: '0.8rem', textTransform: 'none' }}
                                 >
-                                    Quick Add Demo Trip
+                                    + Add Demo Trip
                                 </Button>
                             </Box>
                         )}
                     </Stack>
-                    
-                    {/* Add extra padding at bottom of sheet content */}
-                    <Box sx={{ height: 120 }} />
+
+                    {/* Bottom spacer for safe scrolling */}
+                    <Box sx={{ height: 100 }} />
                 </Box>
             </motion.div>
 
@@ -413,29 +483,42 @@ export default function MobileDriverDashboard() {
                 onClick={() => navigate('/driver/create-trip')}
                 sx={{
                     position: 'absolute',
-                    bottom: 24,
-                    right: 24,
-                    zIndex: 30,
+                    bottom: 'calc(env(safe-area-inset-bottom, 12px) + 72px)',
+                    right: 20,
+                    zIndex: 15,
                     bgcolor: '#0f172a',
-                    '&:hover': { bgcolor: '#1e293b' }
+                    width: 52,
+                    height: 52,
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+                    '&:hover': { bgcolor: '#1e293b' },
+                    '&:active': { transform: 'scale(0.92)' },
+                    transition: 'transform 0.1s ease',
                 }}
             >
                 <Add />
             </Fab>
 
-            {/* Notification Area */}
+            {/* Notification */}
             <Snackbar
                 open={notificationOpen}
-                autoHideDuration={6000}
+                autoHideDuration={4000}
                 onClose={() => setNotificationOpen(false)}
                 anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+                sx={{ top: 'calc(env(safe-area-inset-top, 20px) + 8px) !important' }}
             >
-                <Alert onClose={() => setNotificationOpen(false)} severity="success" sx={{ width: '100%', borderRadius: 3, fontWeight: 700 }}>
+                <Alert
+                    onClose={() => setNotificationOpen(false)}
+                    severity="success"
+                    sx={{
+                        width: '100%',
+                        borderRadius: 3,
+                        fontWeight: 600,
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                    }}
+                >
                     New Trip Assigned!
                 </Alert>
             </Snackbar>
-
-
         </Box>
     );
 }
