@@ -113,7 +113,7 @@ PHONE: 480-678-9426`;
             }
 
             // 4. VEHICLE CHECKBOXES (Mobility)
-            const vSize = 20;
+            const vSize = 24; // Increased from 20
             const vAlign = TextAlignment.Center;
             const mob = trip.mobilityRequirement;
             // Uncheck all first? No, setText handles specific checking.
@@ -124,16 +124,16 @@ PHONE: 480-678-9426`;
 
             // 5. MULTI-MEMBER
             const isMulti = trip.tripMembers && trip.tripMembers.length > 1;
-            const mSizeYes = 10;
-            const mSizeNo = 14;
+            const mSizeSmall = 12; // Increased from 10
+            const mSizeTall = 18;  // Increased from 14
             const mAlign = TextAlignment.Center;
 
             if (isMulti) {
-                setText('MULTIPLEMEBMBER­_YES', 'X', mSizeYes, mAlign);
-                setText('SAMEPICK_YES', 'X', mSizeYes, mAlign);
+                setText('MULTIPLEMEBMBER­_YES', 'X', mSizeSmall, mAlign);
+                setText('SAMEPICK_YES', 'X', mSizeTall, mAlign); // Tall box
             } else {
-                setText('MULTIPLEMEBMBER­_NO', 'X', mSizeNo, mAlign);
-                setText('SAMEPICKUP_NO', 'X', mSizeNo, mAlign);
+                setText('MULTIPLEMEBMBER­_NO', 'X', mSizeTall, mAlign);
+                setText('SAMEPICKUP_NO', 'X', mSizeTall, mAlign);
             }
 
             // 6. TRIP DETAILS (Rows 1-6)
@@ -180,7 +180,7 @@ PHONE: 480-678-9426`;
                 if (keyword) {
                     const box = rowFields.find((f: any) => f.name.includes(keyword));
                     if (box) {
-                        setText(box.name, 'X', 22, TextAlignment.Center);
+                        setText(box.name, 'X', 24, TextAlignment.Center); // Increased from 22
                     }
                 }
             }

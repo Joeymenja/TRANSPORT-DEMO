@@ -68,7 +68,7 @@ PHONE: 480-678-9426`;
 
     // 2. Vehicle Checkboxes - MARK ALL (Stress Test)
     const vehicleCheckStyle = 'X'; // No spaces, use Center align
-    const vehicleCheckSize = 20; // Increased size
+    const vehicleCheckSize = 24; // Increased from 20 for better visibility
 
     setText('WHEELVHAIR VAN', vehicleCheckStyle, vehicleCheckSize, TextAlignment.Center);
     setText('TAXI', vehicleCheckStyle, vehicleCheckSize, TextAlignment.Center);
@@ -77,15 +77,15 @@ PHONE: 480-678-9426`;
     setText('OTHER', vehicleCheckStyle, vehicleCheckSize, TextAlignment.Center);
 
     // Multi/Same - Fix Alignment & Size
-    // Logic: MULTIPLEMEBMBER_YES is only ~15px high -> Needs 10pt to not touch top.
-    //        Others (NO fields, SAMEPICK) are ~22px high -> Can handle 14pt for better visibility.
+    // Logic: MULTIPLEMEBMBER_YES is only ~15px high -> Needs 12pt to not touch top.
+    //        Others (NO fields, SAMEPICK) are ~22px high -> Can handle 18pt for better visibility.
 
-    setText('MULTIPLEMEBMBER­_YES', 'X', 10, TextAlignment.Center); // Short Box (15px)
-    setText('SAMEPICK_YES', 'X', 14, TextAlignment.Center);         // Tall Box (22px)
+    setText('MULTIPLEMEBMBER­_YES', 'X', 12, TextAlignment.Center); // Short Box (15px) - Increased from 10
+    setText('SAMEPICK_YES', 'X', 18, TextAlignment.Center);         // Tall Box (22px) - Increased from 14
 
-    // Explicitly fill NO fields - Restoring 14pt as they are 22px tall
-    setText('MULTIPLEMEBMBER­_NO', 'X', 14, TextAlignment.Center);
-    setText('SAMEPICKUP_NO', 'X', 14, TextAlignment.Center);
+    // Explicitly fill NO fields - Restoring 18pt as they are 22px tall
+    setText('MULTIPLEMEBMBER­_NO', 'X', 18, TextAlignment.Center);
+    setText('SAMEPICKUP_NO', 'X', 18, TextAlignment.Center);
 
     // Member Unable to Sign
     setText('Member is unable to sign Identify the person signing for the member or include members fingerprint', true); // Checkbox
@@ -165,7 +165,7 @@ PHONE: 480-678-9426`;
             // Use Explicit Size 22 for these X's (Increased from 20 per user request)
             // Switched to TextAlignment.Center to avoid padding issues with larger font
             rowFields.forEach(field => {
-                setText(field.name, 'X', 22, TextAlignment.Center);
+                setText(field.name, 'X', 24, TextAlignment.Center); // Increased from 22 for better visibility
                 console.log(`Trip ${tripNum}: Stress Checked '${field.name}'`);
             });
         }
