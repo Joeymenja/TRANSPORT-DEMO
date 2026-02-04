@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'GVBH Transport',
   webDir: 'dist',
   server: {
-    url: 'http://127.0.0.1:3000',
+    url: 'http://192.168.0.22:3000',
     cleartext: true
   }
 };
