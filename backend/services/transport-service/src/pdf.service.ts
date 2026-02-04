@@ -218,6 +218,14 @@ PHONE: 480-678-9426`;
                 }
             }
 
+            // 8. PAGE NUMBERING
+            // Page 1
+            setText('page', '1');
+            setText('of', '2');
+            // Page 2
+            setText('page_2', '2');
+            setText('of_2', '2');
+
             form.flatten();
             const saved = await pdfDoc.save();
             return Buffer.from(saved);

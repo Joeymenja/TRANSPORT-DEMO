@@ -4,7 +4,7 @@ const path = require('path');
 
 async function fillFinal() {
     const inputPath = path.join(process.cwd(), 'frontend/public/AHCCCSDailyTripReportFinal NEW more updated.pdf');
-    const outputPath = path.join(process.cwd(), 'filled-github-updated.pdf');
+    const outputPath = path.join(process.cwd(), 'filled-example-report.pdf');
 
     console.log(`Loading PDF from: ${inputPath}`);
     const pdfBytes = fs.readFileSync(inputPath);
@@ -175,7 +175,12 @@ PHONE: 480-678-9426`;
     setText('Signature2_es_:signer:signature', 'Driver Sig');
     setText('Signature1_es_:signer:signature', 'Member Sig');
     setText('Date_2', '2026-02-03');
-    setText('page', '1'); setText('of', '1');
+    // Page 1 Numbering
+    setText('page', '1');
+    setText('of', '2');
+    // Page 2 Numbering
+    setText('page_2', '2');
+    setText('of_2', '2');
 
     setText('Member Name_2', 'Jane Smith');
     setText('AHCCCS_2', 'B87654321');
