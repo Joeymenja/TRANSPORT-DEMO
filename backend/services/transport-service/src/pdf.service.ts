@@ -1,240 +1,230 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PDFDocument, PDFName, StandardFonts, rgb } from 'pdf-lib';
-import * as fs from 'fs';
-import * as path from 'path';
+import { Trip, TripType } from './entities/trip.entity';
+import { TripReport } from './entities/trip-report.entity';
+import { PDFDocument, PDFTextField, PDFCheckBox, TextAlignment } from 'pdf-lib';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { format } from 'date-fns';
 
-/**
- * Service for generating official AHCCCS Trip Report PDFs.
- * Uses pdf-lib to fill an existing template.
- */
 @Injectable()
 export class PdfService {
     private readonly logger = new Logger(PdfService.name);
-    private readonly reportsBaseDir = path.join(process.cwd(), 'reports');
-    // Assets are copied to dist/assets or src/assets depending on build. 
-    // We assume they are available relative to this service or via absolute path from project root if running locally.
-    // For local dev with NestJS, assets might be in dist/services/transport-service/src/assets or similar.
-    // We'll try to resolve robustly.
-    private readonly assetsDir = path.join(process.cwd(), 'src/assets'); 
-    
-    constructor() {
-        // Ensure reports directory exists
-        if (!fs.existsSync(this.reportsBaseDir)) {
-            fs.mkdirSync(this.reportsBaseDir, { recursive: true });
-        }
-        this.logger.log(`PDF Service initialized. Reports dir: ${this.reportsBaseDir}`);
-    }
+    // NEW TEMPLATE
+    private readonly templatePath = join(__dirname, '..', 'assets', 'AHCCCS_Trip_Report_Final.pdf');
 
-    /**
-     * Generates a filled AHCCCS PDF trip report.
-     * @param tripData All the text fields required for the form
-     * @param signatureData Base64 strings for signatures
-     * @returns The relative URL/path to the generated PDF
-     */
-    async generateOfficialReport(tripData: any, signatureData: { member?: string, driver?: string, driverName?: string }): Promise<string> {
+    async generateTripReportPdf(trip: Trip, report: TripReport): Promise<Buffer> {
         try {
-            this.logger.log(`Generating PDF for trip ${tripData.id} / Driver ${tripData.driverId}`);
-
-            // 1. Resolve Asset Paths
-            // Try standard source location first for dev
-            let templatePath = path.join(process.cwd(), 'src', 'assets', 'OFFICIAL_AHCCCS_FILLABLE.pdf');
-            if (!fs.existsSync(templatePath)) {
-                // Try dist location or relative
-                 templatePath = path.join(__dirname, '../assets/OFFICIAL_AHCCCS_FILLABLE.pdf');
-            }
-            // If still not found, try the direct path we copied to
-            if (!fs.existsSync(templatePath)) {
-                templatePath = '/Users/joel/TRANSPORT-DEMO/backend/services/transport-service/src/assets/OFFICIAL_AHCCCS_FILLABLE.pdf';
-            }
-
-            // Same for map
-            let mapPath = path.join(process.cwd(), 'src', 'assets', 'native_trip_report_field_map.json');
-            if (!fs.existsSync(mapPath)) {
-                 mapPath = path.join(__dirname, '../assets/native_trip_report_field_map.json');
-            }
-            if (!fs.existsSync(mapPath)) {
-                mapPath = '/Users/joel/TRANSPORT-DEMO/backend/services/transport-service/src/assets/native_trip_report_field_map.json';
-            }
-            
-            if (!fs.existsSync(templatePath)) throw new Error(`Template not found at ${templatePath}`);
-            
-            // 2. Load PDF & Map
-            const templateBytes = fs.readFileSync(templatePath);
-            // We aren't strictly using the JSON map file for dynamic iterations yet, 
-            // we hardcoded the coordinates in the method body to match the proven Frontend logic.
-            // But we load it if we want to switch to dynamic later. For now, adhering to the manual drawText logic.
-            
+            this.logger.log(`Generating PDF for trip ${trip.id} using template: ${this.templatePath}`);
+            const templateBytes = readFileSync(this.templatePath);
             const pdfDoc = await PDFDocument.load(templateBytes);
             const form = pdfDoc.getForm();
+            const page = pdfDoc.getPages()[0];
 
-            // 3. FLATTEN & NUKE (The "Nuclear Option")
-            // This ensures no white boxes from the original form fields obscure our text.
-            try {
-                form.flatten();
-            } catch (e) {
-                this.logger.warn("Flatten failed", e);
-            }
-
-            try {
-                const pages = pdfDoc.getPages();
-                pages.forEach(page => {
-                    const node = page.node;
-                    // @ts-ignore - access internal dict
-                    if (node.has(PDFName.of('Annots'))) {
-                        // @ts-ignore
-                        node.delete(PDFName.of('Annots'));
-                    }
-                });
-            } catch (err) {
-                this.logger.warn("Annot nuking failed", err);
-            }
-
-            // 4. Setup Pages & Fonts
-            const pages = pdfDoc.getPages();
-            const page1 = pages[0];
-            const page2 = pages[1];
-            const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-            const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-            const textSize = 10;
-
-            const txt = (val: any) => val || '';
-
-            // 5. Draw HEADER (Page 1)
-            // Provider Info
-            page1.drawText('Great Valley Behavioral Homes', { x: 72, y: 732, size: textSize, font: boldFont });
-            page1.drawText('201337', { x: 72, y: 718, size: textSize, font });
-            page1.drawText('6241 N 19th Ave, Phoenix, AZ 85015', { x: 72, y: 704, size: textSize, font });
-            page1.drawText('(602) 283-5154', { x: 72, y: 690, size: textSize, font });
-
-            // Driver/Vehicle/Member Info (Native Coordinates from Frontend)
-            // Driver Name
-            page1.drawText(txt(signatureData.driverName || tripData.driverName), { x: 417, y: 730, size: textSize, font });
-            // Date
-            page1.drawText(new Date().toLocaleDateString(), { x: 376, y: 716, size: textSize, font });
-            // Vehicle
-            page1.drawText(txt(tripData.vehicleId), { x: 498, y: 702, size: textSize, font });
-            page1.drawText(`${txt(tripData.vehicleColor)} ${txt(tripData.vehicleMake)}`, { x: 448, y: 688, size: textSize, font });
-            page1.drawText((tripData.vehicleType || 'Wheelchair Van').toUpperCase(), { x: 502, y: 656, size: textSize, font });
-
-            // Member
-            page1.drawText(txt(tripData.memberAhcccsId), { x: 68, y: 636, size: textSize, font });
-            page1.drawText(txt(tripData.memberDOB), { x: 335, y: 636, size: textSize, font });
-            page1.drawText(txt(tripData.memberName), { x: 86, y: 620, size: textSize, font });
-            page1.drawText(txt(tripData.memberAddress), { x: 344, y: 620, size: textSize, font });
-
-            // 6. Draw TRIP ROWS (Page 1) - Trip 1
-            // Pickup
-            page1.drawText(txt(tripData.pickupAddress), { x: 14, y: 584, size: textSize, font });
-            // Note: tripData.pickupTime passed from frontend is usually ISO string or HH:MM
-            // Format it nicely if needed, but assuming frontend sends display string or we print as is.
-            // Frontend sent ISO string in onSubmit: new Date(...).toISOString()
-            // We should format it to HH:MM AM/PM
-            const formatTime = (isoStr: string) => {
-                if (!isoStr) return '';
+            // --- HELPER: Set Text with Advanced Logic ---
+            const setText = (name: string, value: string | boolean, fontSize: number | null = null, alignment: TextAlignment | null = null, autoSizeRatio: number | null = null) => {
                 try {
-                    return new Date(isoStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                } catch { return isoStr; }
-            };
+                    const field = form.getField(name);
+                    if (field instanceof PDFCheckBox) {
+                        if (value === true || value === 'X') field.check();
+                        else field.uncheck();
+                    } else if (field instanceof PDFTextField) {
+                        // Multiline for Time Fields (Top Align)
+                        if (autoSizeRatio && name.startsWith('AMPM')) {
+                            field.enableMultiline();
+                        }
 
-            page1.drawText(formatTime(tripData.pickupTime), { x: 449, y: 584, size: textSize, font });
-            page1.drawText(txt(tripData.startOdometer?.toString()), { x: 499, y: 584, size: textSize, font });
+                        let finalSize = fontSize;
+                        // Auto-Size Logic
+                        if (autoSizeRatio) {
+                            try {
+                                const widgets = field.acroField.getWidgets();
+                                const rect = widgets[0].getRectangle();
+                                const calculatedSize = rect.height * autoSizeRatio;
+                                finalSize = Math.round(calculatedSize * 2) / 2;
+                            } catch (e) {
+                                // Fallback
+                            }
+                        }
 
-            // Dropoff
-            page1.drawText(txt(tripData.dropoffAddress), { x: 14, y: 537, size: textSize, font });
-            page1.drawText(formatTime(tripData.dropoffTime), { x: 449, y: 537, size: textSize, font });
-            page1.drawText(txt(tripData.endOdometer?.toString()), { x: 499, y: 537, size: textSize, font });
-
-            // Reason
-            page1.drawText(txt(tripData.reasonForVisit), { x: 90, y: 438, size: textSize, font });
-
-
-            // 7. Draw FOOTER (Page 2)
-            page2.drawText(txt(tripData.memberName), { x: 88, y: 759, size: textSize, font });
-            page2.drawText(txt(tripData.additionalInfo), { x: 118, y: 220, size: textSize, font });
-
-            // 8. SIGNATURES (Page 2 - Stacked)
-            // Member Signature
-            if (signatureData.member) {
-                try {
-                    // Expecting data:image/png;base64,...
-                    const matches = signatureData.member.match(/^data:image\/([a-zA-Z]*);base64,([^\"]*)$/);
-                    if (matches) {
-                        const imageBytes = Buffer.from(matches[2], 'base64');
-                        const signatureImage = await pdfDoc.embedPng(imageBytes);
-                        const sigDims = signatureImage.scale(0.3);
-                        // Member Sig: PDF Y=192 (positioned in signature field)
-                        page2.drawImage(signatureImage, { x: 102, y: 192, width: sigDims.width, height: sigDims.height });
+                        if (finalSize) field.setFontSize(finalSize);
+                        if (alignment) field.setAlignment(alignment);
+                        field.setText(typeof value === 'string' ? value : '');
                     }
                 } catch (e) {
-                    this.logger.error("Failed to embed member signature", e);
+                    // Field might not exist, ignore
+                }
+            };
+
+            // --- GEOMETRIC ROW MAPPING ---
+            // Used to identify the 6 generic rows of checkboxes (Round Trip, One Way, etc.)
+            const getTripRows = () => {
+                const tripFields = form.getFields().filter(f => {
+                    const n = f.getName();
+                    return n.includes('Type of Trip') || n.includes('One Way') || n.includes('Multiple Stops');
+                });
+                const items: any[] = [];
+                tripFields.forEach(f => {
+                    try {
+                        const rect = f.acroField.getWidgets()[0].getRectangle();
+                        items.push({ name: f.getName(), x: rect.x, y: rect.y });
+                    } catch (e) { }
+                });
+                // Group by Y
+                const rows: any[] = [];
+                items.forEach(item => {
+                    let row = rows.find(r => Math.abs(r.y - item.y) < 20);
+                    if (!row) {
+                        row = { y: item.y, fields: [] };
+                        rows.push(row);
+                    }
+                    row.fields.push(item);
+                });
+                rows.sort((a, b) => b.y - a.y); // Top to bottom
+                return rows;
+            };
+
+            const visualRows = getTripRows();
+
+            // 1. FILL HEADER
+            const driverName = trip.assignedDriver?.user ? `${trip.assignedDriver.user.firstName} ${trip.assignedDriver.user.lastName}` : '';
+            setText('Drivers Name', driverName);
+
+            const tripDate = trip.tripDate ? format(new Date(trip.tripDate), 'yyyy-MM-dd') : '';
+            setText('Date', tripDate);
+
+            setText('Vehicle LicenseFleet ID', trip.assignedVehicle?.licensePlate || '');
+            setText('Vehicle Make  Color', trip.assignedVehicle ? `${trip.assignedVehicle.make} / ${trip.assignedVehicle.color}` : '');
+
+            // 2. HARDCODED PROVIDER INFO (Into 'Vehicle Type' field)
+            const providerInfo = `AHCCCS ID: 181294
+NAME: GREAT VALUES TRANSPORTATION
+ADDRESS: 5723 W. PUEBLO AVE PHOENIX 85043-6404
+PHONE: 480-678-9426`;
+            setText('Vehicle Type', providerInfo, 10);
+
+            // 3. MEMBER INFO
+            const client = trip.tripMembers?.[0]?.member;
+            if (client) {
+                setText('Member Name', `${client.firstName} ${client.lastName}`);
+                setText('AHCCCS', client.insuranceId || '');
+                setText('Date of Birth', client.dateOfBirth ? format(new Date(client.dateOfBirth), 'yyyy-MM-dd') : '');
+                // Address - assuming hardcoded for demo or derived
+                setText('Mailing Address', '123 Main St, Phoenix, AZ');
+            }
+
+            // 4. VEHICLE CHECKBOXES (Mobility)
+            const vSize = 20;
+            const vAlign = TextAlignment.Center;
+            const mob = trip.mobilityRequirement;
+            // Uncheck all first? No, setText handles specific checking.
+            if (mob === 'WHEELCHAIR') setText('WHEELVHAIR VAN', 'X', vSize, vAlign);
+            else if (mob === 'STRETCHER') setText('STRETCHER CAR', 'X', vSize, vAlign);
+            else if (mob === 'AMBULATORY') setText('TAXI', 'X', vSize, vAlign);
+            else setText('OTHER', 'X', vSize, vAlign);
+
+            // 5. MULTI-MEMBER
+            const isMulti = trip.tripMembers && trip.tripMembers.length > 1;
+            const mSizeYes = 10;
+            const mSizeNo = 14;
+            const mAlign = TextAlignment.Center;
+
+            if (isMulti) {
+                setText('MULTIPLEMEBMBER­_YES', 'X', mSizeYes, mAlign);
+                setText('SAMEPICK_YES', 'X', mSizeYes, mAlign);
+            } else {
+                setText('MULTIPLEMEBMBER­_NO', 'X', mSizeNo, mAlign);
+                setText('SAMEPICKUP_NO', 'X', mSizeNo, mAlign);
+            }
+
+            // 6. TRIP DETAILS (Rows 1-6)
+            // Assuming this report is for ONE trip request (Single Leg or Round Trip)
+            // We fill Row 1 only for single leg, or Row 1+2 for Round Trip (if modeled as such).
+            // Current model: Trip has stops.
+
+            const timeRatio = 0.33; // Default Restored
+
+            // Populate Row 1
+            const tNum = 1;
+            const name1 = `AMPM${(tNum - 1) * 2 + 1}`;
+            const name2 = `AMPM${(tNum - 1) * 2 + 2}`;
+
+            // Times (Mock or Real?)
+            // If report has times, use them. Else hardcode for demo.
+            setText(name1, '08:00 AM', null, TextAlignment.Center, timeRatio);
+            setText(name2, '08:30 AM', null, TextAlignment.Center, timeRatio);
+
+            // Addresses
+            const pickup = trip.tripStops?.[0]; // First stop
+            const dropoff = trip.tripStops?.[trip.tripStops.length - 1]; // Last stop
+
+            if (pickup) setText('1st PickUp Location Physical Address City  Zip Code or Geographical CoordinatesLandmark if No Address AvailableRow1', pickup.address);
+            if (dropoff) setText('1st DropOff Location Physical Address City  Zip Code or Geographical CoordinatesLandmark if No Address AvailableRow1', dropoff.address);
+
+            // Odometers
+            if (report) {
+                setText('PickUp Odometerampm', report.startOdometer?.toString() || '', 10);
+                setText('DropOff Odometerampm', report.endOdometer?.toString() || '', 10);
+                setText('Trip Milesampm', report.totalMiles?.toString() || '');
+            }
+
+            // Trip Row Checkbox (Round Trip / One Way)
+            if (visualRows[0]) {
+                const rowFields = visualRows[0].fields; // Fields for Row 1
+                // Find correct box based on trip type
+                // trip.tripType: ROUND_TRIP, ONE_WAY...
+                let keyword = '';
+                if (trip.tripType === TripType.ROUND_TRIP) keyword = 'Round Trip';
+                else if (trip.tripType === TripType.ONE_WAY) keyword = 'One Way';
+                else if (trip.tripType === TripType.MULTIPLE_STOPS) keyword = 'Multiple Stops';
+
+                if (keyword) {
+                    const box = rowFields.find((f: any) => f.name.includes(keyword));
+                    if (box) {
+                        setText(box.name, 'X', 22, TextAlignment.Center);
+                    }
                 }
             }
 
-            // Driver Signature
-            if (signatureData.driver) {
-               if (signatureData.driver.startsWith('data:image')) {
-                   try {
-                        const matches = signatureData.driver.match(/^data:image\/([a-zA-Z]*);base64,([^\"]*)$/);
-                        if (matches) {
-                            const imageBytes = Buffer.from(matches[2], 'base64');
-                            const signatureImage = await pdfDoc.embedPng(imageBytes);
-                            // Driver Sig: PDF Y=55
-                            // Use same scaling?
-                            const sigDims = signatureImage.scale(0.3);
-                            page2.drawImage(signatureImage, { x: 93, y: 55, width: sigDims.width, height: sigDims.height });
-                        }
-                   } catch (e) {
-                       this.logger.error("Failed to embed driver signature image", e);
-                   }
-               } else {
-                   // Text fallback
-                   page2.drawText(txt(signatureData.driver), { x: 93, y: 55, size: 14, font: boldFont, color: rgb(0,0,0) });
-               }
-               // Always date
-               page2.drawText(new Date().toLocaleDateString(), { x: 457, y: 55, size: 12, font, color: rgb(0,0,0) });
+            // 7. SIGNATURES
+            if (report?.signatures?.length > 0) {
+                for (const sig of report.signatures) {
+                    if (sig.signatureUrl && sig.signatureUrl.startsWith('data:image/png;base64,')) {
+                        try {
+                            const imageBytes = Buffer.from(sig.signatureUrl.split(',')[1], 'base64');
+                            const embeddedImage = await pdfDoc.embedPng(imageBytes);
+
+                            let fieldName = '';
+                            // Updated Names from fill-final.ts
+                            if (sig.role === 'driver' || sig.type === 'driver') fieldName = 'Signature1_es_:signer:signature';
+                            if (sig.role === 'member' || sig.type === 'member') fieldName = 'Signature2_es_:signer:signature';
+
+                            if (fieldName) {
+                                try {
+                                    const field = form.getField(fieldName);
+                                    const widgets = field.acroField.getWidgets();
+                                    const rect = widgets[0].getRectangle();
+                                    page.drawImage(embeddedImage, {
+                                        x: rect.x,
+                                        y: rect.y,
+                                        width: rect.width,
+                                        height: rect.height,
+                                    });
+                                } catch (e) {
+                                    // Fallback
+                                }
+                            }
+                        } catch (err) { }
+                    }
+                }
             }
 
-
-            // 9. Save to Disk
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            
-            const storageDir = path.join(this.reportsBaseDir, String(year), month, day);
-            if (!fs.existsSync(storageDir)) {
-                fs.mkdirSync(storageDir, { recursive: true });
-            }
-
-            const fileName = `trip_report_${tripData.id}_${Date.now()}.pdf`;
-            const filePath = path.join(storageDir, fileName);
-            
-            const pdfBytes = await pdfDoc.save();
-            fs.writeFileSync(filePath, pdfBytes);
-            this.logger.log(`PDF saved to ${filePath}`);
-
-            // Return relative path or URL that the frontend can use to download/view
-            // Assuming we serve the 'reports' directory statically or have an endpoint to fetch it
-            return `/reports/${year}/${month}/${day}/${fileName}`;
+            form.flatten();
+            const saved = await pdfDoc.save();
+            return Buffer.from(saved);
 
         } catch (error) {
-            this.logger.error("Failed to generate official PDF", error);
+            this.logger.error(`Error generating PDF: ${error.message}`, error.stack);
             throw error;
         }
-    }
-
-    /**
-     * Reads a PDF file from disk.
-     */
-    async readPdf(filePath: string): Promise<Buffer> {
-        if (!fs.existsSync(filePath)) {
-            // Try resolving relative to project root if absolute path fails
-            const absolutePath = path.join(process.cwd(), filePath);
-            if (fs.existsSync(absolutePath)) {
-                return fs.readFileSync(absolutePath);
-            }
-            throw new Error(`File not found: ${filePath}`);
-        }
-        return fs.readFileSync(filePath);
     }
 }
