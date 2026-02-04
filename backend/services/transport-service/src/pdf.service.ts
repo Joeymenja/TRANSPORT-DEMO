@@ -194,9 +194,9 @@ PHONE: 480-678-9426`;
                             const embeddedImage = await pdfDoc.embedPng(imageBytes);
 
                             let fieldName = '';
-                            // Updated Names from fill-final.ts
-                            if (sig.role === 'driver' || sig.type === 'driver') fieldName = 'Signature1_es_:signer:signature';
-                            if (sig.role === 'member' || sig.type === 'member') fieldName = 'Signature2_es_:signer:signature';
+                            // Updated Names from fill-final.ts - SWAPPED PER USER REQUEST
+                            if (sig.role === 'driver' || sig.type === 'driver') fieldName = 'Signature2_es_:signer:signature';
+                            if (sig.role === 'member' || sig.type === 'member') fieldName = 'Signature1_es_:signer:signature';
 
                             if (fieldName) {
                                 try {
