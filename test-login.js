@@ -4,7 +4,7 @@ async function login() {
     const response = await fetch('http://localhost:8081/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'new.driver@gvbh.com', password: 'password123' })
+        body: JSON.stringify({ email: 'alexander.gichungu@gvbh.com', password: 'password123' })
     });
 
     if (!response.ok) {

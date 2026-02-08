@@ -10,7 +10,7 @@ psql -U postgres -d gvbh_transport -f database/test-data.sql
 
 # 2. Install all dependencies
 cd backend/services/auth-service && npm install
-cd ../transport-service && npm install  
+cd ../transport-service && npm install
 cd ../../../frontend && npm install
 
 # 3. Copy environment files
@@ -28,11 +28,14 @@ copy backend\services\transport-service\.env.example backend\services\transport-
 # Terminal 1
 cd backend/services/auth-service && npm run dev
 
-# Terminal 2  
+# Terminal 2
 cd backend/services/transport-service && npm run dev
 
 # Terminal 3
 cd frontend && npm run dev
+
+# Terminal 4
+cd backend/services/member-service && npm run dev
 ```
 
 ## Access Points
@@ -44,11 +47,13 @@ cd frontend && npm run dev
 ## Login Credentials
 
 **Admin User:**
+
 - Email: `admin@gvbh.com`
 - Password: `password123`
 
 **Driver User:**
-- Email: `driver@gvbh.com`  
+
+- Email: `driver@gvbh.com`
 - Password: `password123`
 
 ## Useful Database Commands
@@ -67,7 +72,7 @@ SELECT vehicle_number, make, model, capacity FROM vehicles;
 SELECT member_id, first_name, last_name FROM members;
 
 -- Reset a user password to "password123"
-UPDATE users 
+UPDATE users
 SET password_hash = '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy'
 WHERE email = 'admin@gvbh.com';
 ```

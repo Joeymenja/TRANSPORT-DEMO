@@ -7,6 +7,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { useAuthStore } from './store/auth';
 import { useAutoLogout } from './hooks/useAutoLogout';
 import LoginPage from './pages/LoginPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import ReportsPage from './pages/admin/ReportsPage';
 import ReportDetailPage from './pages/admin/ReportDetailPage';
@@ -28,6 +29,12 @@ import DriverLayout from './components/DriverLayout';
 // import AdminLayout from './components/layout/AdminLayout'; // Not used in this iteration
 import DriverTripsPage from './pages/driver/DriverTripsPage';
 import DriverUpdatesPage from './pages/driver/DriverUpdatesPage';
+import DriverLogsPage from './pages/driver/DriverLogsPage';
+import HeadingToPickupPage from './pages/driver/HeadingToPickupPage';
+import ArrivedAtPickupPage from './pages/driver/ArrivedAtPickupPage';
+import MemberVerificationPage from './pages/driver/MemberVerificationPage';
+import MemberBoardingPage from './pages/driver/MemberBoardingPage';
+import DropoffConfirmationPage from './pages/driver/DropoffConfirmationPage';
 import TripExecutionPage from './pages/driver/TripExecutionPage';
 import TripReportPage from './pages/driver/report/TripReportPage';
 import TripDetailScreen from './pages/driver/TripDetailScreen';
@@ -41,10 +48,29 @@ import CompliancePage from './pages/driver/CompliancePage';
 import DriverSchedulePage from './pages/driver/DriverSchedulePage';
 
 import DriverProfilePage from './pages/driver/DriverProfilePage';
+import DriverSignaturePage from './pages/driver/DriverSignaturePage';
+import EditDriverProfilePage from './pages/driver/EditDriverProfilePage';
 import DriverSettingsPage from './pages/driver/DriverSettingsPage';
+import HelpSupportPage from './pages/driver/HelpSupportPage';
+import IncidentReportPage from './pages/driver/IncidentReportPage';
+import TripLogDetailPage from './pages/driver/TripLogDetailPage';
+import VehicleStatusPage from './pages/driver/VehicleStatusPage';
 import DriverCreateTripPage from './pages/driver/DriverCreateTripPage';
 import BackfillTripPage from './pages/driver/BackfillTripPage';
+import StitchDriverDashboard from './pages/driver/StitchDriverDashboard';
+import StitchSchedulePage from './pages/driver/StitchSchedulePage';
+import StitchMessagesPage from './pages/driver/StitchMessagesPage';
+import StitchProfilePage from './pages/driver/StitchProfilePage';
+import StitchVehiclePage from './pages/driver/StitchVehiclePage';
+import StitchHistoryPage from './pages/driver/StitchHistoryPage';
+import StitchPerformancePage from './pages/driver/StitchPerformancePage';
+import StitchSettingsPage from './pages/driver/StitchSettingsPage';
+import StitchHelpPage from './pages/driver/StitchHelpPage';
+import StitchDocumentsPage from './pages/driver/StitchDocumentsPage';
+// GVBH Driver App - Complete integrated module
+import { GVBHApp } from './gvbh';
 import AppLayout from './components/AppLayout';
+import GlobalToast from './components/GlobalToast';
 import { KeyboardNavigation } from './components/KeyboardNavigation';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SocketProvider } from './context/SocketContext';
@@ -54,60 +80,97 @@ import { NotificationProvider } from './context/NotificationContext';
 const queryClient = new QueryClient();
 
 // HP-inspired theme
+// Stitch-inspired theme
 const theme = createTheme({
     palette: {
         primary: {
-            main: '#0096D6', // HP Blue
+            main: '#14B8A6', // Stitch Teal
+            light: '#5EEAD4',
+            dark: '#0F766E',
+            contrastText: '#ffffff',
+        },
+        secondary: {
+            main: '#64748B', // Slate
         },
         success: {
-            main: '#00C853',
+            main: '#10B981', // Emerald
         },
         warning: {
-            main: '#FF9800',
+            main: '#F59E0B', // Amber
+        },
+        error: {
+            main: '#EF4444', // Red
         },
         background: {
-            default: '#f8f9fa',
+            default: '#F5F7FA', // Light Grey/Blue
             paper: '#ffffff',
         },
         text: {
-            primary: '#212121',
-            secondary: '#757575',
+            primary: '#1F2937', // Grey 900
+            secondary: '#6B7280', // Grey 500
         },
     },
     typography: {
         fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
         h4: {
-            fontWeight: 600,
+            fontWeight: 700,
+            letterSpacing: '-0.02em',
         },
         h6: {
-            fontWeight: 500,
+            fontWeight: 600,
+            letterSpacing: '-0.01em',
+        },
+        subtitle1: {
+            fontWeight: 600,
+        },
+        button: {
+            fontWeight: 600,
+            textTransform: 'none',
         },
     },
     shape: {
-        borderRadius: 8,
+        borderRadius: 4, // Sharp corners as requested
     },
     components: {
         MuiButton: {
             styleOverrides: {
                 root: {
-                    textTransform: 'none',
-                    borderRadius: 8,
-                    fontWeight: 500,
+                    borderRadius: 4,
+                    padding: '10px 24px',
+                    boxShadow: 'none',
+                    '&:hover': {
+                        boxShadow: '0 4px 12px rgba(20, 184, 166, 0.2)', // Teal glow
+                    },
+                },
+                containedPrimary: {
+                    background: 'linear-gradient(135deg, #14B8A6 0%, #0D9488 100%)',
                 },
             },
         },
         MuiCard: {
             styleOverrides: {
                 root: {
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                    borderRadius: 12,
+                    borderRadius: 4,
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.03)', // Subtler shadow
+                    border: '1px solid rgba(229, 231, 235, 0.5)',
                 },
             },
+        },
+        MuiPaper: {
+            styleOverrides: {
+                root: {
+                    backgroundImage: 'none',
+                    borderRadius: 4,
+                },
+                elevation1: {
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                }
+            }
         },
         MuiCssBaseline: {
             styleOverrides: {
                 body: {
-                    scrollbarColor: '#0096D6 #f5f5f5',
+                    scrollbarColor: '#14B8A6 #F5F7FA',
                     '&::-webkit-scrollbar, & *::-webkit-scrollbar': {
                         backgroundColor: 'transparent',
                         width: '8px',
@@ -115,16 +178,13 @@ const theme = createTheme({
                     },
                     '&::-webkit-scrollbar-thumb, & *::-webkit-scrollbar-thumb': {
                         borderRadius: 8,
-                        backgroundColor: '#0096D6',
+                        backgroundColor: '#14B8A6',
                         minHeight: 24,
                         border: '2px solid transparent',
                         backgroundClip: 'content-box'
                     },
                     '&::-webkit-scrollbar-thumb:hover, & *::-webkit-scrollbar-thumb:hover': {
-                        backgroundColor: '#007bb0', // Darker shade
-                    },
-                    '&::-webkit-scrollbar-track, & *::-webkit-scrollbar-track': {
-                        backgroundColor: 'transparent',
+                        backgroundColor: '#0F766E',
                     },
                 },
             },
@@ -159,6 +219,7 @@ function AppRoutes() {
     return (
         <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/register-driver" element={<DriverRegistrationPage />} />
             <Route path="/driver/welcome" element={
                 <PrivateRoute>
@@ -172,6 +233,17 @@ function AppRoutes() {
                 </PrivateRoute>
             } />
             <Route path="/client/:memberId" element={<ClientTripPage />} />
+            
+            {/* GVBH Driver App - Full-screen mobile experience (outside DriverLayout) */}
+            <Route
+                path="/driver/gvbh/*"
+                element={
+                    <PrivateRoute>
+                        <GVBHApp embedded />
+                    </PrivateRoute>
+                }
+            />
+            
             <Route
                 path="/driver/*"
                 element={
@@ -181,17 +253,42 @@ function AppRoutes() {
                                 <Route path="/" element={<DashboardPage />} />
                                 <Route path="dashboard" element={<DashboardPage />} />
                                 <Route path="updates" element={<DriverUpdatesPage />} />
+                                <Route path="logs" element={<DriverLogsPage />} />
+                                <Route path="logs/:id" element={<TripLogDetailPage />} />
                                 <Route path="trips" element={<DriverTripsPage />} />
                                 <Route path="trips/:tripId" element={<TripDetailScreen />} />
+                                <Route path="trips/:tripId/navigate" element={<HeadingToPickupPage />} />
+                                <Route path="trips/:tripId/arrived" element={<ArrivedAtPickupPage />} />
+                                <Route path="trips/:tripId/verification" element={<MemberVerificationPage />} />
+                                <Route path="trips/:tripId/boarding" element={<MemberBoardingPage />} />
                                 <Route path="trips/:tripId/execute" element={<TripExecutionPage />} />
+                                <Route path="trips/:tripId/dropoff" element={<DropoffConfirmationPage />} />
                                 <Route path="trips/:tripId/report" element={<TripReportPage />} />
+                                <Route path="report/:id" element={<TripReportPage />} />
                                 <Route path="schedule" element={<DriverSchedulePage />} />
 
                                 <Route path="profile" element={<DriverProfilePage />} />
+                                <Route path="profile/edit" element={<EditDriverProfilePage />} />
+                                <Route path="profile/signature" element={<DriverSignaturePage />} />
                                 <Route path="settings" element={<DriverSettingsPage />} />
+                                <Route path="help" element={<HelpSupportPage />} />
+                                <Route path="incident" element={<IncidentReportPage />} />
+                                <Route path="vehicle" element={<VehicleStatusPage />} />
                                 <Route path="compliance" element={<CompliancePage />} />
                                 <Route path="create-trip" element={<DriverCreateTripPage />} />
                                 <Route path="backfill" element={<BackfillTripPage />} />
+                                
+                                {/* Stitch Sub-routes */}
+                                <Route path="stitch" element={<StitchDriverDashboard />} />
+                                <Route path="stitch/schedule" element={<StitchSchedulePage />} />
+                                <Route path="stitch/messages" element={<StitchMessagesPage />} />
+                                <Route path="stitch/profile" element={<StitchProfilePage />} />
+                                <Route path="stitch/vehicle" element={<StitchVehiclePage />} />
+                                <Route path="stitch/history" element={<StitchHistoryPage />} />
+                                <Route path="stitch/performance" element={<StitchPerformancePage />} />
+                                <Route path="stitch/settings" element={<StitchSettingsPage />} />
+                                <Route path="stitch/help" element={<StitchHelpPage />} />
+                                <Route path="stitch/documents" element={<StitchDocumentsPage />} />
                             </Routes>
                         </DriverLayout>
                     </PrivateRoute>
@@ -246,6 +343,7 @@ function App() {
                     <ThemeProvider theme={theme}>
                         <LocalizationProvider dateAdapter={AdapterDateFns}>
                             <CssBaseline />
+                            <GlobalToast />
                             <BrowserRouter>
                                 <KeyboardNavigation />
                                 <AppRoutes />

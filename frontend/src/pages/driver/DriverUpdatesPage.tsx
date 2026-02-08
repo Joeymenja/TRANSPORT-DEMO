@@ -1,134 +1,121 @@
-
-import { Box, Card, CardContent, Container, Typography, Chip, IconButton, List, ListItem, ListItemText, ListItemAvatar, Avatar } from '@mui/material';
-import { Notifications, Assignment, Cancel, AccessTime, Info, CheckCircle } from '@mui/icons-material';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Box, Typography, Paper, List, ListItem, ListItemAvatar, ListItemText, Avatar, Chip, IconButton, Button, Container } from '@mui/material';
+import { Notifications, Warning, Info, CheckCircle, ArrowBack, DeleteOutline } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import api from '../../lib/api';
-import { formatDistanceToNow, format } from 'date-fns';
-import { useAuthStore } from '../../store/auth';
-import LoadingOverlay from '../../components/LoadingOverlay';
-import MobileHeader from '../../components/layout/MobileHeader';
+import { format } from 'date-fns';
 
-interface Notification {
-    id: string;
-    type: string;
-    title: string;
-    message: string;
-    status: 'UNREAD' | 'READ';
-    createdAt: string;
-    metadata?: {
-        tripId?: string;
-        [key: string]: any;
-    };
-}
+// Mock Data
+const NOTIFICATIONS = [
+    {
+        id: 1,
+        type: 'TRIP',
+        title: 'New Trip Assigned',
+        message: 'You have been assigned a new trip for Today at 2:30 PM.',
+        time: new Date(),
+        read: false
+    },
+    {
+        id: 2,
+        type: 'COMPLIANCE',
+        title: 'Compliance Verification',
+        message: 'Your vehicle inspection for today is due before your next trip.',
+        time: new Date(Date.now() - 3600000), // 1 hour ago
+        read: false
+    },
+    {
+        id: 3,
+        type: 'SYSTEM',
+        title: 'System Maintenance',
+        message: 'Scheduled maintenance this Sunday from 2AM to 4AM.',
+        time: new Date(Date.now() - 86400000), // 1 day ago
+        read: true
+    }
+];
 
 export default function DriverUpdatesPage() {
     const navigate = useNavigate();
-    const queryClient = useQueryClient();
-    const { user } = useAuthStore();
-
-    const { data: notifications = [], isLoading } = useQuery({
-        queryKey: ['notifications'],
-        queryFn: async () => {
-            const { data } = await api.get<Notification[]>('/notifications');
-            return data;
-        },
-        refetchInterval: 15000 // Poll every 15s for updates
-    });
-
-    const markReadMutation = useMutation({
-        mutationFn: (id: string) => api.patch(`/notifications/${id}/read`),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] })
-    });
-
-    const handleNotificationClick = (notification: Notification) => {
-        if (notification.status === 'UNREAD') {
-            markReadMutation.mutate(notification.id);
-        }
-
-        // Navigate based on type/metadata
-        if (notification.metadata?.tripId) {
-            navigate(`/driver/trips/${notification.metadata.tripId}`);
-        } else {
-            // Default fallback
-            navigate('/driver');
-        }
-    };
 
     const getIcon = (type: string) => {
         switch (type) {
-            case 'TRIP_ASSIGNED': return <Assignment color="primary" />;
-            case 'TRIP_CANCELLED': return <Cancel color="error" />;
-            case 'TRIP_UPDATED': return <AccessTime color="warning" />;
-            case 'TRIP_REPORT_SUBMITTED': return <CheckCircle color="success" />;
-            default: return <Info color="info" />;
+            case 'TRIP': return <Notifications />;
+            case 'COMPLIANCE': return <Warning />;
+            case 'SUCCESS': return <CheckCircle />;
+            default: return <Info />;
         }
     };
 
-    if (isLoading) return <LoadingOverlay open={true} />;
+    const getColor = (type: string) => {
+        switch (type) {
+            case 'TRIP': return '#14B8A6'; // Teal
+            case 'COMPLIANCE': return '#F59E0B'; // Amber
+            case 'SUCCESS': return '#10B981'; // Green
+            default: return '#64748B'; // Slate
+        }
+    };
 
     return (
-        <Box sx={{ minHeight: '100vh', bgcolor: '#fff' }}>
-            <MobileHeader title="Trip Updates" />
-            
-            <Container maxWidth="sm" sx={{ py: 2, display: 'flex', flexDirection: 'column' }}>
-                <Box sx={{ mb: 2 }}>
-                    <Typography variant="body2" color="text.secondary">
-                        Real-time alerts about your schedule.
-                    </Typography>
-                </Box>
+        <Box sx={{ minHeight: '100vh', bgcolor: '#F5F7FA', pb: 10 }}>
+            {/* Header */}
+            <Box sx={{ p: 2, pt: 6, bgcolor: 'white', borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                 <IconButton onClick={() => navigate('/driver')} sx={{ mr: 1 }}>
+                    <ArrowBack />
+                </IconButton>
+                <Typography variant="h6" fontWeight={800} sx={{ flex: 1, textAlign: 'center' }}>
+                    Updates & Alerts
+                </Typography>
+                <Button size="small" color="inherit">Clear All</Button>
+            </Box>
 
-                {notifications.length === 0 ? (
-                    <Box sx={{ textAlign: 'center', py: 8, opacity: 0.6 }}>
-                        <Notifications sx={{ fontSize: 64, color: '#e0e0e0', mb: 2 }} />
-                        <Typography variant="body1" fontWeight="500">No updates yet</Typography>
-                        <Typography variant="caption">You're all caught up.</Typography>
-                    </Box>
-                ) : (
-                    <List sx={{ width: '100%', bgcolor: 'transparent' }}>
-                        {notifications.map((notification) => (
-                            <Card 
-                                key={notification.id} 
-                                elevation={0}
-                                sx={{ 
-                                    mb: 2, 
-                                    border: '1px solid',
-                                    borderColor: notification.status === 'UNREAD' ? 'primary.light' : '#eee',
-                                    bgcolor: notification.status === 'UNREAD' ? '#f0f9ff' : 'white',
-                                    borderRadius: 3,
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                    '&:hover': { bgcolor: '#fafafa' }
-                                }}
-                                onClick={() => handleNotificationClick(notification)}
-                            >
-                                <CardContent sx={{ py: 2, '&:last-child': { pb: 2 } }}>
-                                    <Box sx={{ display: 'flex', gap: 2 }}>
-                                        <Avatar sx={{ bgcolor: 'white', border: '1px solid #eee' }}>
-                                            {getIcon(notification.type)}
-                                        </Avatar>
-                                        <Box sx={{ flexGrow: 1 }}>
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
-                                                <Typography variant="subtitle2" fontWeight={notification.status === 'UNREAD' ? 700 : 500}>
-                                                    {notification.title}
-                                                </Typography>
-                                                <Typography variant="caption" color="text.secondary">
-                                                    {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
-                                                </Typography>
-                                            </Box>
-                                            <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.3 }}>
-                                                {notification.message}
-                                            </Typography>
-                                            {notification.status === 'UNREAD' && (
-                                                <Chip label="New" size="small" color="primary" sx={{ height: 20, fontSize: '0.65rem', mt: 1 }} />
-                                            )}
-                                        </Box>
+            <Container sx={{ py: 3 }}>
+                <Typography variant="subtitle2" fontWeight={700} color="text.secondary" sx={{ mb: 2 }}>
+                    TODAY
+                </Typography>
+
+                <List sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {NOTIFICATIONS.map((item) => (
+                        <Paper 
+                            key={item.id}
+                            elevation={0}
+                            sx={{ 
+                                p: 2, 
+                                borderRadius: 1, 
+                                borderLeft: `4px solid ${getColor(item.type)}`,
+                                bgcolor: item.read ? '#FAFAFA' : 'white',
+                                boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
+                                transition: 'transform 0.2s',
+                                '&:hover': { transform: 'translateX(2px)' }
+                            }}
+                        >
+                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                                <Avatar sx={{ bgcolor: `${getColor(item.type)}15`, color: getColor(item.type), width: 40, height: 40, borderRadius: 1 }}>
+                                    {getIcon(item.type)}
+                                </Avatar>
+                                <Box sx={{ flex: 1 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                                        <Typography variant="subtitle2" fontWeight={700}>
+                                            {item.title}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            {format(item.time, 'h:mm a')}
+                                        </Typography>
                                     </Box>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </List>
-                )}
+                                    <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.4 }}>
+                                        {item.message}
+                                    </Typography>
+                                    {!item.read && (
+                                        <Chip label="NEW" size="small" color="error" sx={{ borderRadius: 0.5, height: 16, fontSize: '0.6rem', mt: 1, fontWeight: 700 }} />
+                                    )}
+                                </Box>
+                            </Box>
+                        </Paper>
+                    ))}
+                </List>
+
+                 <Box sx={{ textAlign: 'center', mt: 4 }}>
+                    <Typography variant="caption" color="text.secondary">
+                        No older notifications.
+                    </Typography>
+                 </Box>
+
             </Container>
         </Box>
     );

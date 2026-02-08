@@ -50,18 +50,23 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: false,
 
             login: async (email: string, password: string) => {
+                console.log('[AuthStore] Attempting login for:', email);
                 const response = await fetch('/api/auth/login', { // Using correct Auth Service port
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password }),
                 });
 
+                console.log('[AuthStore] Response status:', response.status);
+                
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
+                    console.error('[AuthStore] Login error:', errorData);
                     throw new Error(errorData.message || 'Login failed');
                 }
 
                 const data = await response.json();
+                console.log('[AuthStore] Login successful, user:', data.user?.email);
                 set({
                     user: data.user,
                     token: data.accessToken,

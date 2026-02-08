@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Box, Container, Typography, Card, Button, TextField, Grid, MenuItem, Stepper, Step, StepLabel, Checkbox, FormControlLabel, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { tripApi, CreateTripData } from '../api/trips';
 import { driverApi } from '../api/drivers';
 import { memberApi, MobilityRequirement } from '../api/members';
@@ -14,6 +14,13 @@ export default function CreateTripPage() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const user = useAuthStore((state) => state.user);
+    const [searchParams] = useSearchParams();
+    const urlDate = searchParams.get('date');
+    const todayStr = new Date().toISOString().split('T')[0];
+    
+    // Log Mode if date is in the past
+    const isLogMode = urlDate ? urlDate < todayStr : false;
+
     const [activeStep, setActiveStep] = useState(0);
     const [openMemberDialog, setOpenMemberDialog] = useState(false);
     
@@ -41,7 +48,14 @@ export default function CreateTripPage() {
         escortRelationship: '',
         driverId: '',
         vehicleId: '',
+        actualStartTime: '09:00',
+        actualEndTime: '10:00',
     });
+
+    // Initialize with URL date if present
+    if (urlDate && formData.date !== urlDate) {
+        setFormData(prev => ({ ...prev, date: urlDate }));
+    }
 
     const steps = ['Trip Details', 'Route & Schedule', 'Assignment'];
 
@@ -114,6 +128,24 @@ export default function CreateTripPage() {
                 return tripApi.createTripsBulk([outboundTrip, returnTrip]);
             }
 
+            if (isLogMode) {
+                 // Force status to COMPLETED and set timestamps
+                 const start = new Date(`${formData.date}T${formData.actualStartTime}`);
+                 const end = new Date(`${formData.date}T${formData.actualEndTime}`);
+                 
+                 const logPayload: CreateTripData = {
+                     ...outboundTrip,
+                     status: 'COMPLETED' as any,
+                     startedAt: start,
+                     completedAt: end,
+                     assignedDriverId: formData.driverId,
+                     assignedVehicleId: formData.vehicleId,
+                     // Ensure stops have arrival/departure times if needed, or backend handles it?
+                     // Backend (createTrip line 166) sets startedAt/completedAt on trip.
+                 };
+                 return tripApi.createTrip(logPayload);
+            }
+
             return tripApi.createTrip(outboundTrip);
         },
         onSuccess: () => {
@@ -156,7 +188,9 @@ export default function CreateTripPage() {
 
     return (
         <Container maxWidth="md" sx={{ py: 4 }}>
-            <Typography variant="h4" mb={4}>Schedule New Trip</Typography>
+            <Typography variant="h4" mb={4}>
+                {isLogMode ? 'Log Past Trip' : 'Schedule New Trip'}
+            </Typography>
 
             <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
                 {steps.map((label) => (
@@ -233,16 +267,45 @@ export default function CreateTripPage() {
                                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                label="Pickup Time"
-                                type="time"
-                                fullWidth
-                                InputLabelProps={{ shrink: true }}
-                                value={formData.time}
-                                onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                            />
-                        </Grid>
+                        
+                        {isLogMode ? (
+                            <>
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        label="Actual Start Time"
+                                        type="time"
+                                        fullWidth
+                                        InputLabelProps={{ shrink: true }}
+                                        value={formData.actualStartTime}
+                                        onChange={(e) => setFormData({ ...formData, actualStartTime: e.target.value })}
+                                        helperText="When the trip actually started"
+                                    />
+                                </Grid>
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        label="Actual End Time"
+                                        type="time"
+                                        fullWidth
+                                        InputLabelProps={{ shrink: true }}
+                                        value={formData.actualEndTime}
+                                        onChange={(e) => setFormData({ ...formData, actualEndTime: e.target.value })}
+                                        helperText="When the trip was completed"
+                                    />
+                                </Grid>
+                            </>
+                        ) : (
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    label="Pickup Time"
+                                    type="time"
+                                    fullWidth
+                                    InputLabelProps={{ shrink: true }}
+                                    value={formData.time}
+                                    onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                                />
+                            </Grid>
+                        )}
+
                         <Grid item xs={12}>
                             <FormControlLabel
                                 control={<Checkbox checked={formData.isRoundTrip} onChange={(e) => setFormData({ ...formData, isRoundTrip: e.target.checked })} />}
@@ -352,9 +415,12 @@ export default function CreateTripPage() {
                     <Button
                         variant="contained"
                         onClick={handleNext}
-                        disabled={activeStep === 0 && !formData.memberId}
+                        disabled={
+                            (activeStep === 0 && !formData.memberId) ||
+                            (activeStep === 2 && isLogMode && (!formData.driverId || !formData.vehicleId))
+                        }
                     >
-                        {activeStep === steps.length - 1 ? (createMutation.isPending ? 'Scheduling...' : 'Schedule Trip') : 'Next'}
+                        {activeStep === steps.length - 1 ? (createMutation.isPending ? (isLogMode ? 'Logging...' : 'Scheduling...') : (isLogMode ? 'Log Trip' : 'Schedule Trip')) : 'Next'}
                     </Button>
                 </Box>
             </Card>

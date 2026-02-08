@@ -10,7 +10,7 @@ import { User } from './entities/user.entity';
 import { Member } from './entities/member.entity';
 import { Driver } from './entities/driver.entity';
 import { Organization } from './entities/organization.entity';
-import { CreateTripDto, UpdateTripDto, TripResponseDto, MemberSignatureDto } from './dto/trip.dto';
+import { CreateTripDto, UpdateTripDto, TripResponseDto, MemberSignatureDto, CancelTripDto, MarkNoShowDto } from './dto/trip.dto';
 import { ActivityLogService } from './activity-log.service';
 import { ActivityType } from './entities/activity-log.entity';
 import { PdfService } from './pdf.service';
@@ -18,7 +18,7 @@ import { NotificationService } from './notification.service';
 import { BillingService } from './billing.service';
 import { TripReportBuilder, TripLegFactory } from './reporting/trip-report-service';
 import { PDFGenerator } from './reporting/trip-report-pdf';
-import { VehicleType as ReportVehicleType } from './reporting/trip-report-models';
+import { VehicleType as ReportVehicleType, SignatureMethod } from './reporting/trip-report-models';
 
 @Injectable()
 export class TripService {
@@ -75,6 +75,8 @@ export class TripService {
         return this.getTripById(tripId, organizationId);
     }
 
+    private readonly logger = new Logger(TripService.name);
+
     async createTrip(createTripDto: CreateTripDto, organizationId: string, userId: string): Promise<TripResponseDto> {
         try {
             // Create trip
@@ -104,41 +106,23 @@ export class TripService {
             }
 
             if (assignedDriverId) {
-                // Resolve User ID to Driver ID if necessary
-                const driverRows = await this.userRepository.query('SELECT id FROM drivers WHERE user_id = $1', [assignedDriverId]);
-                const driver = driverRows.length > 0 ? { id: driverRows[0].id } : null;
-                if (driver) {
-                     assignedDriverId = driver.id; // It was a User ID
-                } else {
-                     // Maybe it is already a driver ID?
-                     const driverById = await this.userRepository.manager.findOne(Driver, { where: { id: assignedDriverId } });
-                     if (!driverById) {
-                         // Fallback check
-                         const user = await this.userRepository.findOne({ where: { id: createTripDto.assignedDriverId } });
-                         if (!user) throw new BadRequestException('Assigned driver user not found');
-                         if (!user.isActive) throw new BadRequestException('Driver user is not active');
-                         
-                         // If user exists but no driver profile, we can't assign to trip if FK expects driver_id.
-                         // But if we return user.id (which assumes NO FK enforcement or User ID matches), we fail.
-                         // Let's create a driver profile relative to user? No.
-                         throw new BadRequestException('User exists but has no Driver profile');
-                     }
-                     // It is a driver ID
+                const driver = await this.driverRepository.findOne({ 
+                    where: { id: assignedDriverId },
+                    relations: ['user']
+                });
+
+                if (!driver) {
+                    throw new BadRequestException('Assigned driver not found');
                 }
-            }
-            
-            if (createTripDto.assignedDriverId && !assignedVehicleId) {
-                // Note: We used createTripDto.assignedDriverId (User ID) to check User for vehicle.
-                // But User.defaultVehicleId is what we want.
-                // The original code did:
-                const user = await this.userRepository.findOne({ where: { id: createTripDto.assignedDriverId } });
-                if (user) {
-                    if (!user.isActive) {
-                         throw new BadRequestException('Cannot assign a non-active or non-compliant driver');
-                    }
-                    if (user.defaultVehicleId) {
-                        assignedVehicleId = user.defaultVehicleId;
-                    }
+                
+                // Check user active status if available
+                if (driver.user && !driver.user.isActive) {
+                    throw new BadRequestException('Assigned driver user is not active');
+                }
+
+                // Auto-assign vehicle from driver if not provided
+                if (!assignedVehicleId && driver.assignedVehicleId) {
+                    assignedVehicleId = driver.assignedVehicleId;
                 }
             }
 
@@ -156,7 +140,7 @@ export class TripService {
                 escortRelationship: createTripDto.escortRelationship,
                 reportStatus: ReportStatus.PENDING,
                 mobilityRequirement: createTripDto.mobilityRequirement || MobilityRequirement.AMBULATORY,
-                mobilityRequirement: createTripDto.mobilityRequirement || MobilityRequirement.AMBULATORY,
+
                 createdById: userId,
                 startedAt: createTripDto.startedAt,
                 completedAt: createTripDto.completedAt,
@@ -215,7 +199,7 @@ export class TripService {
 
             return this.getTripById(savedTrip.id, organizationId);
         } catch (error) {
-            console.error('[CREATE TRIP ERROR]', error);
+            this.logger.error('[CREATE TRIP ERROR]', error.stack);
             throw new BadRequestException(`Failed to create trip: ${error.message}`);
         }
     }
@@ -270,8 +254,6 @@ export class TripService {
             stops: trip.tripStops || [],
             members: trip.tripMembers || [],
             reports: trip.tripReports || [],
-            mobilityRequirement: trip.mobilityRequirement,
-            createdAt: trip.createdAt,
             mobilityRequirement: trip.mobilityRequirement,
             createdAt: trip.createdAt,
             startedAt: trip.startedAt,
@@ -335,20 +317,13 @@ export class TripService {
             reports: trip.tripReports || [],
             mobilityRequirement: trip.mobilityRequirement,
             createdAt: trip.createdAt,
-            mobilityRequirement: trip.mobilityRequirement,
-            createdAt: trip.createdAt,
             startedAt: trip.startedAt,
             completedAt: trip.completedAt,
         }));
     }
 
     async getDriverTrips(driverId: string, organizationId: string): Promise<TripResponseDto[]> {
-        // Resolve User ID to Driver ID if necessary
-        let resolvedDriverId = driverId;
-        const driver = await this.userRepository.manager.findOne(Driver, { where: { userId: driverId } });
-        if (driver) {
-            resolvedDriverId = driver.id;
-        }
+        const resolvedDriverId = driverId;
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -386,8 +361,6 @@ export class TripService {
             reports: trip.tripReports || [],
             mobilityRequirement: trip.mobilityRequirement,
             createdAt: trip.createdAt,
-            mobilityRequirement: trip.mobilityRequirement,
-            createdAt: trip.createdAt,
             startedAt: trip.startedAt,
             completedAt: trip.completedAt,
         }));
@@ -413,31 +386,27 @@ export class TripService {
 
         // Compliance Guard: Verify driver is active if being assigned
         if (updateTripDto.assignedDriverId) {
-            const driver = await this.userRepository.findOne({ where: { id: updateTripDto.assignedDriverId } });
-            if (!driver || !driver.isActive) {
-                throw new BadRequestException('Driver must be active and approved to be assigned to a trip');
+            const driver = await this.driverRepository.findOne({ 
+                where: { id: updateTripDto.assignedDriverId },
+                relations: ['user']
+            });
+            
+            if (!driver) {
+                throw new BadRequestException('Driver not found');
             }
-        }
-
-        if (updateTripDto.assignedDriverId) {
-            let driverId = updateTripDto.assignedDriverId;
-            const driverByUserId = await this.userRepository.manager.findOne(Driver, { where: { userId: driverId } });
-            if (driverByUserId) {
-                driverId = driverByUserId.id;
+            if (driver.user && !driver.user.isActive) {
+                throw new BadRequestException('Driver must be active and approved to be assigned to a trip');
             }
 
             // Check if driverId differs from current
-            if (driverId !== trip.assignedDriverId) {
-                 const driver = await this.userRepository.findOne({ where: { id: updateTripDto.assignedDriverId } }); // Log uses User details
+            if (updateTripDto.assignedDriverId !== trip.assignedDriverId) {
                  await this.activityLogService.log(
                     ActivityType.SYSTEM,
-                    `Trip #${trip.id.slice(0, 8)} assigned to ${driver?.firstName} ${driver?.lastName}`,
+                    `Trip #${trip.id.slice(0, 8)} assigned to ${driver.user?.firstName || 'Driver'} ${driver.user?.lastName || ''}`,
                     organizationId,
                     { tripId: trip.id, driverId: updateTripDto.assignedDriverId }
                  );
             }
-            // Update the ID to the real Driver ID
-            updateTripDto.assignedDriverId = driverId;
         }
 
         // Validate status transitions
@@ -571,17 +540,7 @@ export class TripService {
         }
     }
 
-    async verifyReport(tripId: string, userId: string, organizationId: string): Promise<TripResponseDto> {
-        const trip = await this.findOne(tripId);
-        if (trip.organizationId !== organizationId) throw new ForbiddenException();
 
-        trip.reportStatus = ReportStatus.VERIFIED;
-        trip.reportVerifiedAt = new Date();
-        trip.reportVerifiedBy = userId;
-        await this.tripRepository.save(trip);
-
-        return this.getTripById(tripId, organizationId);
-    }
 
     async rejectReport(tripId: string, reason: string, userId: string, organizationId: string): Promise<TripResponseDto> {
         const trip = await this.findOne(tripId);
@@ -747,7 +706,7 @@ export class TripService {
         tripId: string, 
         organizationId: string, 
         userId: string, 
-        reportPayload: { tripData: any, signatureData: any }
+        reportPayload: { tripData: any, signatureData: any, pdfPath?: string }
     ): Promise<TripResponseDto> {
         // 1. Fetch Full Trip Details
         const trip = await this.tripRepository.findOne({ 
@@ -794,7 +753,7 @@ export class TripService {
         // -- Vehicle --
         if (trip.assignedVehicle) {
             builder.withVehicle({
-                fleetId: trip.assignedVehicle.fleetId || 'N/A',
+                fleetId: trip.assignedVehicle.vehicleNumber || 'N/A',
                 make: trip.assignedVehicle.make || 'Unknown',
                 color: trip.assignedVehicle.color || 'White',
                 type: ReportVehicleType.WHEELCHAIR_VAN // Defaulting to Van, should map from trip.assignedVehicle.type
@@ -813,7 +772,7 @@ export class TripService {
         const member = trip.tripMembers?.[0]?.member;
         if (member) {
             builder.withMember({
-                ahcccsId: member.ahcccsId || 'MISSING',
+                ahcccsId: member.memberId || 'MISSING',
                 name: `${member.firstName} ${member.lastName}`,
                 dateOfBirth: member.dateOfBirth ? new Date(member.dateOfBirth) : new Date('1970-01-01'),
                 mailingAddress: {
@@ -860,18 +819,35 @@ export class TripService {
 
         // -- Signatures --
         if (reportPayload.signatureData) {
-            if (reportPayload.signatureData.driver) {
-                builder.withDriverSignature({
-                    name: 'Driver Signature', // Should be actual name
-                    method: 'DIGITAL',
-                    timestamp: new Date(),
-                    signatureBase64: reportPayload.signatureData.driver
-                });
+            let driverSignature = reportPayload.signatureData.driver;
+            
+            // Auto-apply saved signature if missing in payload
+            if (!driverSignature && trip.assignedDriver?.savedSignature) {
+                driverSignature = trip.assignedDriver.savedSignature;
+                console.log('Auto-applying saved driver signature');
+            } else if (!driverSignature && trip.assignedDriver?.user?.signatureUrl) {
+                driverSignature = trip.assignedDriver.user.signatureUrl;
+                console.log('Auto-applying user profile signature');
             }
+
+            if (driverSignature) {
+                builder.withDriverSignature({
+                    name: driverName, // Use resolved driver name
+                    method: SignatureMethod.PROVIDER_SIGNATURE,
+                    timestamp: new Date(),
+                    signatureBase64: driverSignature
+                });
+                
+                // Ensure it's passed into the report entity below
+                if (!reportPayload.signatureData.driver) {
+                    reportPayload.signatureData.driver = driverSignature;
+                }
+            }
+
             if (reportPayload.signatureData.member) {
                 builder.withMemberSignature({
                     name: member ? `${member.firstName} ${member.lastName}` : 'Member',
-                    method: 'DIGITAL',
+                    method: SignatureMethod.MEMBER_SIGNATURE,
                     timestamp: new Date(),
                     signatureBase64: reportPayload.signatureData.member
                 });
@@ -971,7 +947,7 @@ export class TripService {
                 driverName: trip.assignedDriver?.user ? `${trip.assignedDriver.user.firstName} ${trip.assignedDriver.user.lastName}` : 'Unassigned',
             });
         } catch (e) {
-            console.error("Failed to send notification", e);
+            this.logger.error("Failed to send notification", e.stack);
         }
 
         return this.getTripById(trip.id, organizationId);
@@ -1021,7 +997,7 @@ export class TripService {
         // -- Vehicle --
         if (trip.assignedVehicle) {
             builder.withVehicle({
-                fleetId: trip.assignedVehicle.fleetId || 'N/A',
+                fleetId: trip.assignedVehicle.vehicleNumber || 'N/A',
                 make: trip.assignedVehicle.make || 'Unknown',
                 color: trip.assignedVehicle.color || 'White',
                 type: ReportVehicleType.WHEELCHAIR_VAN
@@ -1041,7 +1017,7 @@ export class TripService {
 
         if (member) {
             builder.withMember({
-                ahcccsId: member.ahcccsId || 'MISSING',
+                ahcccsId: member.memberId || 'MISSING',
                 name: `${member.firstName} ${member.lastName}`,
                 dateOfBirth: member.dateOfBirth ? new Date(member.dateOfBirth) : new Date('1970-01-01'),
                 mailingAddress: {
@@ -1074,11 +1050,11 @@ export class TripService {
             undefined
         );
         // Calculate miles if report entity has it, else diff odometers
-        if (reportEntity?.totalMiles) {
-            leg.tripMiles = reportEntity.totalMiles;
-        } else if (reportEntity?.endOdometer && reportEntity?.startOdometer) {
-            leg.tripMiles = reportEntity.endOdometer - reportEntity.startOdometer;
-        }
+        // if (reportEntity?.totalMiles) {
+        //     leg.tripMiles = reportEntity.totalMiles;
+        // } else if (reportEntity?.endOdometer && reportEntity?.startOdometer) {
+        //     leg.tripMiles = reportEntity.endOdometer - reportEntity.startOdometer;
+        // }
 
         builder.addTripLeg(leg);
 
@@ -1098,12 +1074,19 @@ export class TripService {
         }
         
         // Driver signature
-        if (reportEntity?.driverSignature) {
+        let driverSig = reportEntity?.driverSignature;
+        if (!driverSig && trip.assignedDriver?.savedSignature) {
+            driverSig = trip.assignedDriver.savedSignature;
+        } else if (!driverSig && trip.assignedDriver?.user?.signatureUrl) {
+            driverSig = trip.assignedDriver.user.signatureUrl;
+        }
+
+        if (driverSig) {
             builder.withDriverSignature({
                 name: driverName,
                 method: SignatureMethod.PROVIDER_SIGNATURE,
                 timestamp: reportEntity?.driverAttestedAt || new Date(),
-                signatureBase64: reportEntity.driverSignature
+                signatureBase64: driverSig
             });
         } else {
             builder.withDriverSignature({

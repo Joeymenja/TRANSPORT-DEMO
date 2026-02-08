@@ -1,424 +1,171 @@
-import { Box, Container, CircularProgress, Paper, Button, Typography, IconButton } from '@mui/material';
-import { ArrowBack } from '@mui/icons-material';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { tripApi } from '../../api/trips';
-import { useState } from 'react';
-import { useAuthStore } from '../../store/auth';
-import PreTripChecklist from '../../components/driver/execution/PreTripChecklist';
-import ActiveNavigation from '../../components/driver/execution/ActiveNavigation';
-import PickupWorkflow from '../../components/driver/execution/PickupWorkflow';
-import DropoffWorkflow from '../../components/driver/execution/DropoffWorkflow';
-import TripSummary from '../../components/driver/execution/TripSummary';
-import TripReportForm from '../../components/driver/TripReportForm';
+import { format } from 'date-fns';
+import { 
+  ArrowLeft, 
+  Navigation, 
+  MapPin, 
+  CheckCircle2, 
+  RefreshCw, 
+  ChevronRight,
+  ShieldCheck,
+  Zap,
+  Phone,
+  MessageSquare
+} from 'lucide-react';
 import DriverMap from '../../components/dashboard/DriverMap';
 
-// Trip Execution States
-type ExecutionState = 'LOADING' | 'PRE_TRIP' | 'EN_ROUTE_PICKUP' | 'AT_PICKUP' | 'EN_ROUTE_DROPOFF' | 'AT_DROPOFF' | 'TRIP_REPORT' | 'COMPLETED';
+export default function TripExecutionPage() {
+  const { tripId } = useParams();
+  const navigate = useNavigate();
 
-// Factory Step Component
-const TripStep = ({ label, status, onClick }: { label: string, status: 'PENDING' | 'ACTIVE' | 'COMPLETED', onClick?: () => void }) => (
-    <Box 
-        onClick={onClick}
-        sx={{ 
-            flex: 1, 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center', 
-            opacity: status === 'PENDING' ? 0.3 : 1,
-            position: 'relative'
-        }}
-    >
-        <Box sx={{ 
-            width: 32, 
-            height: 32, 
-            borderRadius: '50%', 
-            bgcolor: status === 'COMPLETED' ? '#4CAF50' : status === 'ACTIVE' ? '#2196F3' : '#9E9E9E',
-            color: 'white',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            mb: 0.5,
-            fontWeight: 700
-        }}>
-           {status === 'COMPLETED' ? '✓' : ''}
-        </Box>
-        <Typography variant="caption" sx={{ fontWeight: 700, color: status === 'ACTIVE' ? '#2196F3' : '#666' }}>
-            {label}
-        </Typography>
-    </Box>
-);
+  const { data: trip, isLoading } = useQuery({
+    queryKey: ['trip', tripId],
+    queryFn: () => tripApi.getTripById(tripId!),
+    enabled: !!tripId,
+  });
 
-// Helper for Smart Map Launch (iOS vs Google)
-const openMapApp = (address: string) => {
+  const [isSynced, setIsSynced] = useState(true);
+
+  if (!trip) return (
+    <div className="flex items-center justify-center h-screen bg-gray-50">
+      <RefreshCw className="animate-spin text-teal-500" size={32} />
+    </div>
+  );
+
+  const pickup = trip.stops?.find((s: any) => s.stopType === 'PICKUP');
+  const dropoff = trip.stops?.find((s: any) => s.stopType === 'DROPOFF');
+  const firstMember = trip.members?.[0]?.member;
+
+  const openMapApp = (address: string) => {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const destination = encodeURIComponent(address);
-    
     if (isIOS) {
-        window.location.href = `maps://?daddr=${destination}`;
+      window.location.href = `maps://?daddr=${destination}`;
     } else {
-        window.open(`https://www.google.com/maps/dir/?api=1&destination=${destination}`, '_blank');
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${destination}`, '_blank');
     }
-};
+  };
 
-export default function TripExecutionPage() {
-    const { tripId } = useParams();
-    const navigate = useNavigate();
-    const queryClient = useQueryClient();
+  return (
+    <div className="h-screen w-full bg-gray-50 flex flex-col overflow-hidden font-sans">
+      
+      {/* Map & Header Area */}
+      <div className="h-[45%] relative border-b border-gray-100">
+        <div className="absolute top-0 left-0 right-0 p-6 z-20 flex justify-between items-center pointer-events-none">
+          <button 
+            onClick={() => navigate('/driver/stitch')} 
+            className="p-3.5 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-white/50 active:scale-95 transition-all pointer-events-auto"
+          >
+            <ArrowLeft size={22} className="text-gray-900" />
+          </button>
+          
+          <div className="flex items-center gap-2 bg-white/95 backdrop-blur-md px-4 py-2 rounded-full shadow-xl border border-white/50 pointer-events-auto">
+             <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+             <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">
+                Synced Ops Hub
+             </span>
+          </div>
+        </div>
+        
+        <DriverMap activeTrip={trip} showNavigation={true} />
+        
+        <div className="absolute inset-0 bg-gradient-to-t from-gray-50 via-transparent to-transparent pointer-events-none" />
+      </div>
 
-    // In a real app, we would derive this from trip.status and internal flags
-    const [viewState, setViewState] = useState<ExecutionState>('PRE_TRIP');
+      {/* Floating Mission Card */}
+      <div className="flex-1 -mt-12 relative z-30 px-6 pb-10 flex flex-col">
+        <div className="bg-white rounded-[48px] shadow-[0_20px_60px_rgba(0,0,0,0.08)] border border-gray-100 flex flex-col flex-1 overflow-hidden">
+          
+          {/* Mission Header */}
+          <div className="p-8 pb-4 text-center">
+             <div className="w-12 h-1 bg-gray-100 rounded-full mx-auto mb-6" />
+             <h3 className="text-[10px] font-black text-teal-500 uppercase tracking-[0.3em] mb-1">Active Mission Directive</h3>
+             <p className="text-2xl font-black text-gray-900 tracking-tight">Priority Medical Pickup</p>
+          </div>
 
-    // Trip Data State
-    const [tripReport, setTripReport] = useState({
-        startOdometer: 0,
-        endOdometer: 0,
-        notes: '',
-        signature: null as string | null,
-        driverSignature: null as string | null
-    });
-
-    const { data: trip, isLoading } = useQuery({
-        queryKey: ['trip', tripId],
-        queryFn: () => tripApi.getTripById(tripId!),
-        enabled: !!tripId,
-    });
-    
-    // Sync view state with trip status
-    const [initialized, setInitialized] = useState(false);
-    
-    if (trip && !initialized) {
-        setInitialized(true);
-        if (trip.status === 'IN_PROGRESS') {
-             const pickup = trip.stops.find((s: any) => s.stopType === 'PICKUP');
-             const dropoff = trip.stops.find((s: any) => s.stopType === 'DROPOFF');
+          {/* Timeline */}
+          <div className="flex-1 overflow-y-auto px-8 py-4 space-y-10">
              
-             if (pickup?.actualDepartureTime) {
-                 if (dropoff?.actualArrivalTime) {
-                     setViewState('AT_DROPOFF');
-                 } else {
-                     setViewState('EN_ROUTE_DROPOFF');
-                 }
-             } else if (pickup?.actualArrivalTime) {
-                 setViewState('AT_PICKUP');
-             } else {
-                 setViewState('EN_ROUTE_PICKUP');
-             }
-        }
-    }
+             {/* Pickup Point */}
+             <div className="flex gap-6">
+                <div className="flex flex-col items-center">
+                   <div className="w-14 h-14 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center border border-teal-100 shadow-sm relative z-10">
+                      <MapPin size={24} />
+                   </div>
+                   <div className="w-1 h-20 bg-teal-50 -mt-2 border-x border-teal-50/20" />
+                </div>
+                <div className="pt-2 flex-1 min-w-0">
+                   <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-black text-teal-400 uppercase tracking-widest">Pickup • {format(new Date(pickup?.scheduledTime), 'h:mm a')}</span>
+                   </div>
+                   <h4 className="text-lg font-black text-gray-900 truncate tracking-tight">{pickup?.address?.split(',')[0]}</h4>
+                   <p className="text-[11px] font-bold text-gray-400 leading-snug mt-1">
+                      Passenger: <span className="text-gray-600">{firstMember?.firstName} {firstMember?.lastName}</span><br/>
+                      Mobility: <span className="text-gray-600">{trip.mobilityRequirement}</span>
+                   </p>
+                </div>
+             </div>
 
-    const startTripMutation = useMutation({
-        mutationFn: () => tripApi.startTrip(tripId!),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['trip', tripId] });
-            setViewState('EN_ROUTE_PICKUP');
-        },
-        onError: (error) => {
-            console.error('Failed to start trip:', error);
-            alert('Failed to start trip. Please try again.');
-        }
-    });
+             {/* Actions Container */}
+             <div className="pl-[70px] -mt-6">
+                <div className="flex flex-col gap-3">
+                   <button 
+                     onClick={() => openMapApp(pickup?.address)}
+                     className="w-full bg-gray-900 text-white rounded-[24px] py-6 font-black text-xs uppercase tracking-widest shadow-2xl flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
+                   >
+                     <Navigation size={18} className="text-teal-400" />
+                     Initiate Tactical Guidance
+                   </button>
+                   
+                   <button 
+                     onClick={() => navigate(`/driver/trips/${tripId}/arrived`)}
+                     className="w-full bg-white border-2 border-gray-900 text-gray-900 rounded-[24px] py-6 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
+                   >
+                     <Zap size={18} className="text-teal-500" />
+                     Broadcast Arrival Status
+                   </button>
+                </div>
+             </div>
 
-    const arriveStopMutation = useMutation({
-        mutationFn: async (stopId: string) => {
-            return new Promise((resolve) => {
-                if ('geolocation' in navigator) {
-                    navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                             resolve(tripApi.arriveAtStop(tripId!, stopId, { 
-                                 lat: position.coords.latitude, 
-                                 lng: position.coords.longitude 
-                             }));
-                        },
-                        (error) => {
-                             console.warn("Geolocation failed, using mock:", error);
-                             resolve(tripApi.arriveAtStop(tripId!, stopId, { lat: 33.4, lng: -112.0 }));
-                        }
-                    );
-                } else {
-                     resolve(tripApi.arriveAtStop(tripId!, stopId, { lat: 33.4, lng: -112.0 }));
-                }
-            });
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['trip', tripId] });
-            if (viewState === 'EN_ROUTE_PICKUP') setViewState('AT_PICKUP');
-            if (viewState === 'EN_ROUTE_DROPOFF') setViewState('AT_DROPOFF');
-        }
-    });
+             {/* Dropoff Point (Peek) */}
+             <div className="flex gap-6 opacity-40 grayscale">
+                <div className="flex flex-col items-center">
+                   <div className="w-14 h-14 bg-gray-100 text-gray-400 rounded-2xl flex items-center justify-center border border-gray-200">
+                      <CheckCircle2 size={24} />
+                   </div>
+                </div>
+                <div className="pt-2 flex-1 min-w-0">
+                   <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Drop-off • {format(new Date(dropoff?.scheduledTime), 'h:mm a')}</span>
+                   </div>
+                   <h4 className="text-lg font-black text-gray-900 truncate tracking-tight">{dropoff?.address?.split(',')[0]}</h4>
+                </div>
+             </div>
 
-    const completeStopMutation = useMutation({
-        mutationFn: ({ stopId, odometer }: { stopId: string, odometer?: number }) =>
-            tripApi.completeStop(tripId!, stopId, odometer),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['trip', tripId] });
-        }
-    });
+          </div>
 
-    const signatureMutation = useMutation({
-        mutationFn: ({ memberId, data, proxyData }: { memberId: string, data: string, proxyData?: any }) =>
-            tripApi.saveSignature(tripId!, memberId, data, proxyData),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trip', tripId] })
-    });
-
-    const completeTripMutation = useMutation({
-        mutationFn: () => tripApi.completeTrip(tripId!),
-        onSettled: () => {
-            console.log('[TripExecution] Trip settled, returning to dashboard');
-            navigate('/driver');
-        }
-    });
-
-
-    const submitReportMutation = useMutation({
-        mutationFn: ({ reportData, pdfBlob }: { reportData: any, pdfBlob: Blob }) =>
-            tripApi.submitReport(tripId!, reportData, pdfBlob),
-        onSuccess: () => {
-             setViewState('COMPLETED');
-             queryClient.invalidateQueries({ queryKey: ['trip', tripId] });
-        },
-        onError: (err) => {
-            console.error('Failed to submit report', err);
-            alert('Failed to save report. Please try again.');
-        }
-    });
-
-    const userAuth = useAuthStore(state => state.user);
-
-    if (isLoading || !trip) return <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>;
-
-    const pickupStop = trip.stops?.find((s: any) => s.stopType === 'PICKUP');
-    const dropoffStop = trip.stops?.find((s: any) => s.stopType === 'DROPOFF');
-    const firstMember = trip.members?.[0]?.member;
-    const signingMemberId = trip.members?.[0]?.memberId;
-    
-    const clientName = firstMember ? `${firstMember.firstName} ${firstMember.lastName}` : 'Unknown Client';
-    const clientAhcccsId = firstMember?.ahcccsId || '';
-    const clientDob = firstMember?.dob || '';
-    const clientAddress = firstMember?.address || '';
-
-    const handleSignatureSave = (data: { signatureBase64: string; isProxy?: boolean; proxySignerName?: string; proxyRelationship?: string; proxyReason?: string }) => {
-        if (signingMemberId) {
-            signatureMutation.mutate({
-                memberId: signingMemberId,
-                data: data.signatureBase64,
-                proxyData: data.isProxy ? {
-                    isProxy: data.isProxy,
-                    proxySignerName: data.proxySignerName,
-                    proxyRelationship: data.proxyRelationship,
-                    proxyReason: data.proxyReason
-                } : undefined
-            });
-        }
-    };
-
-    return (
-        <Box sx={{ height: '100vh', width: '100vw', bgcolor: '#e5e3df', position: 'relative', overflow: 'hidden' }}>
-            {/* Header Overlay - Clear Navigation */}
-            <Box sx={{ 
-                position: 'absolute', 
-                top: 0, 
-                left: 0, 
-                right: 0, 
-                p: 2, 
-                pt: 8, // Safe area distance + extra padding
-                zIndex: 2000, 
-                display: 'flex', 
-                alignItems: 'center' 
-            }}>
-                 <IconButton 
-                    onClick={() => {
-                        console.log('[TripExecution] Back to Dashboard');
-                        navigate('/driver');
-                    }}
-                    sx={{ 
-                        bgcolor: 'white', 
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)', 
-                        '&:hover': { bgcolor: '#f5f5f5' },
-                        zIndex: 2001
-                    }}
-                 >
-                    <ArrowBack />
-                 </IconButton>
-            </Box>
-
-
-            {/* Background Map - Real */}
-            <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}>
-                 <DriverMap activeTrip={trip} />
-            </Box>
-
-            {/* Bottom Sheet Container */}
-            <Paper
-                elevation={6}
-                sx={{
-                    position: 'absolute',
-                    top: '25%', // Increased visible map area
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    bgcolor: 'white',
-                    borderRadius: '24px 24px 0 0',
-                    zIndex: 10,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    overflow: 'hidden' // Manage overflow in children
-                }}
-            >
-                <Container maxWidth="sm" sx={{ 
-                    height: '100%', 
-                    display: 'flex', 
-                    flexDirection: 'column',
-                    p: '0 !important' // Override default padding to handle scrolling internally
-                }}>
-                    {/* Stepped Progress Indicator - Fixed Header */}
-                    <Box sx={{ 
-                        p: 3, 
-                        pb: 2,
-                        bgcolor: 'white',
-                        zIndex: 20
-                    }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', position: 'relative' }}>
-                            <Box sx={{ position: 'absolute', top: 16, left: 40, right: 40, height: 2, bgcolor: '#e0e0e0', zIndex: -1 }} />
-                            
-                            <TripStep label="START" status={viewState === 'PRE_TRIP' ? 'ACTIVE' : 'COMPLETED'} />
-                            <TripStep label="PICKUP" status={['PRE_TRIP', 'EN_ROUTE_PICKUP'].includes(viewState) ? 'PENDING' : viewState === 'AT_PICKUP' ? 'ACTIVE' : 'COMPLETED'} />
-                            <TripStep label="DROPOFF" status={['PRE_TRIP', 'EN_ROUTE_PICKUP', 'AT_PICKUP', 'EN_ROUTE_DROPOFF'].includes(viewState) ? 'PENDING' : viewState === 'AT_DROPOFF' ? 'ACTIVE' : 'COMPLETED'} />
-                            <TripStep label="FINISH" status={viewState === 'COMPLETED' ? 'COMPLETED' : ['TRIP_REPORT', 'COMPLETED'].includes(viewState) ? 'ACTIVE' : 'PENDING'} />
-                        </Box>
-                    </Box>
-
-                    <Box sx={{ 
-                        flex: 1, 
-                        overflowY: 'auto',
-                        position: 'relative',
-                        px: 3,
-                        pb: 4 
-                    }}>
-                        {viewState === 'PRE_TRIP' && (
-                            <PreTripChecklist
-                                lastOdometer={trip.assignedVehicle?.odometer || 0}
-                                onCancel={() => navigate('/driver')}
-                                onComplete={(data) => {
-                                    setTripReport(prev => ({ ...prev, startOdometer: data.odometer }));
-                                    startTripMutation.mutate();
-                                }}
-                            />
-                        )}
-
-                        {viewState === 'EN_ROUTE_PICKUP' && (
-                            <ActiveNavigation
-                                destinationAddress={pickupStop?.address || 'Unknown'}
-                                destinationType="PICKUP"
-                                clientName={clientName}
-                                onNavigate={() => {
-                                    openMapApp(pickupStop?.address || '');
-                                }}
-                                onArrive={() => arriveStopMutation.mutate(pickupStop?.id)}
-                            />
-                        )}
-
-                        {viewState === 'AT_PICKUP' && (
-                            <PickupWorkflow
-                                clientName={clientName}
-                                onConfirmPickup={() => {
-                                    completeStopMutation.mutate({ stopId: pickupStop?.id }, {
-                                        onSuccess: () => setViewState('EN_ROUTE_DROPOFF')
-                                    });
-                                }}
-                                onNoShow={(data) => {
-                                    console.log('No Show:', data);
-                                    navigate('/driver');
-                                }}
-                            />
-                        )}
-
-                        {viewState === 'EN_ROUTE_DROPOFF' && (
-                            <ActiveNavigation
-                                destinationAddress={dropoffStop?.address || 'Unknown'}
-                                destinationType="DROPOFF"
-                                clientName={clientName}
-                                onNavigate={() => {
-                                    openMapApp(dropoffStop?.address || '');
-                                }}
-                                onArrive={() => arriveStopMutation.mutate(dropoffStop?.id)}
-                            />
-                        )}
-
-                        {viewState === 'AT_DROPOFF' && (
-                            <DropoffWorkflow
-                                trip={trip}
-                                startOdometer={tripReport.startOdometer}
-                                onComplete={(data) => {
-                                    setTripReport(prev => ({
-                                        ...prev,
-                                        endOdometer: data.odometer,
-                                        notes: data.notes,
-                                        signature: data.signature,
-                                        driverSignature: data.driverSignature || null
-                                    }));
-                                    handleSignatureSave({
-                                        signatureBase64: data.signature
-                                    });
-                                    // TODO: Save driver signature too if API supports it here, but it's handled in final report submit too
-                                    completeStopMutation.mutate({
-                                        stopId: dropoffStop?.id,
-                                        odometer: data.odometer
-                                    }, {
-                                        onSuccess: () => setViewState('TRIP_REPORT')
-                                    });
-                                }}
-                            />
-                        )}
-
-                        {viewState === 'TRIP_REPORT' && (
-                            <TripReportForm
-                                tripData={{
-                                    id: trip.id,
-                                    memberId: signingMemberId,
-                                    memberName: clientName,
-                                    memberAhcccsId: clientAhcccsId,
-                                    memberDOB: clientDob,
-                                    memberAddress: clientAddress,
-                                    pickupAddress: pickupStop?.address || '',
-                                    dropoffAddress: dropoffStop?.address || '',
-                                    vehicleId: trip.assignedVehicle?.vehicleNumber || 'FLEET-101',
-                                    vehicleMake: trip.assignedVehicle?.make || 'Toyota',
-                                    vehicleColor: trip.assignedVehicle?.color || 'White'
-                                }}
-                                driverInfo={{
-                                    id: userAuth?.id || 'DRIVER-001',
-                                    name: userAuth ? `${userAuth.firstName} ${userAuth.lastName}` : 'John Driver'
-                                }}
-                                startOdometer={tripReport.startOdometer}
-                                initialSignatures={{
-                                    member: tripReport.signature,
-                                    driver: tripReport.driverSignature
-                                }}
-                                onSubmit={(data) => {
-                                    if (data.pdfBlob) {
-                                        submitReportMutation.mutate({
-                                            reportData: data,
-                                            pdfBlob: data.pdfBlob
-                                        });
-                                    } else {
-                                        alert("PDF not generated");
-                                    }
-                                }}
-                                onCancel={() => setViewState('AT_DROPOFF')}
-                            />
-                        )}
-
-                        {viewState === 'COMPLETED' && (
-                            <TripSummary
-                                startOdometer={tripReport.startOdometer}
-                                endOdometer={tripReport.endOdometer}
-                                notes={tripReport.notes}
-                                signature={tripReport.signature}
-                                onSubmit={() => completeTripMutation.mutate()}
-                            />
-                        )}
-                    </Box>
-                </Container>
-            </Paper>
-        </Box>
-    );
+          {/* HUD Footer */}
+          <div className="p-8 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+             <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center justify-center text-teal-500">
+                   <ShieldCheck size={24} />
+                </div>
+                <div>
+                   <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Compliance Status</h5>
+                   <p className="text-xs font-black text-gray-900 uppercase">Sector Verified</p>
+                </div>
+             </div>
+             
+             <button className="flex items-center gap-2 p-3.5 bg-white rounded-2xl border border-gray-100 shadow-sm text-gray-400">
+                <MessageSquare size={20} />
+             </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

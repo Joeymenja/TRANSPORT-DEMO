@@ -156,6 +156,7 @@ export interface SignatureData {
   method: SignatureMethod;
   timestamp: Date;
   signatureImageUrl?: string; // Path to digital signature capture
+  signatureBase64?: string; // Base64 signature data
   fingerprint?: string; // Base64 fingerprint image if applicable
   signingRole: "member" | "attendant" | "escort" | "guardian" | "parent" | "provider";
 }

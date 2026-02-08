@@ -6,7 +6,9 @@ import { ReportService } from './report.service';
 import { CreateTripDto, UpdateTripDto, TripResponseDto, UpdateStopDto, MemberSignatureDto, CancelTripDto, MarkNoShowDto } from './dto/trip.dto';
 import { Response } from 'express';
 
-// Simple auth guard that extracts user from header (will be replaced with real JWT guard)
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+
+@UseGuards(JwtAuthGuard)
 @Controller('trips')
 export class TripController {
     constructor(

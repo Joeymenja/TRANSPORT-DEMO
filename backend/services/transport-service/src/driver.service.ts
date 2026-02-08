@@ -116,18 +116,21 @@ export class DriverService {
         const user = await this.userRepository.findOne({ where: { id: userId } });
         if (!user) throw new NotFoundException('User not found');
 
-        user.signatureUrl = signatureUrl;
+        // Update User
         user.signatureUrl = signatureUrl;
         const savedUser = await this.userRepository.save(user);
 
-        // We need organizationId but User entity might not have it loaded cleanly or we rely on the context.
-        // But here we only have userId. Let's fetch the driver profile to get Org ID, or use user.organizationId if we had it.
-        // The earlier findOne didn't load relations. Let's assume user.organizationId is present.
-        
+        // Update Driver profile if exists
+        const driver = await this.driverRepository.findOne({ where: { userId } });
+        if (driver) {
+            driver.savedSignature = signatureUrl;
+            await this.driverRepository.save(driver);
+        }
+
         if (user.organizationId) {
              await this.activityLogService.log(
                 ActivityType.SYSTEM,
-                `Driver ${user.firstName} ${user.lastName} updated signature`,
+                `Driver ${user.firstName} ${user.lastName} updated and saved their reusable signature`,
                 user.organizationId,
                 { userId: user.id }
             );

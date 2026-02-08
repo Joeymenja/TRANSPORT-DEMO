@@ -1,6 +1,6 @@
-import { Box, Paper, BottomNavigation, BottomNavigationAction, Badge, AppBar, Toolbar, Typography, Button, IconButton, Avatar, useTheme, useMediaQuery } from '@mui/material';
-import { Home, CalendarMonth, Email, Person, History as HistoryIcon } from '@mui/icons-material';
-import React, { useState } from 'react';
+import { Box, Paper, BottomNavigation, BottomNavigationAction, Badge, AppBar, Toolbar, Typography, Button, useTheme, useMediaQuery } from '@mui/material';
+import { SpaceDashboard, AltRoute, AssignmentTurnedIn, Person, CalendarMonth, Email, HomeRounded, NearMeRounded, DescriptionRounded, AccountCircleRounded } from '@mui/icons-material';
+import React from 'react';
 import { useAuthStore } from '../store/auth';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -8,11 +8,9 @@ import api from '../lib/api';
 
 export default function DriverLayout({ children }: { children: React.ReactNode }) {
     const user = useAuthStore((state) => state.user);
-    const logout = useAuthStore((state) => state.logout);
     const navigate = useNavigate();
     const location = useLocation();
     const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
     // Fetch unread count for badge
     const { data: unreadNotifications = [] } = useQuery({
@@ -30,118 +28,84 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
     const unreadCount = unreadNotifications.length;
 
     const getNavValue = () => {
-        if (location.pathname.startsWith('/driver/updates')) return 'updates';
-        if (location.pathname.startsWith('/driver/trips')) return 'trips';
-        if (location.pathname.startsWith('/driver/compliance')) return 'compliance';
-        if (location.pathname === '/driver' || location.pathname === '/driver/') return 'home';
-        return 'trips'; // Default to trips for nested routes
+        const path = location.pathname;
+        if (path.startsWith('/driver/trips')) return 'trips';
+        if (path.startsWith('/driver/schedule')) return 'trips';
+        if (path.startsWith('/driver/log')) return 'log';
+        if (path.startsWith('/driver/profile')) return 'profile';
+        if (path === '/driver' || path === '/driver/') return 'home';
+        return 'home';
     };
 
+    const isHidden = location.pathname.includes('/execute') || location.pathname.includes('/report');
+
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: '#f5f5f5' }}>
-            {/* Desktop Header */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: '#F5F7FA' }}>
+            
+            {/* Desktop Header (Hidden on Mobile) */}
             <AppBar
                 position="static"
                 elevation={0}
                 sx={{
                     bgcolor: 'white',
-                    borderBottom: '1px solid #f0f0f0',
+                    borderBottom: '1px solid #eee',
                     display: { xs: 'none', md: 'block' }
                 }}
             >
-                <Toolbar sx={{ 
-                    justifyContent: 'space-between', 
-                    mx: 'auto', 
-                    width: '100%', 
-                    px: 6,
-                    height: 80 
-                }}>
-                    <Typography
-                        variant="h6"
-                        sx={{
-                            color: '#0096D6',
-                            fontWeight: 800,
-                            letterSpacing: 0.5,
-                            cursor: 'pointer'
-                        }}
-                        onClick={() => navigate('/driver')}
-                    >
-                        {user?.role === 'HOUSE_MANAGER' ? 'GVBH MANAGER' : 'GVBH DRIVER'}
+                <Toolbar sx={{ justifyContent: 'space-between', px: 4 }}>
+                    <Typography variant="h6" color="primary.main" fontWeight={800}>
+                        GVBH DRIVER
                     </Typography>
-
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Typography 
-                            onClick={() => navigate('/driver')}
-                            sx={{ color: '#0096D6', cursor: 'pointer', fontWeight: 500, fontSize: '0.95rem' }}
-                        >
-                            Home
-                        </Typography>
-                        <Typography 
-                            onClick={() => navigate('/driver/schedule')}
-                            sx={{ color: '#0096D6', cursor: 'pointer', fontWeight: 500, fontSize: '0.95rem' }}
-                        >
-                            Schedule
-                        </Typography>
-                        <Button
-                            variant="outlined"
-                            onClick={() => navigate('/driver/create-trip')}
-                            sx={{
-                                color: '#0096D6',
-                                borderColor: '#ccc',
-                                textTransform: 'none',
-                                borderRadius: 8,
-                                px: 4,
-                                py: 1,
-                                fontWeight: 600,
-                                '&:hover': { borderColor: '#0096D6', bgcolor: 'rgba(0,150,214,0.04)' }
-                            }}
-                        >
-                            Create Trip
-                        </Button>
+                    <Box sx={{ display: 'flex', gap: 4 }}>
+                        <Button color="inherit" onClick={() => navigate('/driver')}>Dashboard</Button>
+                        <Button color="inherit" onClick={() => navigate('/driver/trips')}>Trips</Button>
+                        <Button variant="contained" onClick={() => navigate('/driver/create-trip')}>New Trip</Button>
                     </Box>
                 </Toolbar>
             </AppBar>
 
-
-            {/* Main Content Area - Full Height */}
-            <Box sx={{ flexGrow: 1, pb: 7 }}>
+            {/* Main Content */}
+            <Box sx={{ flexGrow: 1, pb: { xs: 8, md: 0 } }}>
                 {children}
             </Box>
 
-            {/* Bottom Navigation (Hidden on Desktop AND Trip Execution) */}
-            {!location.pathname.includes('/execute') && (
-                <Paper elevation={3} sx={{ 
+            {/* Mobile Bottom Navigation */}
+            {!isHidden && (
+                <Paper sx={{ 
                     position: 'fixed', 
-                    left: 0,
+                    bottom: 0, 
+                    left: 0, 
                     right: 0, 
-                    bottom: 0,
-                    zIndex: 100,
+                    zIndex: 1000,
                     display: { xs: 'block', md: 'none' },
-                    pb: 3 // Safe area padding
-                }}>
+                    borderTop: '1px solid #eee',
+                }} elevation={3}>
                     <BottomNavigation
                         value={getNavValue()}
                         onChange={(_, newValue) => {
                             if (newValue === 'home') navigate('/driver');
-                            if (newValue === 'schedule') navigate('/driver/schedule'); // Maps to /driver/trips effectively
-                            if (newValue === 'updates') navigate('/driver/updates');
+                            if (newValue === 'trips') navigate('/driver/trips');
+                            if (newValue === 'log') navigate('/driver/logs'); 
                             if (newValue === 'profile') navigate('/driver/profile');
                         }}
                         showLabels
+                        sx={{ 
+                            height: 64,
+                            '& .MuiBottomNavigationAction-root': {
+                                color: '#94a3b8', // Slate 400
+                                '&.Mui-selected': {
+                                    color: '#14B8A6'
+                                }
+                            }
+                        }}
                     >
-                        <BottomNavigationAction label="Home" value="home" icon={<Home />} />
-                        <BottomNavigationAction label="Schedule" value="schedule" icon={<CalendarMonth />} />
-                        <BottomNavigationAction 
-                            label="Updates" 
-                            value="updates" 
-                            icon={
-                                <Badge badgeContent={unreadCount} color="error">
-                                    <Email />
-                                </Badge>
-                            } 
-                        />
-                        <BottomNavigationAction label="Profile" value="profile" icon={<Person />} />
+                        <BottomNavigationAction label="Home" value="home" icon={<HomeRounded />} />
+                        <BottomNavigationAction label="Trips" value="trips" icon={<NearMeRounded />} />
+                        <BottomNavigationAction label="Logs" value="log" icon={<DescriptionRounded />} />
+                        <BottomNavigationAction label="Profile" value="profile" icon={<AccountCircleRounded />} />
                     </BottomNavigation>
+                    {/* Safe Area for Home Bar */}
+                    <Box sx={{ height: 40, bgcolor: 'white' }} /> 
                 </Paper>
             )}
         </Box>

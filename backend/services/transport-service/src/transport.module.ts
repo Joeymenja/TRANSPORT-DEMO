@@ -46,6 +46,8 @@ import { extname } from 'path';
 import { EventsGateway } from './events.gateway';
 import { OrganizationController } from './organization.controller';
 import { OrganizationService } from './organization.service';
+import { CalendlyController } from './calendly.controller';
+import { CalendlyService } from './calendly.service';
 
 @Module({
     imports: [
@@ -124,8 +126,8 @@ import { OrganizationService } from './organization.service';
             }),
         }),
     ],
-    controllers: [TripController, VehicleController, DriverController, ReportController, ActivityLogController, NotificationController, LocationController, BillingController, MemberController, OrganizationController],
-    providers: [TripService, VehicleService, PdfService, DriverService, ReportService, ActivityLogService, NotificationService, JwtStrategy, LocationService, BillingService, EventsGateway, MemberService, OrganizationService],
+    controllers: [TripController, VehicleController, DriverController, ReportController, ActivityLogController, NotificationController, LocationController, BillingController, MemberController, OrganizationController, CalendlyController],
+    providers: [TripService, VehicleService, PdfService, DriverService, ReportService, ActivityLogService, NotificationService, JwtStrategy, LocationService, BillingService, EventsGateway, MemberService, OrganizationService, CalendlyService],
     exports: [TripService, VehicleService, ActivityLogService, BillingService, MemberService],
 })
 export class TransportModule { }

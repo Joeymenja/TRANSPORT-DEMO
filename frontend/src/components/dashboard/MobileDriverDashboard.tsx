@@ -1,441 +1,510 @@
-import { Box, Button, IconButton, Typography, Paper, AppBar, Toolbar, Snackbar, Alert, Fab, Chip, BottomNavigation, BottomNavigationAction, Stack } from '@mui/material';
-import { Menu as MenuIcon, DirectionsCarOutlined, PersonOutline, MyLocation, Add, CalendarMonth, History, Dashboard, HistoryEdu, KeyboardArrowUp, HorizontalRule } from '@mui/icons-material'; // Outlined icons
-import { motion, useAnimation, useDragControls } from 'framer-motion';
-import ActiveTripCard from './ActiveTripCard';
-import DriverMap from './DriverMap'; // IMPORTED MAP
-import DriverDrawer from '../navigation/DriverDrawer';
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { driverApi } from '../../api/drivers';
+import { Box, Button, IconButton, Typography, Paper, Switch, Grid, Avatar, Chip, Badge, Card, CardContent, CircularProgress, Menu, MenuItem, Fab, Dialog, DialogContent, Fade, Backdrop } from '@mui/material';
+import { Notifications, DirectionsCar, Description, PlayArrow, AccessTime, Map, LocationOn, TrendingUp, Bolt, LocalCafe, AutoAwesome, ExpandMore, Mic, MicOff, GraphicEq, Settings } from '@mui/icons-material';
+import { useQuery } from '@tanstack/react-query';
 import { tripApi } from '../../api/trips';
-import { memberApi } from '../../api/members';
 import { useAuthStore } from '../../store/auth';
-import { useSocket } from '../../context/SocketContext';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
+import { useAppMode } from '../../store/appMode';
+import { GoogleGenAI } from "@google/genai";
+import SecurementGuideDialog from './SecurementGuideDialog';
+import { VerifiedUser, Policy } from '@mui/icons-material';
+import { useSettingsStore } from '../../store/settings';
 
 export default function MobileDriverDashboard() {
     const user = useAuthStore((state) => state.user);
     const today = format(new Date(), 'yyyy-MM-dd');
-    const queryClient = useQueryClient();
     const navigate = useNavigate();
-    const [drawerOpen, setDrawerOpen] = useState(false);
-    const [notificationOpen, setNotificationOpen] = useState(false);
-    const [sheetHeight, setSheetHeight] = useState('collapsed'); // 'collapsed', 'partial', 'expanded'
-    const controls = useAnimation();
-    const prevTripsLength = useRef(0);
-    const socket = useSocket();
+    const { showNetworkCard } = useSettingsStore();
+    const [isShiftActive, setIsShiftActive] = useState(true);
 
-    const { data: driver } = useQuery({
-        queryKey: ['driver-profile', user?.id],
-        queryFn: () => user?.id ? driverApi.getByUserId(user.id) : null,
-        enabled: !!user,
-    });
-
-    // Real-time Location Tracking
-    useEffect(() => {
-        if (!socket || !driver) return;
-
-        // Determine if we should be tracking
-        // For demo: Track if 'ON_DUTY' or 'ON_TRIP'
-        const shouldTrack = driver.currentStatus === 'AVAILABLE' || driver.currentStatus === 'ON_TRIP';
-
-        if (!shouldTrack) return;
-
-        console.log('Starting location tracking...');
-        const interval = setInterval(() => {
-            // Simulate GPS movement for demo (jitter)
-            // In a real app, use Geolocation API
-            const baseLat = 33.4152; 
-            const baseLng = -111.8315;
-            
-            // Add some random movement
-            const lat = baseLat + (Math.random() - 0.5) * 0.01;
-            const lng = baseLng + (Math.random() - 0.5) * 0.01;
-
-            socket.emit('update_location', {
-                driverId: driver.id,
-                lat,
-                lng,
-                status: driver.currentStatus
-            });
-        }, 3000); // Emit every 3 seconds
-
-        return () => clearInterval(interval);
-    }, [socket, driver]);
-
-    // Real-time Trip Updates
-    useEffect(() => {
-        if (!socket) return;
-
-        const handleUpdate = () => {
-            console.log('[Socket] Trip assigned or updated, refetching...');
-            queryClient.invalidateQueries({ queryKey: ['trips'] });
-        };
-
-        socket.on('trip_assigned', handleUpdate);
-        socket.on('trip_updated', handleUpdate);
-
-        return () => {
-            socket.off('trip_assigned', handleUpdate);
-            socket.off('trip_updated', handleUpdate);
-        };
-    }, [socket, queryClient]);
+    // AI Features State
+    const [cityPulse, setCityPulse] = useState<{ intel: string; risk: 'low' | 'med' | 'high'; impact: string } | null>(null);
+    const [breakInsight, setBreakInsight] = useState<{ title: string; desc: string; type: string } | null>(null);
+    const [isLoadingAI, setIsLoadingAI] = useState(false);
+    const [isListening, setIsListening] = useState(false);
+    const [securementOpen, setSecurementOpen] = useState(false);
 
     const { data: trips = [] } = useQuery({
         queryKey: ['trips', today],
         queryFn: () => tripApi.getTrips({ date: today }),
     });
 
-    // Notify on new trip
+    const activeTrip = trips.find(t => t.status === 'IN_PROGRESS');
+    const nextTrip = trips.find(t => t.status === 'SCHEDULED');
+    const upcomingTrips = trips.filter(t => t.status === 'SCHEDULED' && t.id !== nextTrip?.id);
+
+    // Mock Stats
+    const totalMileage = 142.5;
+    const pendingLogs = 4;
+
+    // Status Menu State
+    const [statusAnchorEl, setStatusAnchorEl] = useState<null | HTMLElement>(null);
+    const statusOpen = Boolean(statusAnchorEl);
+    const handleStatusClick = (event: any) => setStatusAnchorEl(event.currentTarget);
+    const handleStatusClose = () => setStatusAnchorEl(null);
+
+    const handleStatusChange = (newStatus: boolean) => {
+        setIsShiftActive(newStatus);
+        handleStatusClose();
+    };
+
     useEffect(() => {
-        if (trips.length > prevTripsLength.current && prevTripsLength.current !== 0) {
-            setNotificationOpen(true);
-            // Optional: play sound here if asset available
-        }
-        prevTripsLength.current = trips.length;
-    }, [trips.length]);
+        const fetchAIInsights = async () => {
+            setIsLoadingAI(true);
+            
+            // Artificial delay for realism
+            await new Promise(r => setTimeout(r, 1500));
 
-    const sortedTrips = [...trips].sort((a, b) => {
-        if (a.status === 'IN_PROGRESS') return -1;
-        if (b.status === 'IN_PROGRESS') return 1;
-        return new Date(a.stops[0].scheduledTime).getTime() - new Date(b.stops[0].scheduledTime).getTime();
-    });
+            if (process.env.API_KEY) {
+                try {
+                    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+                    // Fetch City Pulse
+                    const pulseResponse = await ai.models.generateContent({
+                        model: 'gemini-2.0-flash',
+                        contents: "Analyze Phoenix NEMT traffic/demand. JSON: {intel: string, risk: 'low'|'med'|'high', impact: string}",
+                        config: { responseMimeType: "application/json" }
+                    });
+                    const pulseData = JSON.parse(pulseResponse.text() || '{}');
+                    setCityPulse(pulseData);
 
-    const activeTrip = sortedTrips.find(t => t.status === 'IN_PROGRESS') || sortedTrips.find(t => t.status === 'SCHEDULED');
-    const otherTrips = sortedTrips.filter(t => t.id !== activeTrip?.id);
-
-    const createDemoTripMutation = useMutation({
-        mutationFn: async () => {
-            if (!user?.id) return;
-
-            // Fetch a real member to avoid FK constraint errors
-            const members = await memberApi.getMembers();
-            const memberId = members.length > 0 ? members[0].id : null;
-
-            if (!memberId) {
-                alert("No members found in system. Please create a member first.");
-                return;
-            }
-
-            const today = new Date();
-            const pickupTime = new Date(today);
-            pickupTime.setMinutes(pickupTime.getMinutes() + 30); // 30 mins from now
-
-            await tripApi.createTrip({
-                tripDate: today,
-                assignedDriverId: user.id,
-                tripType: 'PICK_UP',
-                members: [{ memberId }],
-                stops: [
-                    {
-                        stopType: 'PICKUP',
-                        stopOrder: 1,
-                        address: '1 Main St, Mesa, AZ 85201',
-                        gpsLatitude: 33.41518,
-                        gpsLongitude: -111.83147,
-                        scheduledTime: pickupTime
-                    },
-                    {
-                        stopType: 'DROPOFF',
-                        stopOrder: 2,
-                        address: 'Phoenix Sky Harbor, Phoenix, AZ 85034',
-                        gpsLatitude: 33.4352,
-                        gpsLongitude: -112.0101,
-                        scheduledTime: new Date(pickupTime.getTime() + 3600000)
+                    // Fetch Break Insight if idle
+                    if (!activeTrip) {
+                        const breakResponse = await ai.models.generateContent({
+                            model: 'gemini-2.0-flash',
+                            contents: "Driver is idle in Phoenix. Suggest short wellness tip. JSON: {title: string, desc: string, type: 'wellness'}",
+                            config: { responseMimeType: "application/json" }
+                        });
+                        setBreakInsight(JSON.parse(breakResponse.text() || '{}'));
                     }
-                ]
-            });
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['trips'] });
-        },
-        onError: (err) => {
-            console.error(err);
-            alert(`Failed to create demo trip: ${(err as any).response?.data?.message || (err as any).message || "Unknown error"}`);
-        }
-    });
+                } catch (e) {
+                    console.warn("AI Fetch Failed, using fallback", e);
+                    // Fallback on error
+                    setCityPulse({ intel: "High demand in Scottsdale area", risk: "med", impact: "Expect heavy traffic on Loop 101" });
+                }
+            } else {
+                 // Fallback if no key
+                 setCityPulse({ intel: "System Optimal. High demand expected near Downtown.", risk: "low", impact: "Traffic is flowing smoothly." });
+                 if (!activeTrip) {
+                     setBreakInsight({ title: "Stay Hydrated", desc: "Temperatures are rising. Ensure you have water before next pickup.", type: "wellness" });
+                 }
+            }
+            setIsLoadingAI(false);
+        };
 
-    const handleStartTrip = (id: string) => navigate(`/driver/trips/${id}/execute`);
+        if (isShiftActive) {
+            fetchAIInsights();
+        } else {
+            setCityPulse(null);
+            setBreakInsight(null);
+        }
+    }, [isShiftActive, activeTrip]);
 
     return (
-        <Box sx={{ 
-            bgcolor: '#000', 
-            height: '100vh', 
-            width: '100vw', 
-            position: 'relative',
-            overflow: 'hidden',
-            display: 'flex', 
-            flexDirection: 'column', 
-        }}>
-            {/* 1. Full-Screen Map Background */}
-            <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}>
-                <DriverMap activeTrip={activeTrip} />
-                
-                {/* Gradient Overlay for better readability of floating elements */}
-                <Box sx={{ 
-                    position: 'absolute', 
-                    top: 0, 
-                    left: 0, 
-                    right: 0, 
-                    height: 120, 
-                    background: 'linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 100%)',
-                    zIndex: 1
-                }} />
-            </Box>
-
-            {/* 2. Floating Header Area (Glassmorphism) */}
-            <Box sx={{ 
-                position: 'absolute', 
-                top: 0, 
-                left: 0, 
-                right: 0, 
-                px: 2, 
-                pt: 6, // INCREASED TOP PADDING
-                pb: 2,
-                zIndex: 10,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-            }}>
-                <IconButton 
-                    onClick={() => setDrawerOpen(true)}
-                    sx={{ 
-                        bgcolor: 'rgba(255,255,255,0.9)', 
-                        backdropFilter: 'blur(10px)',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                        '&:hover': { bgcolor: 'white' }
-                    }}
-                >
-                    <MenuIcon sx={{ color: '#333' }} />
-                </IconButton>
-
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                     <Chip 
-                        icon={<Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#ff5252', ml: 1 }} />}
-                        label="LIVE" 
-                        sx={{ 
-                            bgcolor: 'rgba(255,255,255,0.9)', 
-                            backdropFilter: 'blur(10px)',
-                            fontWeight: 900,
-                            color: '#333',
-                            fontSize: '0.65rem',
-                            height: 24,
-                            '& .MuiChip-label': { pl: 0.5 }
-                        }} 
-                    />
-                     <Chip 
-                        label={format(new Date(), 'EEE, MMM d')} 
-                        sx={{ 
-                            bgcolor: 'rgba(255,255,255,0.9)', 
-                            backdropFilter: 'blur(10px)',
-                            fontWeight: 700,
-                            color: '#333',
-                            border: '1px solid rgba(255,255,255,0.3)'
-                        }} 
-                    />
+        <Box sx={{ bgcolor: '#F5F7FA', minHeight: '100vh', pb: 10 }}>
+            {/* Header */}
+            <Box sx={{ p: 3, pt: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: 'white', borderBottom: '1px solid #eee' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }} onClick={() => navigate('/driver/profile')}>
+                    <Avatar src={user?.profileImage} sx={{ width: 40, height: 40, bgcolor: 'primary.main', cursor: 'pointer' }}>
+                        {user?.firstName?.[0]}
+                    </Avatar>
+                    <Box sx={{ cursor: 'pointer' }}>
+                        <Typography variant="subtitle1" fontWeight={700}>
+                            {user?.firstName}'s Portal
+                        </Typography>
+                        <Typography variant="caption" color={isShiftActive ? 'success.main' : 'text.secondary'} fontWeight={600}>
+                            {isShiftActive ? '● ONLINE' : '○ OFF DUTY'}
+                        </Typography>
+                    </Box>
+                </Box>
+                <Box>
+                    <IconButton onClick={() => navigate('/driver/settings')}>
+                        <Settings />
+                    </IconButton>
+                    <IconButton>
+                        <Badge badgeContent={2} color="error" variant="dot">
+                            <Notifications />
+                        </Badge>
+                    </IconButton>
                 </Box>
             </Box>
 
-            <DriverDrawer
-                open={drawerOpen}
-                onClose={() => setDrawerOpen(false)}
-                driver={driver}
-            />
+            <Box sx={{ p: 2 }}>
+                {/* AI City Pulse Card (Optional) */}
+                {isShiftActive && showNetworkCard && (
+                    <Paper 
+                        sx={{ 
+                            p: 2, 
+                            mb: 2, 
+                            borderRadius: 2, 
+                            background: 'linear-gradient(135deg, #0f2e2a 0%, #042f2e 100%)', // Dark Teal/Slate gradient
+                            color: 'white',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            border: '1px solid rgba(20, 184, 166, 0.3)' // Teal border
+                        }}
+                    >
+                        <Box sx={{ position: 'absolute', top: -10, right: -10, opacity: 0.1 }}>
+                            <AutoAwesome sx={{ fontSize: 100, color: '#14B8A6' }} />
+                        </Box>
+                        
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5, position: 'relative', zIndex: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <AutoAwesome sx={{ color: '#14B8A6', fontSize: 20 }} />
+                                <Typography variant="overline" color="#14B8A6" fontWeight={800} letterSpacing={1}>
+                                    CITY PULSE
+                                </Typography>
+                            </Box>
+                            {isLoadingAI && <CircularProgress size={16} sx={{ color: '#14B8A6' }} />}
+                        </Box>
 
-            {/* 3. Sliding iPhone-Style Sheet */}
-            <motion.div
-                drag="y"
-                dragConstraints={{ top: 0, bottom: 0 }}
-                dragElastic={0.2}
-                onDragEnd={(e, info) => {
-                    const threshold = 100;
-                    const velocityThreshold = 500;
-                    
-                    // Upward flick or drag past threshold
-                    if (info.velocity.y < -velocityThreshold || info.offset.y < -threshold) {
-                        if (sheetHeight === 'collapsed') setSheetHeight('partial');
-                        else if (sheetHeight === 'partial') setSheetHeight('expanded');
-                    } 
-                    // Downward flick or drag past threshold
-                    else if (info.velocity.y > velocityThreshold || info.offset.y > threshold) {
-                         if (sheetHeight === 'expanded') setSheetHeight('partial');
-                         else if (sheetHeight === 'partial') setSheetHeight('collapsed');
-                    }
-                }}
-                animate={sheetHeight}
-                variants={{
-                    collapsed: { y: 'calc(100svh - 280px)' }, 
-                    partial: { y: 'calc(100svh - 480px)' },
-                    expanded: { y: 60 }
-                }}
-                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                style={{
-                    position: 'absolute',
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    zIndex: 90, // Behind Bottom Nav (zIndex 100)
-                    background: 'white',
-                    borderTopLeftRadius: 24,
-                    borderTopRightRadius: 24,
-                    boxShadow: '0 -10px 40px rgba(0,0,0,0.15)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    maxHeight: 'calc(100svh - 60px)',
-                    height: '100svh', // Force explicit height for better drag tracking
-                    overflow: 'hidden'
-                }}
-            >
-                {/* Drag Handle Container */}
-                <Box sx={{ width: '100%', py: 1, display: 'flex', justifyContent: 'center', cursor: 'grab', '&:active': { cursor: 'grabbing' } }}>
-                    <Box sx={{ width: 40, height: 5, bgcolor: '#e0e0e0', borderRadius: 2.5 }} />
-                </Box>
-
-                {/* Sheet Content Area */}
-                <Box sx={{ flex: 1, overflowY: 'auto', p: 2, pt: 0 }}>
-                    {/* Active/Hero Section */}
-                    {activeTrip ? (
-                        <Box sx={{ mb: 3 }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                                <Typography variant="h6" fontWeight={800} color="primary">Active Trip</Typography>
+                        {cityPulse ? (
+                            <Box sx={{ position: 'relative', zIndex: 1 }}>
+                                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5, lineHeight: 1.3 }}>
+                                    {cityPulse.intel}
+                                </Typography>
                                 <Chip 
-                                    label={activeTrip.status.replace('_', ' ')} 
-                                    color={activeTrip.status === 'IN_PROGRESS' ? 'success' : 'primary'}
-                                    size="small"
-                                    sx={{ fontWeight: 700, fontSize: '0.7rem' }}
+                                    label={cityPulse.impact} 
+                                    size="small" 
+                                    sx={{ 
+                                        bgcolor: 'rgba(20, 184, 166, 0.2)', 
+                                        color: '#14B8A6', 
+                                        fontWeight: 700, 
+                                        fontSize: '0.65rem', 
+                                        height: 22,
+                                        border: '1px solid rgba(20, 184, 166, 0.2)'
+                                    }} 
                                 />
                             </Box>
-                            
-                            <Paper 
-                                elevation={0}
+                        ) : (
+                            <Typography variant="caption" color="rgba(255,255,255,0.6)">Analyze demand...</Typography>
+                        )}
+                    </Paper>
+                )}
+
+                {/* Shift Status Card */}
+                <Paper sx={{ p: 2, mb: 2, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                    <Box>
+                        <Typography variant="overline" color="text.secondary" fontWeight={700}>CURRENT STATUS</Typography>
+                        <Typography variant="h6" fontWeight={700} color={isShiftActive ? 'success.main' : 'text.disabled'}>
+                             {isShiftActive ? '● Available for Trips' : '○ Off Duty'}
+                        </Typography>
+                    </Box>
+                    <Box>
+                        <Button 
+                            variant="contained" 
+                            color={isShiftActive ? "success" : "inherit"}
+                            onClick={handleStatusClick}
+                            endIcon={<ExpandMore />}
+                            sx={{ fontWeight: 700, borderRadius: 4, textTransform: 'none' }}
+                        >
+                            {isShiftActive ? "Online" : "Offline"}
+                        </Button>
+                        <Menu
+                            anchorEl={statusAnchorEl}
+                            open={statusOpen}
+                            onClose={handleStatusClose}
+                            PaperProps={{
+                                sx: { borderRadius: 2, minWidth: 140, mt: 1 }
+                            }}
+                        >
+                            <MenuItem onClick={() => handleStatusChange(true)} sx={{ fontWeight: 600, color: 'success.main' }}>
+                                <Badge badgeContent=" " color="success" variant="dot" sx={{ mr: 2 }} />
+                                Go Online
+                            </MenuItem>
+                            <MenuItem onClick={() => handleStatusChange(false)} sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                                <Badge badgeContent=" " color="error" variant="dot" sx={{ mr: 2 }} />
+                                Go Offline
+                            </MenuItem>
+                        </Menu>
+                    </Box>
+                </Paper>
+
+                {/* Stats Row */}
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                    <Grid item xs={6}>
+                        <Paper sx={{ p: 2, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                            <Typography variant="caption" color="text.secondary" fontWeight={700}>TOTAL MILEAGE</Typography>
+                            <Typography variant="h4" fontWeight={800} sx={{ mt: 1 }}>{totalMileage}</Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                                <TrendingUp sx={{ fontSize: 16, color: 'success.main' }} />
+                                <Typography variant="caption" color="success.main" fontWeight={700}>+12.5%</Typography>
+                            </Box>
+                        </Paper>
+                    </Grid>
+                    <Grid item xs={6}>
+                        {breakInsight && !activeTrip ? (
+                            <Paper sx={{ p: 2, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.04)', bgcolor: '#fffbed', border: '1px solid #fef3c7' }}>
+                                <Typography variant="caption" color="#d97706" fontWeight={800} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <LocalCafe sx={{ fontSize: 14 }} /> WELLNESS
+                                </Typography>
+                                <Typography variant="subtitle2" fontWeight={800} sx={{ mt: 1, lineHeight: 1.2 }}>
+                                    {breakInsight.title}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, lineHeight: 1.2 }}>
+                                    {breakInsight.desc}
+                                </Typography>
+                            </Paper>
+                        ) : (
+                            <Paper sx={{ p: 2, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                                <Typography variant="caption" color="text.secondary" fontWeight={700}>PENDING LOGS</Typography>
+                                <Typography variant="h4" fontWeight={800} sx={{ mt: 1 }}>{pendingLogs}</Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                                    <Typography variant="caption" color="warning.main" fontWeight={700}>● Requires Action</Typography>
+                                </Box>
+                            </Paper>
+                        )}
+                    </Grid>
+                </Grid>
+
+                {/* Driver Tools */}
+                <Box sx={{ mb: 3 }}>
+                    <Typography variant="overline" color="text.secondary" fontWeight={700}>DRIVER TOOLS</Typography>
+                    <Grid container spacing={2}>
+                        <Grid item xs={6}>
+                             <Box 
                                 sx={{ 
-                                    p: 2.5, 
+                                    p: 2, 
                                     borderRadius: 4, 
-                                    bgcolor: '#0f172a', // Dark theme for active card
-                                    color: 'white',
-                                    mb: 2,
+                                    bgcolor: '#fff',
+                                    border: '1px solid #f1f5f9',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                                    cursor: 'pointer',
+                                    height: '100%',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 1.5,
                                     position: 'relative',
                                     overflow: 'hidden'
                                 }}
-                            >
-                                {/* Decorative circle */}
-                                <Box sx={{ position: 'absolute', top: -20, right: -20, width: 100, height: 100, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.05)' }} />
+                                onClick={() => setSecurementOpen(true)}
+                             >
+                                <Box sx={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 4, bgcolor: '#14B8A6' }} />
+                                <Box sx={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(20, 184, 166, 0.1)', borderRadius: 2, color: '#14B8A6' }}>
+                                    <VerifiedUser />
+                                </Box>
+                                <Box>
+                                    <Typography variant="subtitle2" fontWeight={800} lineHeight={1.2}>Securement Guide</Typography>
+                                    <Typography variant="caption" color="text.secondary" fontWeight={500} lineHeight={1.1}>Equipment Check</Typography>
+                                </Box>
+                             </Box>
+                        </Grid>
+                        <Grid item xs={6}>
+                             <Box 
+                                sx={{ 
+                                    p: 2, 
+                                    borderRadius: 4, 
+                                    bgcolor: '#fff',
+                                    border: '1px solid #f1f5f9',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                                    cursor: 'pointer',
+                                    height: '100%',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 1.5,
+                                    position: 'relative',
+                                    overflow: 'hidden'
+                                }}
+                                onClick={() => navigate('/driver/vehicle')}
+                             >
+                                <Box sx={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 4, bgcolor: '#F59E0B' }} />
+                                <Box sx={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#FFFBEB', borderRadius: 2, color: '#F59E0B' }}>
+                                    <DirectionsCar />
+                                </Box>
+                                <Box>
+                                    <Typography variant="subtitle2" fontWeight={800} lineHeight={1.2}>Vehicle Health</Typography>
+                                    <Typography variant="caption" color="text.secondary" fontWeight={500} lineHeight={1.1}>Status: ACTIVE</Typography>
+                                </Box>
+                             </Box>
+                        </Grid>
+                    </Grid>
+                </Box>
 
-                                <Typography variant="h4" fontWeight={800} sx={{ mb: 1 }}>
-                                    {activeTrip.stops[0]?.scheduledTime ? format(new Date(activeTrip.stops[0].scheduledTime), 'h:mm') : 'Now'}
-                                    <span style={{ fontSize: '0.5em', opacity: 0.7, marginLeft: 4 }}>{activeTrip.stops[0]?.scheduledTime ? format(new Date(activeTrip.stops[0].scheduledTime), 'a') : ''}</span>
-                                </Typography>
+                {/* Next Immediate Ride */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                     <Typography variant="subtitle1" fontWeight={800}>Next Immediate Ride</Typography>
+                </Box>
 
-                                <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#38bdf8', mb: 0.5 }}>
-                                    {activeTrip.members?.[0]?.member?.firstName} {activeTrip.members?.[0]?.member?.lastName}
-                                </Typography>
+                {(activeTrip || nextTrip) ? (
+                    <TripCard 
+                        trip={activeTrip || nextTrip} 
+                        isNext={true} 
+                        onStart={() => navigate(`/driver/trips/${(activeTrip || nextTrip)?.id}/execute`)}
+                        onView={() => navigate(`/driver/trips/${(activeTrip || nextTrip)?.id}`)}
+                    />
+                ) : (
+                    <Paper sx={{ p: 3, textAlign: 'center', borderRadius: 2, bgcolor: '#fff', border: '1px dashed #ddd', mb: 3 }}>
+                        <DirectionsCar sx={{ fontSize: 40, color: '#ccc', mb: 1 }} />
+                        <Typography color="text.secondary">No immediate rides scheduled.</Typography>
+                    </Paper>
+                )}
 
-                                <Typography variant="body2" sx={{ opacity: 0.8, mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <MyLocation sx={{ fontSize: 14 }} />
-                                    {activeTrip.stops[0]?.address.split(',')[0]}
-                                </Typography>
 
-                                {user?.role === 'DRIVER' && (
-                                    <Button 
-                                        variant="contained" 
-                                        fullWidth 
-                                        size="large"
-                                        onClick={() => navigate(`/driver/trips/${activeTrip.id}/execute`)}
-                                        sx={{ 
-                                            bgcolor: 'white', 
-                                            color: '#0f172a', 
-                                            fontWeight: 800,
-                                            height: 48,
-                                            borderRadius: 24,
-                                            fontSize: '1rem',
-                                            '&:hover': { bgcolor: '#f1f5f9' }
-                                        }}
-                                    >
-                                        {activeTrip.status === 'SCHEDULED' ? 'START TRIP' : 'CONTINUE'}
-                                    </Button>
-                                )}
-                            </Paper>
-                        </Box>
-                    ) : (
-                         <Box sx={{ py: 4, textAlign: 'center', opacity: 0.5 }}>
-                            <Typography variant="h6" fontWeight={700}>All Caught Up</Typography>
-                            <Typography variant="body2">No trips currently in progress</Typography>
+                {/* Upcoming Trips List */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, mt: 1 }}>
+                     <Typography variant="subtitle1" fontWeight={800}>Upcoming Trips</Typography>
+                     <Button size="small" sx={{ fontWeight: 700, textTransform: 'none' }}>View Schedule</Button>
+                </Box>
+
+                {upcomingTrips.map(trip => (
+                    <TripCard 
+                        key={trip.id} 
+                        trip={trip} 
+                        onView={() => navigate(`/driver/trips/${trip.id}`)}
+                    />
+                ))}
+
+                {/* Voice Assistant FAB */}
+                <Fab 
+                    color={isListening ? "error" : "primary"} 
+                    aria-label="voice-assist" 
+                    sx={{ 
+                        position: 'fixed', 
+                        bottom: 24, 
+                        right: 24, 
+                        boxShadow: '0 4px 20px rgba(20, 184, 166, 0.4)',
+                        zIndex: 100
+                    }}
+                    onClick={() => setIsListening(!isListening)}
+                >
+                    {isListening ? <GraphicEq /> : <Mic />}
+                </Fab>
+
+                {/* Voice Listening Overlay */}
+                <Backdrop
+                    sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1, flexDirection: 'column', backdropFilter: 'blur(4px)' }}
+                    open={isListening}
+                    onClick={() => setIsListening(false)}
+                >
+                    <Box sx={{ 
+                        p: 4, 
+                        borderRadius: '50%', 
+                        bgcolor: 'rgba(20, 184, 166, 0.2)', 
+                        mb: 4, 
+                        border: '2px solid #14B8A6',
+                        animation: 'pulse 1.5s infinite',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        '@keyframes pulse': {
+                            '0%': { boxShadow: '0 0 0 0 rgba(20, 184, 166, 0.4)' },
+                            '70%': { boxShadow: '0 0 0 20px rgba(20, 184, 166, 0)' },
+                            '100%': { boxShadow: '0 0 0 0 rgba(20, 184, 166, 0)' }
+                        }
+                    }}>
+                        <GraphicEq sx={{ fontSize: 60, color: '#14B8A6' }} />
+                    </Box>
+                    <Typography variant="h5" fontWeight={700}>Listening...</Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.7, mt: 1 }}>Try saying "Navigate to next stop"</Typography>
+                </Backdrop>
+
+                <SecurementGuideDialog open={securementOpen} onClose={() => setSecurementOpen(false)} clientName={activeTrip?.pickupName || "Member"} />
+            </Box>
+        </Box>
+    );
+}
+
+function TripCard({ trip, isNext, onStart, onView }: { trip: any; isNext?: boolean; onStart?: () => void; onView?: () => void }) {
+    return (
+        <Paper sx={{ 
+            p: 2, 
+            mb: 2, 
+            borderRadius: 1, 
+            boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+            border: '1px solid #f0f0f0',
+            position: 'relative',
+            overflow: 'hidden'
+        }}>
+            <Grid container spacing={2}>
+                <Grid item xs={8}>
+                    <Chip 
+                        label={trip.status === 'SCHEDULED' ? 'SCHEDULED' : 'IN PROGRESS'} 
+                        size="small" 
+                        sx={{ 
+                            bgcolor: trip.status === 'SCHEDULED' ? '#E0F7FA' : '#E8F5E9', 
+                            color: trip.status === 'SCHEDULED' ? '#006064' : '#1B5E20',
+                            fontWeight: 700,
+                            borderRadius: 1,
+                            fontSize: '0.65rem',
+                            height: 20,
+                            mb: 1
+                        }} 
+                    />
+                    <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', fontWeight: 600 }}>
+                        {format(new Date(trip.tripDate), 'h:mm a')} • Trip_ID: {trip.id.slice(0, 8)}
+                    </Typography>
+                     
+                    {/* Member Info */}
+                    {trip.members?.[0]?.member && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                             <Typography variant="body2" fontWeight={700}>
+                                 {trip.members[0].member.firstName} {trip.members[0].member.lastName}
+                             </Typography>
                         </Box>
                     )}
 
-                    {/* Upcoming List Header */}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="subtitle1" fontWeight={800}>Upcoming Trips</Typography>
-                        <Typography variant="caption" fontWeight={700} color="text.secondary">
-                            {otherTrips.length} SCHEDULED
-                        </Typography>
+                    {!isNext && (
+                         <Button 
+                            variant="outlined" 
+                            size="small" 
+                            sx={{ mt: 2, borderRadius: 2, textTransform: 'none', fontWeight: 600, borderColor: '#eee', color: 'text.primary' }}
+                            onClick={onView}
+                        >
+                            View Details
+                        </Button>
+                    )}
+                </Grid>
+                
+                {/* Mini Map Placeholder */}
+                <Grid item xs={4}>
+                    <Box sx={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        minHeight: 80,
+                        bgcolor: '#EEF0F2', 
+                        borderRadius: 2,
+                        backgroundImage: 'url("https://maps.googleapis.com/maps/api/staticmap?center=Phoenix,AZ&zoom=12&size=200x200&sensor=false&key=YOUR_API_KEY")', // Mock
+                        backgroundSize: 'cover',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}>
+                        <LocationOn color="error" />
                     </Box>
+                </Grid>
+            </Grid>
 
-                    {/* Upcoming Scroll List */}
-                    <Stack spacing={1.5}>
-                        {otherTrips.length > 0 ? (
-                            otherTrips.map(trip => (
-                                <ActiveTripCard
-                                    key={trip.id}
-                                    trip={trip}
-                                    compact={true}
-                                    onViewDetails={() => navigate(`/driver/trips/${trip.id}`)}
-                                    onStartTrip={() => navigate(`/driver/trips/${trip.id}/execute`)}
-                                    showActions={user?.role === 'DRIVER'}
-                                />
-                            ))
-                        ) : (
-                             <Box sx={{ py: 4, textAlign: 'center', bgcolor: '#f8fafc', borderRadius: 3, border: '1px dashed #e2e8f0' }}>
-                                <Typography variant="body2" color="text.secondary">
-                                    No other trips scheduled.
-                                </Typography>
-                                <Button
-                                    size="small"
-                                    onClick={() => createDemoTripMutation.mutate()}
-                                    sx={{ mt: 1, fontWeight: 700 }}
-                                >
-                                    Quick Add Demo Trip
-                                </Button>
-                            </Box>
-                        )}
-                    </Stack>
-                    
-                    {/* Add extra padding at bottom of sheet content */}
-                    <Box sx={{ height: 120 }} />
+            {isNext && (
+                <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid #f0f0f0', display: 'flex', gap: 1 }}>
+                    <Button 
+                        fullWidth 
+                        variant="contained" 
+                        color="inherit" // Will custom style 
+                        onClick={onStart}
+                        startIcon={<PlayArrow />}
+                        sx={{ 
+                            bgcolor: '#14B8A6', // Teal
+                            color: 'white',
+                            fontWeight: 700,
+                            borderRadius: 2,
+                            boxShadow: '0 4px 12px rgba(20, 184, 166, 0.3)',
+                            '&:hover': { bgcolor: '#0D9488' }
+                        }}
+                    >
+                        Start Trip
+                    </Button>
+                     <IconButton 
+                        onClick={onView}
+                        sx={{ 
+                            border: '1px solid #eee', 
+                            borderRadius: 2 
+                        }}
+                    >
+                        <Description color="action" />
+                    </IconButton>
                 </Box>
-            </motion.div>
-
-            {/* Create Trip FAB */}
-            <Fab
-                color="primary"
-                aria-label="create new trip"
-                onClick={() => navigate('/driver/create-trip')}
-                sx={{
-                    position: 'absolute',
-                    bottom: 24,
-                    right: 24,
-                    zIndex: 30,
-                    bgcolor: '#0f172a',
-                    '&:hover': { bgcolor: '#1e293b' }
-                }}
-            >
-                <Add />
-            </Fab>
-
-            {/* Notification Area */}
-            <Snackbar
-                open={notificationOpen}
-                autoHideDuration={6000}
-                onClose={() => setNotificationOpen(false)}
-                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-            >
-                <Alert onClose={() => setNotificationOpen(false)} severity="success" sx={{ width: '100%', borderRadius: 3, fontWeight: 700 }}>
-                    New Trip Assigned!
-                </Alert>
-            </Snackbar>
-
-
-        </Box>
+            )}
+        </Paper>
     );
 }

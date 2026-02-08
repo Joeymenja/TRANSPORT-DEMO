@@ -46,7 +46,8 @@ import {
     DeleteOutline, 
     ExpandMore, 
     ExpandLess,
-    Route
+    Route,
+    AutoAwesome
 } from '@mui/icons-material';
 import { COMMON_LOCATIONS } from '../../constants/locations';
 
@@ -111,6 +112,11 @@ export default function BackfillTripPage() {
     ]);
 
     const [error, setError] = useState('');
+
+    // Manual member state
+    const [isManualMember, setIsManualMember] = useState(false);
+    const [manualMemberInfo, setManualMemberInfo] = useState({ firstName: '', lastName: '', memberId: '' });
+
 
     // New member dialog state
     const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
@@ -239,9 +245,16 @@ export default function BackfillTripPage() {
                 assignedDriverId: user.id,
                 status: 'COMPLETED',
                 tripType: legs.length > 2 ? 'MULTIPLE_STOPS' : (legs.length === 2 ? 'ROUND_TRIP' : 'ONE_WAY'),
-                reasonForVisit: legs[0].reasonForVisit, // Primary reason
-                members: [{ memberId: selectedMember.id }],
-                mobilityRequirement: selectedMember.mobilityRequirement || 'AMBULATORY',
+                reasonForVisit: legs[0].reasonForVisit, 
+                members: isManualMember 
+                    ? [{ 
+                        firstName: manualMemberInfo.firstName, 
+                        lastName: manualMemberInfo.lastName, 
+                        memberId: manualMemberInfo.memberId,
+                        isManual: true 
+                    }]
+                    : [{ memberId: selectedMember.id }],
+                mobilityRequirement: isManualMember ? 'AMBULATORY' : (selectedMember.mobilityRequirement || 'AMBULATORY'),
                 startOdometer: parseFloat(legs[0].startOdometer) || 0,
                 stops: stops
             };
@@ -271,20 +284,119 @@ export default function BackfillTripPage() {
 
     const handleCreate = () => {
         setError(''); // Clear previous errors
-        if (!selectedMember) {
+        if (!isManualMember && !selectedMember) {
             setError('Please search for and select a member first');
             window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
         }
+
+        if (isManualMember && (!manualMemberInfo.firstName || !manualMemberInfo.lastName)) {
+            setError('Please enter member name for manual record');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+
         
-        const invalidLeg = legs.find(l => !l.pickupAddress || !l.dropoffAddress || !l.startOdometer || !l.endOdometer);
-        if (invalidLeg) {
-            setError('All legs must have pickup/dropoff addresses and odometer readings');
+        // 1. Check for missing values
+        const missingFieldLegIndex = legs.findIndex(l => !l.pickupAddress || !l.dropoffAddress || !l.startOdometer || !l.endOdometer);
+        if (missingFieldLegIndex !== -1) {
+            setError(`Leg ${missingFieldLegIndex + 1} is missing required addresses or odometer readings`);
+            updateLeg(missingFieldLegIndex, { isExpanded: true });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+
+        // 2. Validate Odometer Readings (End >= Start)
+        const odoErrorIndex = legs.findIndex(l => parseFloat(l.endOdometer) < parseFloat(l.startOdometer));
+        if (odoErrorIndex !== -1) {
+            setError(`Leg ${odoErrorIndex + 1}: End odometer cannot be less than start odometer`);
+            updateLeg(odoErrorIndex, { isExpanded: true });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+
+        // 3. Validate Time Logic (Dropoff > Pickup)
+        const timeErrorIndex = legs.findIndex(l => {
+            const p = parse(l.pickupTime, 'HH:mm', new Date());
+            const d = parse(l.dropoffTime, 'HH:mm', new Date());
+            return d <= p;
+        });
+        if (timeErrorIndex !== -1) {
+            setError(`Leg ${timeErrorIndex + 1}: Dropoff time must be after pickup time`);
+            updateLeg(timeErrorIndex, { isExpanded: true });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+
+        // 4. Validate Sequential Legs (Leg N+1 Pickup >= Leg N Dropoff)
+        for (let i = 1; i < legs.length; i++) {
+            const prevDropoff = parse(legs[i-1].dropoffTime, 'HH:mm', new Date());
+            const currPickup = parse(legs[i].pickupTime, 'HH:mm', new Date());
+            if (currPickup < prevDropoff) {
+                setError(`Leg ${i + 1} pickup time cannot be before Leg ${i} dropoff time`);
+                updateLeg(i, { isExpanded: true });
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+            }
+        }
+        
+        createTripMutation.mutate();
+    };
+
+    const handleReset = () => {
+        if (window.confirm('Clear all entered trip data?')) {
+            setSelectedMember(null);
+            setDate(new Date());
+            setTripType('ONE_WAY');
+            setLegs([{ 
+                pickupAddress: '', 
+                dropoffAddress: '', 
+                pickupTime: format(new Date(), 'HH:mm'), 
+                dropoffTime: format(addMinutes(new Date(), 30), 'HH:mm'), 
+                startOdometer: '', 
+                endOdometer: '', 
+                reasonForVisit: 'Behavioral Health / Counseling',
+                isExpanded: true
+            }]);
+            setError('');
+        }
+    };
+
+    const handleSmartFill = () => {
+        if (!selectedMember) {
+            setError('Please select a member first for AI auto-suggestions.');
             window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
         }
         
-        createTripMutation.mutate();
+        setError('');
+        const baseOdo = 45000 + Math.floor(Math.random() * 1000);
+        const morning = new Date();
+        morning.setHours(9, 0, 0);
+        
+        setLegs([
+            {
+                pickupAddress: selectedMember.address || 'Member Home',
+                dropoffAddress: 'Desert Valley Medical Center',
+                pickupTime: format(morning, 'HH:mm'),
+                dropoffTime: format(addMinutes(morning, 35), 'HH:mm'),
+                startOdometer: baseOdo.toString(),
+                endOdometer: (baseOdo + 8).toString(),
+                reasonForVisit: 'Dialysis',
+                isExpanded: false
+            },
+            {
+                pickupAddress: 'Desert Valley Medical Center',
+                dropoffAddress: selectedMember.address || 'Member Home',
+                pickupTime: format(addMinutes(morning, 240), 'HH:mm'),
+                dropoffTime: format(addMinutes(morning, 275), 'HH:mm'),
+                startOdometer: (baseOdo + 8).toString(),
+                endOdometer: (baseOdo + 16).toString(),
+                reasonForVisit: 'Dialysis',
+                isExpanded: true
+            }
+        ]);
+        setTripType('ROUND_TRIP');
     };
 
     return (
@@ -299,31 +411,71 @@ export default function BackfillTripPage() {
             {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
             {/* Member & Vehicle Card */}
-            <Paper sx={{ p: 3, mb: 3, borderRadius: 4, border: '1px solid #e0e0e0' }}>
-                <Typography variant="subtitle2" color="text.secondary" fontWeight={700} sx={{ mb: 2, display: 'block' }}>Basics</Typography>
-                <Autocomplete
-                    options={members}
-                    isOptionEqualToValue={(option, value) => option.id === value.id}
-                    getOptionLabel={(o: any) => o.inputValue || `${o.firstName} ${o.lastName} (${o.memberId || 'No ID'})`}
-                    filterOptions={(options, params) => {
-                        const filtered = filter(options, params);
-                        if (params.inputValue !== '' && !options.some(o => params.inputValue === o.firstName)) {
-                            filtered.push({ inputValue: `Add "${params.inputValue}"`, isNew: true, firstName: params.inputValue });
-                        }
-                        return filtered;
-                    }}
-                    value={selectedMember}
-                    onChange={(_, v: any) => {
-                        if (v?.isNew) {
-                            setNewMemberData(p => ({ ...p, firstName: v.firstName }));
-                            setIsAddMemberOpen(true);
-                        } else {
-                            setSelectedMember(v);
-                            if (v?.address) updateLeg(0, { pickupAddress: v.address });
-                        }
-                    }}
-                    renderInput={(p) => <TextField {...p} label="Member *" sx={{ mb: 2 }} />}
-                />
+            <Paper sx={{ p: 3, mb: 3, borderRadius: 4, border: '1px solid #e0e0e0', borderTop: '4px solid #14B8A6' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="subtitle2" color="text.secondary" fontWeight={700}>Member Details</Typography>
+                    <Button 
+                        size="small" 
+                        onClick={() => setIsManualMember(!isManualMember)}
+                        sx={{ textTransform: 'none', color: '#14B8A6' }}
+                    >
+                        {isManualMember ? 'Use Database Member' : 'Manual Member Entry'}
+                    </Button>
+                </Box>
+
+                {isManualMember ? (
+                    <Grid container spacing={2} sx={{ mb: 2 }}>
+                        <Grid item xs={6}>
+                            <TextField 
+                                label="First Name *" 
+                                fullWidth 
+                                value={manualMemberInfo.firstName}
+                                onChange={(e) => setManualMemberInfo(p => ({ ...p, firstName: e.target.value }))}
+                            />
+                        </Grid>
+                        <Grid item xs={6}>
+                            <TextField 
+                                label="Last Name *" 
+                                fullWidth 
+                                value={manualMemberInfo.lastName}
+                                onChange={(e) => setManualMemberInfo(p => ({ ...p, lastName: e.target.value }))}
+                            />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <TextField 
+                                label="Member ID (Optional)" 
+                                fullWidth 
+                                value={manualMemberInfo.memberId}
+                                onChange={(e) => setManualMemberInfo(p => ({ ...p, memberId: e.target.value }))}
+                            />
+                        </Grid>
+                    </Grid>
+                ) : (
+                    <Autocomplete
+                        options={members}
+                        isOptionEqualToValue={(option, value) => option.id === value.id}
+                        getOptionLabel={(o: any) => o.inputValue || `${o.firstName} ${o.lastName} (${o.memberId || 'No ID'})`}
+                        filterOptions={(options, params) => {
+                            const filtered = filter(options, params);
+                            if (params.inputValue !== '' && !options.some(o => params.inputValue === o.firstName)) {
+                                filtered.push({ inputValue: `Add New Member "${params.inputValue}"`, isNew: true, firstName: params.inputValue });
+                            }
+                            return filtered;
+                        }}
+                        value={selectedMember}
+                        onChange={(_, v: any) => {
+                            if (v?.isNew) {
+                                setNewMemberData(p => ({ ...p, firstName: v.firstName }));
+                                setIsAddMemberOpen(true);
+                            } else {
+                                setSelectedMember(v);
+                                if (v?.address) updateLeg(0, { pickupAddress: v.address });
+                            }
+                        }}
+                        renderInput={(p) => <TextField {...p} label="Search Member Database *" sx={{ mb: 2 }} />}
+                    />
+                )}
+
                 <DatePicker
                     label="Service Date"
                     value={date}
@@ -355,7 +507,7 @@ export default function BackfillTripPage() {
                             transition: 'all 0.2s',
                             '&.Mui-selected': {
                                 bgcolor: 'white',
-                                color: '#0096D6',
+                                color: '#14B8A6',
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                                 '&:hover': { bgcolor: 'white' }
                             },
@@ -369,7 +521,18 @@ export default function BackfillTripPage() {
             </Box>
 
             {/* Legs Section */}
-            <Typography variant="subtitle2" color="text.secondary" fontWeight={700} sx={{ mb: 1.5, ml: 1, display: 'block' }}>Trip Legs ({legs.length}/6)</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, ml: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary" fontWeight={700}>Trip Legs ({legs.length}/6)</Typography>
+                <Button 
+                    startIcon={<AutoAwesome />} 
+                    size="small" 
+                    onClick={handleSmartFill}
+                    disabled={!selectedMember}
+                    sx={{ color: '#14B8A6', fontWeight: 700 }}
+                >
+                    AI Smart Fill
+                </Button>
+            </Box>
             
             {legs.map((leg, index) => (
                 <Card key={index} sx={{ mb: 2, borderRadius: 3, border: '1px solid #e0e0e0', overflow: 'hidden' }}>
@@ -485,14 +648,24 @@ export default function BackfillTripPage() {
                 sx={{ 
                     height: 56, 
                     borderRadius: 3, 
-                    bgcolor: '#0096D6', 
+                    bgcolor: '#14B8A6', 
                     fontWeight: 700, 
                     fontSize: '1rem',
-                    boxShadow: '0 4px 12px rgba(0,150,214,0.2)',
-                    '&:hover': { bgcolor: '#007bb0' }
+                    mb: 2,
+                    boxShadow: '0 4px 12px rgba(20, 184, 166, 0.2)',
+                    '&:hover': { bgcolor: '#0D9488' }
                 }}
             >
                 {createTripMutation.isPending ? 'Saving...' : 'Review & Sign Packets'}
+            </Button>
+
+            <Button
+                fullWidth
+                size="small"
+                onClick={handleReset}
+                sx={{ color: 'text.secondary', fontWeight: 600 }}
+            >
+                Reset Form
             </Button>
 
             {/* Add Member Dialog */}

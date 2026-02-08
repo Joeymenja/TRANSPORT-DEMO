@@ -1,144 +1,214 @@
-import { Box, Typography, Paper, Avatar, Button, Container, Grid, Chip } from '@mui/material';
-import { Star, VerifiedUser, DriveEta, Draw, CheckCircle, Warning } from '@mui/icons-material';
+import { Box, Typography, Paper, Avatar, Button, Container, Divider, IconButton } from '@mui/material';
+import { Edit, CheckCircle, Warning, VerifiedUser, DriveEta, ArrowBack, Description, DirectionsCar } from '@mui/icons-material';
 import { useAuthStore } from '../../store/auth';
-import MobileHeader from '../../components/layout/MobileHeader';
-import { useState } from 'react';
-import SignaturePad from '../../components/SignaturePad';
-import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import api from '../../lib/api';
 
 export default function DriverProfilePage() {
     const user = useAuthStore((state) => state.user);
-    const setUser = useAuthStore((state) => state.setUser); // To update local store after save
-    const [signOpen, setSignOpen] = useState(false);
     const navigate = useNavigate();
 
-    const signatureMutation = useMutation({
-        mutationFn: async (signatureBase64: string) => {
-            if (!user?.id) return;
-            const res = await api.patch('/drivers/profile/signature', {
-                userId: user.id,
-                signatureUrl: signatureBase64
-            });
-            return res.data;
-        },
-        onSuccess: (updatedUser) => {
-            // Update local user state if returned, or merge
-             if (updatedUser) {
-                 setUser({ ...user, ...updatedUser } as any);
-             }
-        }
-    });
-
-    const handleSaveSignature = (data: { signatureBase64: string }) => {
-        signatureMutation.mutate(data.signatureBase64);
-    };
+    const licensePlate = "AZ BMT-4829";
+    const vin = "X9922L01";
 
     return (
-        <Box sx={{ bgcolor: '#fff', minHeight: '100vh', pb: 8 }}>
-            <MobileHeader title="Profile" />
-            <Container maxWidth="sm" sx={{ p: 3 }}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 4 }}>
-                    <Avatar sx={{ width: 100, height: 100, mb: 2, bgcolor: 'primary.main', fontSize: 40 }}>
-                        {user?.firstName?.[0]}
-                    </Avatar>
-                    <Typography variant="h5" fontWeight={700}>{user?.firstName} {user?.lastName}</Typography>
-                    <Typography color="text.secondary">NEMT Transport</Typography>
+        <Box sx={{ bgcolor: '#F5F7FA', minHeight: '100vh', pb: 8 }}>
+            {/* Header */}
+            <Box sx={{ p: 2, pt: 6, display: 'flex', alignItems: 'center', bgcolor: 'white' }}>
+                <IconButton onClick={() => navigate(-1)} sx={{ mr: 1 }}>
+                    <ArrowBack />
+                </IconButton>
+                <Typography variant="h6" fontWeight={800} sx={{ flex: 1, textAlign: 'center', mr: 5 }}>
+                    Driver Profile
+                </Typography>
+            </Box>
 
-                    <Box sx={{ display: 'flex', gap: 1, mt: 1, alignItems: 'center' }}>
-                        <Star sx={{ color: '#FFB400' }} />
-                        <Typography fontWeight={700}>4.9</Typography>
-                        <Typography color="text.secondary">(124 trips)</Typography>
+            <Container maxWidth="sm" sx={{ p: 3 }}>
+                
+                {/* Profile Card */}
+                <Paper sx={{ p: 3, mb: 3, borderRadius: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+                    <Box sx={{ position: 'relative' }}>
+                        <Avatar 
+                            sx={{ width: 80, height: 80, mb: 2, bgcolor: '#263238' }}
+                            src={user?.profileImage}
+                        >
+                            {user?.firstName?.[0]}
+                        </Avatar>
+                        <IconButton 
+                            size="small" 
+                            onClick={() => navigate('/driver/profile/edit')}
+                            sx={{ position: 'absolute', bottom: 10, right: -5, bgcolor: '#14B8A6', color: 'white', '&:hover': { bgcolor: '#0D9488' } }}
+                        >
+                            <Edit sx={{ fontSize: 14 }} />
+                        </IconButton>
                     </Box>
+                    
+                    <Typography variant="h6" fontWeight={800}>
+                        {user?.firstName} {user?.lastName}
+                    </Typography>
+                    <Typography variant="caption" color="primary.main" fontWeight={600}>
+                        Certified NEMT Specialist
+                    </Typography>
+                    <ChipText label={`ID: ${user?.id?.slice(0, 8) || 'AHCCCS-883910'}`} />
+
+                    {/* Stats Row */}
+                    <Box sx={{ display: 'flex', gap: 4, mt: 3, mb: 1 }}>
+                        <Box sx={{ textAlign: 'center' }}>
+                            <Typography variant="h6" fontWeight={800} lineHeight={1}>4.9</Typography>
+                            <Typography variant="caption" color="text.secondary" fontWeight={700}>RATING</Typography>
+                        </Box>
+                        <Box sx={{ width: 1, bgcolor: '#eee' }} />
+                        <Box sx={{ textAlign: 'center' }}>
+                            <Typography variant="h6" fontWeight={800} lineHeight={1}>1.3k</Typography>
+                            <Typography variant="caption" color="text.secondary" fontWeight={700}>TRIPS</Typography>
+                        </Box>
+                        <Box sx={{ width: 1, bgcolor: '#eee' }} />
+                        <Box sx={{ textAlign: 'center' }}>
+                            <Typography variant="h6" fontWeight={800} lineHeight={1}>3y</Typography>
+                            <Typography variant="caption" color="text.secondary" fontWeight={700}>EXP</Typography>
+                        </Box>
+                    </Box>
+
+                    <Divider sx={{ width: '100%', my: 2 }} />
+
+                    <Box sx={{ width: '100%' }}>
+                        <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ mb: 1.5, display: 'block' }}>PERSONAL INFO</Typography>
+                        
+                        <InfoRow label="Full Name" value={`${user?.firstName} {user?.lastName}`} />
+                        <InfoRow label="Email Address" value={user?.email || 'm.henderson@nemt.link'} />
+                        <InfoRow label="Phone" value="+1 (602) 555-0100" />
+                    </Box>
+                </Paper>
+
+                {/* Vehicle Info */}
+                <Box sx={{ mb: 3 }}>
+                    <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ mb: 1, display: 'block', ml: 1 }}>VEHICLE INFO</Typography>
+                    <Paper sx={{ p: 2, borderRadius: 1, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                            <DriveEta sx={{ color: '#90A4AE', mr: 2 }} />
+                            <Box sx={{ flex: 1 }}>
+                                <Typography variant="caption" color="text.secondary">License Plate</Typography>
+                                <Typography variant="body2" fontWeight={600}>{licensePlate}</Typography>
+                            </Box>
+                        </Box>
+                        <Divider sx={{ my: 1 }} />
+                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                            <VerifiedUser sx={{ color: '#90A4AE', mr: 2 }} />
+                            <Box sx={{ flex: 1 }}>
+                                <Typography variant="caption" color="text.secondary">VIN (Last 8)</Typography>
+                                <Typography variant="body2" fontWeight={600}>{vin}</Typography>
+                            </Box>
+                        </Box>
+                        <Divider sx={{ my: 1 }} />
+                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                            <DirectionsCar sx={{ color: '#90A4AE', mr: 2 }} />
+                            <Box sx={{ flex: 1 }}>
+                                <Typography variant="caption" color="text.secondary">Vehicle Class</Typography>
+                                <Typography variant="body2" fontWeight={600}>WAV (Wheelchair Accessible)</Typography>
+                            </Box>
+                        </Box>
+                    </Paper>
                 </Box>
 
-                <Grid container spacing={2} sx={{ mb: 4 }}>
-                    <Grid size={{ xs: 6 }}>
-                        <Paper sx={{ p: 2, textAlign: 'center', borderRadius: 3, bgcolor: '#f9f9f9' }} elevation={0}>
-                            <Typography variant="h4" fontWeight={700} color="primary">45</Typography>
-                            <Typography variant="caption" color="text.secondary">HOURS THIS WEEK</Typography>
-                        </Paper>
-                    </Grid>
-                    <Grid size={{ xs: 6 }}>
-                        <Paper sx={{ p: 2, textAlign: 'center', borderRadius: 3, bgcolor: '#f9f9f9' }} elevation={0}>
-                            <Typography variant="h4" fontWeight={700} color="primary">28</Typography>
-                            <Typography variant="caption" color="text.secondary">TRIPS COMPLETED</Typography>
-                        </Paper>
-                    </Grid>
-                </Grid>
+                {/* Compliance Status */}
+                <Box sx={{ mb: 4 }}>
+                    <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ mb: 1, display: 'block', ml: 1 }}>COMPLIANCE STATUS</Typography>
+                    <Paper sx={{ p: 0, borderRadius: 1, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+                        <ComplianceRow 
+                            label="Driver License" 
+                            subLabel="Expires Dec 12, 2026" 
+                            status="VALID" 
+                        />
+                         <Divider />
+                        <ComplianceRow 
+                            label="Vehicle Insurance" 
+                            subLabel="Expires in 14 days" 
+                            status="WARNING" 
+                        />
+                         <Divider />
+                        <ComplianceRow 
+                            label="Medical Clearance" 
+                            subLabel="Expires Oct 20, 2026" 
+                            status="VALID" 
+                        />
+                    </Paper>
 
-                <Typography variant="h6" fontWeight={700} gutterBottom>Compliance</Typography>
-                <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid #eee', mb: 3, overflow: 'hidden' }}>
-                    <Box sx={{ p: 2, borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center' }}>
-                         <Box sx={{ mr: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: '50%', bgcolor: user?.signatureUrl ? '#E8F5E9' : '#FFEBEE' }}>
-                            {user?.signatureUrl ? <CheckCircle color="success" /> : <Warning color="error" />}
-                         </Box>
-                        <Box>
-                            <Typography fontWeight={600}>Driver Signature</Typography>
-                            <Typography variant="caption" color={user?.signatureUrl ? 'success.main' : 'error.main'}>
-                                {user?.signatureUrl ? 'On File' : 'Start compliance now'}
-                            </Typography>
-                        </Box>
-                        <Box sx={{ ml: 'auto' }}>
-                            <Button 
-                                size="small" 
-                                variant={user?.signatureUrl ? 'text' : 'contained'} 
-                                color={user?.signatureUrl ? 'primary' : 'error'}
-                                onClick={() => setSignOpen(true)}
-                            >
-                                {user?.signatureUrl ? 'Update' : 'Sign Now'}
-                            </Button>
-                        </Box>
-                    </Box>
-                    {user?.signatureUrl && (
-                        <Box sx={{ p: 2, display: 'flex', justifyContent: 'center', bgcolor: '#f9f9f9' }}>
-                            <Box component="img" src={user.signatureUrl} sx={{ maxHeight: 60, opacity: 0.8 }} alt="Signature" />
-                        </Box>
-                    )}
-                </Paper>
+                    <Button 
+                        fullWidth 
+                        onClick={() => navigate('/driver/compliance')}
+                        variant="contained" 
+                        sx={{ 
+                            mt: 3, 
+                            bgcolor: '#14B8A6', 
+                            color: 'white', 
+                            fontWeight: 700, 
+                            py: 1.5,
+                            borderRadius: 1,
+                            boxShadow: '0 4px 15px rgba(20, 184, 166, 0.3)',
+                            '&:hover': { bgcolor: '#0D9488' }
+                        }}
+                    >
+                        Update Document Status
+                    </Button>
+                </Box>
 
-                <Typography variant="h6" fontWeight={700} gutterBottom>Account</Typography>
-                <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid #eee', overflow: 'hidden' }}>
-                    <Box sx={{ p: 2, borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center' }}>
-                        <VerifiedUser sx={{ color: 'success.main', mr: 2 }} />
-                        <Box>
-                            <Typography fontWeight={600}>Documents & Compliance</Typography>
-                            <Typography variant="caption" color="success.main">All Up to Date</Typography>
-                        </Box>
-                        <Box sx={{ ml: 'auto' }}>
-                            <Button size="small" onClick={() => navigate('/driver/compliance')}>View</Button>
-                        </Box>
-                    </Box>
-                    <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
-                        <DriveEta sx={{ color: 'text.secondary', mr: 2 }} />
-                        <Box>
-                            <Typography fontWeight={600}>Vehicle Information</Typography>
-                            <Typography variant="caption" color="text.secondary">Toyota Sienna (Blue)</Typography>
-                        </Box>
-                        <Box sx={{ ml: 'auto' }}>
-                            <Button size="small" onClick={() => alert('Vehicle editing coming soon')}>Edit</Button>
-                        </Box>
-                    </Box>
-                </Paper>
-
-                <Button
-                    fullWidth
-                    variant="outlined"
-                    color="error"
-                    sx={{ mt: 4, borderRadius: 20 }}
-                    onClick={() => useAuthStore.getState().logout()}
-                >
-                    Log Out
-                </Button>
-
-                <SignaturePad 
-                    open={signOpen} 
-                    onClose={() => setSignOpen(false)} 
-                    onSave={handleSaveSignature}
-                    title="Driver Signature"
-                />
             </Container>
+        </Box>
+    );
+}
+
+function ChipText({ label }: { label: string }) {
+    return (
+        <Typography variant="caption" sx={{ 
+            color: '#14B8A6', 
+            bgcolor: '#E0F2F1', 
+            px: 1.5, 
+            py: 0.5, 
+            borderRadius: 1, 
+            fontWeight: 700, 
+            mt: 0.5 
+        }}>
+            {label}
+        </Typography>
+    );
+}
+
+function InfoRow({ label, value }: { label: string, value: string }) {
+    return (
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
+            <Typography variant="body2" color="text.secondary">{label}</Typography>
+            <Typography variant="body2" fontWeight={600}>{value}</Typography>
+        </Box>
+    );
+}
+
+
+
+function ComplianceRow({ label, subLabel, status }: { label: string, subLabel: string, status: 'VALID' | 'WARNING' | 'ERROR' }) {
+    return (
+        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: 'white' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ 
+                    p: 1, 
+                    borderRadius: 1, 
+                    bgcolor: status === 'VALID' ? '#E8F5E9' : status === 'WARNING' ? '#FFF8E1' : '#FFEBEE' 
+                }}>
+                    <Description sx={{ fontSize: 20, color: status === 'VALID' ? '#2E7D32' : status === 'WARNING' ? '#F9A825' : '#C62828' }} />
+                </Box>
+                <Box>
+                    <Typography variant="body2" fontWeight={700}>{label}</Typography>
+                    <Typography variant="caption" color={status === 'WARNING' ? 'warning.main' : 'text.secondary'}>
+                        {subLabel}
+                    </Typography>
+                </Box>
+            </Box>
+            
+            {status === 'VALID' ? (
+                <CheckCircle color="success" sx={{ fontSize: 20 }} />
+            ) : (
+                 <Button size="small" variant="contained" color="warning" sx={{ fontSize: '0.65rem', py: 0.2, minWidth: 60 }}>
+                     Renew
+                 </Button>
+            )}
         </Box>
     );
 }

@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Box, Container, Typography, Card, Button, TextField, Grid, MenuItem, Stepper, Step, StepLabel, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, FormControlLabel, Switch, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { Box, Container, Typography, Card, Button, TextField, Grid, MenuItem, Stepper, Step, StepLabel, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, FormControlLabel, Switch, Tab, Tabs, Stack } from '@mui/material';
 import { MobileDatePicker, MobileTimePicker } from '@mui/x-date-pickers';
 import { format } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { tripApi, CreateTripData } from '../../api/trips';
+import { locationApi } from '../../api/locations';
 import { memberApi, MobilityRequirement } from '../../api/members';
 import { driverApi } from '../../api/drivers';
 import { useAuthStore } from '../../store/auth';
@@ -38,14 +39,17 @@ export default function DriverCreateTripPage() {
         reasonForVisit: '',
         escortName: '',
         escortRelationship: '',
-        startNow: true, // Default to true per user feedback
+        startNow: false, // Default to false per user feedback
         assignedDriverId: '',
+        odometerStart: '',
+        odometerEnd: '',
     });
 
     const steps = ['Trip Details', 'Route & Schedule'];
 
     const { data: members } = useQuery({ queryKey: ['members'], queryFn: () => memberApi.getMembers() });
-    const { data: drivers } = useQuery({ queryKey: ['drivers'], queryFn: () => driverApi.getDrivers(), enabled: user?.role === 'HOUSE_MANAGER' });
+    const { data: drivers } = useQuery({ queryKey: ['drivers'], queryFn: () => driverApi.getAll(), enabled: user?.role === 'HOUSE_MANAGER' });
+    const { data: locations } = useQuery({ queryKey: ['locations'], queryFn: () => locationApi.getAll() });
 
     const createMemberMutation = useMutation({
         mutationFn: async () => {
@@ -76,8 +80,8 @@ export default function DriverCreateTripPage() {
 
             const tripDate = new Date(`${formData.date}T${formData.time}`);
             
-
-            let status = formData.startNow ? 'IN_PROGRESS' : 'PENDING_APPROVAL';
+            // Logic for status and startNow
+            let status = 'PENDING_APPROVAL';
             let assignedDriverId = user?.role === 'DRIVER' ? user.id : undefined;
             let startedAt, completedAt;
 
@@ -93,10 +97,14 @@ export default function DriverCreateTripPage() {
                  if (user?.role === 'HOUSE_MANAGER') {
                      assignedDriverId = formData.assignedDriverId || undefined; 
                  }
-            } else if (user?.role === 'HOUSE_MANAGER') {
-                 // Future booking for HM
-                 status = 'SCHEDULED'; // Strict scheduling
-                 assignedDriverId = undefined; // Auto-dispatch
+            } else {
+                // FUTURE Booking
+                if (user?.role === 'HOUSE_MANAGER') {
+                     status = 'SCHEDULED'; // Strict scheduling
+                     assignedDriverId = undefined; // Auto-dispatch
+                } else if (formData.startNow) {
+                    status = 'IN_PROGRESS';
+                }
             }
             
             const tripData: CreateTripData = {
@@ -108,8 +116,20 @@ export default function DriverCreateTripPage() {
                 assignedDriverId,
                 members: [{ memberId: formData.memberId }],
                 stops: [
-                    { stopType: 'PICKUP', stopOrder: 1, address: formData.pickupAddress, scheduledTime: tripDate },
-                    { stopType: 'DROPOFF', stopOrder: 2, address: formData.dropoffAddress, scheduledTime: new Date(tripDate.getTime() + 3600000) }
+                    { 
+                        stopType: 'PICKUP', 
+                        stopOrder: 1, 
+                        address: formData.pickupAddress, 
+                        scheduledTime: tripDate,
+                        odometerReading: bookingMode === 'PAST' && formData.odometerStart ? parseFloat(formData.odometerStart) : undefined
+                    },
+                    { 
+                        stopType: 'DROPOFF', 
+                        stopOrder: 2, 
+                        address: formData.dropoffAddress, 
+                        scheduledTime: new Date(tripDate.getTime() + 3600000),
+                        odometerReading: bookingMode === 'PAST' && formData.odometerEnd ? parseFloat(formData.odometerEnd) : undefined
+                    }
                 ],
                 status: status,
                 startedAt,
@@ -120,14 +140,19 @@ export default function DriverCreateTripPage() {
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['driver-trips'] });
-            if (formData.startNow && data.id) {
+            
+            if (bookingMode === 'PAST' && data.id) {
+                 navigate(`/driver/report/${data.id}`, { state: { returnPath: '/driver/trips' } });
+            } else if (bookingMode === 'FUTURE' && formData.startNow && data.id) {
+                // Only navigate to execute if it's a future trip starting NOW
                 navigate(`/driver/trips/${data.id}/execute`);
             } else {
-                navigate('/driver/trips');
+                // Otherwise go to the details page so they can see it and optionally start it
+                navigate(`/driver/trips/${data.id}`);
             }
         },
         onError: (err: any) => {
-            alert('Failed to schedule trip: ' + err.message);
+            alert('Failed to save trip: ' + err.message);
         }
     });
 
@@ -155,11 +180,30 @@ export default function DriverCreateTripPage() {
     };
 
     return (
-        <Container maxWidth="md" sx={{ py: 2 }}>
-            <Button variant="text" onClick={() => navigate('/driver')}>
-                Cancel
-            </Button>
-            <Typography variant="h5" sx={{ mb: 3, mt: 1 }}>New Trip Entry</Typography>
+        <Container maxWidth="xl" sx={{ py: 2 }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                <Button variant="text" onClick={() => navigate('/driver')}>
+                    Cancel
+                </Button>
+            </Box>
+            
+            {user?.role === 'HOUSE_MANAGER' && (
+                <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+                    <Tabs 
+                        value={bookingMode} 
+                        onChange={(_, val) => setBookingMode(val)} 
+                        aria-label="trip booking mode"
+                        variant="fullWidth"
+                    >
+                        <Tab label="Book a Ride" value="FUTURE" />
+                        <Tab label="Log Past Trip" value="PAST" />
+                    </Tabs>
+                </Box>
+            )}
+
+            <Typography variant="h5" sx={{ mb: 3 }}>
+                {bookingMode === 'PAST' ? 'Log Past Trip Entry' : 'Book a New Ride'}
+            </Typography>
 
             <Stepper activeStep={activeStep} sx={{ mb: 4 }} alternativeLabel>
                 {steps.map((label) => (
@@ -169,34 +213,24 @@ export default function DriverCreateTripPage() {
                 ))}
             </Stepper>
 
-            {user?.role === 'HOUSE_MANAGER' && (
-                <Box sx={{ mb: 3, textAlign: 'center' }}>
-                    <ToggleButtonGroup
-                        color="primary"
-                        value={bookingMode}
-                        exclusive
-                        onChange={(_, newMode) => newMode && setBookingMode(newMode)}
-                        aria-label="Booking Mode"
-                    >
-                        <ToggleButton value="FUTURE">Book New Ride</ToggleButton>
-                        <ToggleButton value="PAST">Log Past Trip</ToggleButton>
-                    </ToggleButtonGroup>
-                </Box>
-            )}
-
-            <Card sx={{ p: { xs: 2, md: 3 } }}>
+            <Card sx={{ p: { xs: 2, md: 3 }, border: 1, borderColor: bookingMode === 'PAST' ? 'warning.main' : 'primary.main', boxShadow: 3 }}>
                 {activeStep === 0 && (
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                         <Box>
-                            <Alert severity="info" sx={{mb: 1}}>
-                                {user?.role === 'DRIVER' 
-                                    ? `This trip will be assigned to you (${user?.firstName}).`
-                                    : 'This trip will be automatically dispatched to an available driver.'}
-                            </Alert>
-                         <Box>
-                            <Alert severity="info" sx={{mb: 1}}>
+                        <Box sx={{ mb: 2, pb: 2, borderBottom: 1, borderColor: 'divider' }}>
+                            <Typography variant="h6" color={bookingMode === 'PAST' ? 'warning.main' : 'primary.main'} fontWeight="bold">
+                                {bookingMode === 'PAST' ? '📝 Trip Details (Past)' : 'Trip Details'}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
                                 {bookingMode === 'PAST' 
-                                    ? 'Log a completed trip for records.'
+                                    ? 'Record details of a trip that has already been completed.' 
+                                    : 'Schedule a new transportation request for upcoming travel.'}
+                            </Typography>
+                         </Box>
+                         
+                         <Box>
+                            <Alert severity={bookingMode === 'PAST' ? 'warning' : 'info'} sx={{mb: 1}}>
+                                {bookingMode === 'PAST' 
+                                    ? 'Log a completed trip for records. This will not dispatch a driver.'
                                     : (user?.role === 'DRIVER' 
                                         ? `This trip will be assigned to you (${user?.firstName}).`
                                         : 'This trip will be automatically dispatched to an available driver.')
@@ -267,7 +301,7 @@ export default function DriverCreateTripPage() {
 
                 {activeStep === 1 && (
                     <Grid container spacing={3}>
-                        <Grid item xs={12} sm={6}>
+                        <Grid item xs={12} sm={6} md={bookingMode === 'PAST' ? 2 : 6}>
                             <MobileDatePicker
                                 label="Date"
                                 value={new Date(formData.date + 'T00:00:00')}
@@ -279,9 +313,9 @@ export default function DriverCreateTripPage() {
                                 slotProps={{ textField: { fullWidth: true } }}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid item xs={12} sm={6} md={bookingMode === 'PAST' ? 2 : 6}>
                             <MobileTimePicker
-                                label="Time"
+                                label={bookingMode === 'PAST' ? "Start Time" : "Time"}
                                 value={new Date(`2000-01-01T${formData.time}`)}
                                 onChange={(newValue) => {
                                     if (newValue) {
@@ -292,7 +326,7 @@ export default function DriverCreateTripPage() {
                             />
                         </Grid>
                         {bookingMode === 'PAST' && (
-                            <Grid item xs={12} sm={6}>
+                            <Grid item xs={12} sm={6} md={2}>
                                 <MobileTimePicker
                                     label="End Time"
                                     value={new Date(`2000-01-01T${formData.endTime}`)}
@@ -305,21 +339,99 @@ export default function DriverCreateTripPage() {
                                 />
                             </Grid>
                         )}
+                        
+                        {bookingMode === 'PAST' && (
+                            <>
+                                <Grid item xs={6} md={3}>
+                                    <TextField
+                                        label="Odometer Start"
+                                        type="number"
+                                        fullWidth
+                                        value={formData.odometerStart}
+                                        onChange={(e) => setFormData({ ...formData, odometerStart: e.target.value })}
+                                        InputProps={{ inputProps: { min: 0 } }}
+                                    />
+                                </Grid>
+                                <Grid item xs={6} md={3}>
+                                    <TextField
+                                        label="Odometer End"
+                                        type="number"
+                                        fullWidth
+                                        value={formData.odometerEnd}
+                                        onChange={(e) => setFormData({ ...formData, odometerEnd: e.target.value })}
+                                        InputProps={{ inputProps: { min: 0 } }}
+                                    />
+                                </Grid>
+                            </>
+                        )}
+                        {/* Address Section - Enforce Block Layout */}
                         <Grid item xs={12}>
-                            <TextField
-                                label="Pickup Address"
-                                fullWidth
-                                value={formData.pickupAddress}
-                                onChange={(e) => setFormData({ ...formData, pickupAddress: e.target.value })}
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <TextField
-                                label="Drop-off Address"
-                                fullWidth
-                                value={formData.dropoffAddress}
-                                onChange={(e) => setFormData({ ...formData, dropoffAddress: e.target.value })}
-                            />
+                             <Card variant="outlined" sx={{ p: 3, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+                                <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 'bold', mb: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
+                                    Trip Locations
+                                </Typography>
+                                
+                                <Stack spacing={2}>
+                                    <Box sx={{ width: '100%' }}>
+                                        <Autocomplete
+                                            fullWidth
+                                            freeSolo
+                                            options={locations || []}
+                                            getOptionLabel={(option) => typeof option === 'string' ? option : `${option.name} (${option.address})`}
+                                            value={formData.pickupAddress}
+                                            onChange={(_, newValue) => {
+                                                if (typeof newValue === 'string') {
+                                                    setFormData({ ...formData, pickupAddress: newValue });
+                                                } else if (newValue) {
+                                                    setFormData({ ...formData, pickupAddress: newValue.address });
+                                                }
+                                            }}
+                                            onInputChange={(_, newInputValue) => {
+                                                setFormData(prev => ({ ...prev, pickupAddress: newInputValue }))
+                                            }}
+                                            renderInput={(params) => (
+                                                <TextField 
+                                                    {...params} 
+                                                    label="Pickup Address" 
+                                                    placeholder="Enter pickup location..." 
+                                                    fullWidth 
+                                                    variant="outlined" 
+                                                    InputProps={{ ...params.InputProps, sx: { bgcolor: 'white' } }}
+                                                />
+                                            )}
+                                        />
+                                    </Box>
+                                    <Box sx={{ width: '100%' }}>
+                                         <Autocomplete
+                                            fullWidth
+                                            freeSolo
+                                            options={locations || []}
+                                            getOptionLabel={(option) => typeof option === 'string' ? option : `${option.name} (${option.address})`}
+                                            value={formData.dropoffAddress}
+                                            onChange={(_, newValue) => {
+                                                if (typeof newValue === 'string') {
+                                                    setFormData({ ...formData, dropoffAddress: newValue });
+                                                } else if (newValue) {
+                                                    setFormData({ ...formData, dropoffAddress: newValue.address });
+                                                }
+                                            }}
+                                            onInputChange={(_, newInputValue) => {
+                                                setFormData(prev => ({ ...prev, dropoffAddress: newInputValue }))
+                                            }}
+                                            renderInput={(params) => (
+                                                <TextField 
+                                                    {...params} 
+                                                    label="Drop-off Address" 
+                                                    placeholder="Enter destination..." 
+                                                    fullWidth 
+                                                    variant="outlined" 
+                                                    InputProps={{ ...params.InputProps, sx: { bgcolor: 'white' } }}
+                                                />
+                                            )}
+                                        />
+                                    </Box>
+                                </Stack>
+                             </Card>
                         </Grid>
 
                         {bookingMode === 'FUTURE' && user?.role === 'DRIVER' && (
@@ -355,7 +467,8 @@ export default function DriverCreateTripPage() {
                         onClick={handleNext}
                         disabled={activeStep === 0 && !formData.memberId}
                     >
-                        {activeStep === steps.length - 1 ? (createMutation.isPending ? 'Processing...' : (bookingMode === 'PAST' ? 'Log Trip' : (formData.startNow ? 'Start Trip Now' : 'Schedule Trip'))) : 'Next'}
+
+                        {activeStep === steps.length - 1 ? (createMutation.isPending ? 'Processing...' : (bookingMode === 'PAST' ? 'Log Trip' : (formData.startNow ? 'Start Trip Now' : 'Book Ride'))) : 'Next'}
                     </Button>
                 </Box>
             </Card>

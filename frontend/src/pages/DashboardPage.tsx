@@ -1,4 +1,4 @@
-import { Box, Container, Grid, Card, CardContent, Typography, Button, Chip, Collapse, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Divider, List, ListItem, ListItemText, ListItemIcon, Checkbox, FormControlLabel, FormControl, InputLabel, Select } from '@mui/material';
+import { Box, Container, Grid, Card, CardContent, Typography, Button, Chip, Collapse, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Divider, List, ListItem, ListItemText, ListItemIcon, Checkbox, FormControlLabel, FormControl, InputLabel, Select, Badge, Avatar } from '@mui/material';
 import {
     DirectionsCar,
     Schedule,
@@ -29,7 +29,6 @@ import MobileDriverDashboard from '../components/dashboard/MobileDriverDashboard
 import DesktopDriverDashboard from '../components/dashboard/DesktopDriverDashboard';
 import HouseManagerDashboard from '../components/dashboard/HouseManagerDashboard';
 import MobileCaseManagerDashboard from '../components/dashboard/MobileCaseManagerDashboard';
-import UnassignedTripsList from '../components/dispatch/UnassignedTripsList';
 import LiveMap from '../components/dashboard/LiveMap';
 import ActivityFeed from '../components/dashboard/ActivityFeed';
 
@@ -235,342 +234,223 @@ export default function DashboardPage() {
         );
     }
 
+    // --- MISSION CONTROL DASHBOARD (ADMIN) ---
     return (
-        <Container maxWidth="xl" sx={{ py: 4 }}>
-            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box>
-                    <Typography variant="h4" sx={{ fontWeight: 600, color: '#212121', mb: 1 }}>
-                        Dashboard
+        <Box sx={{ width: '100%', height: 'calc(100vh - 64px)', position: 'relative', overflow: 'hidden', bgcolor: '#000' }}>
+            
+            {/* 1. Background Map */}
+            <LiveMap drivers={drivers} fullScreen theme="dark" />
+            
+            {/* 2. Left Command Panel (Glassmorphism) */}
+            <Paper sx={{ 
+                position: 'absolute', 
+                top: 20, 
+                bottom: 20, 
+                left: 20, 
+                width: 400, 
+                bgcolor: 'rgba(28, 28, 30, 0.85)', 
+                backdropFilter: 'blur(20px)',
+                borderRadius: 4,
+                border: '1px solid rgba(255,255,255,0.1)',
+                display: 'flex', 
+                flexDirection: 'column', 
+                overflow: 'hidden',
+                zIndex: 10
+            }}>
+                <Box sx={{ p: 3, borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box>
+                        <Typography variant="h5" fontWeight={800} sx={{ color: 'white', letterSpacing: -0.5 }}>
+                            MISSION CONTROL
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: '#8e8e93', fontWeight: 600 }}>
+                            {format(new Date(), 'EEEE, MMMM d')} • {trips.length} Trips
+                        </Typography>
+                    </Box>
+                    <IconButton onClick={() => setIsCreateDialogOpen(true)} sx={{ bgcolor: 'primary.main', color: 'white', '&:hover': { bgcolor: 'primary.dark' } }}>
+                        <Add />
+                    </IconButton>
+                </Box>
+
+                <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>
+                    
+                    {/* Unassigned Trips Warning */}
+                    {trips.some(t => t.status === 'PENDING_APPROVAL' || t.status === 'SCHEDULED' && !t.assignedDriverId) && (
+                        <Box sx={{ mb: 3 }}>
+                           <Typography variant="overline" color="error.main" fontWeight={800} sx={{ letterSpacing: 1 }}>
+                                ATTENTION NEEDED
+                           </Typography>
+                           {trips.filter(t => t.status === 'PENDING_APPROVAL').map(trip => (
+                               <Card key={trip.id} sx={{ mb: 1.5, bgcolor: 'rgba(255,59,48,0.15)', border: '1px solid #ff3b30', borderRadius: 2 }}>
+                                   <CardContent sx={{ p: '12px !important', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                       <Box>
+                                           <Typography variant="subtitle2" fontWeight={700} color="white">
+                                               New Request #{trip.id.slice(0,6)}
+                                           </Typography>
+                                           <Typography variant="caption" color="rgba(255,255,255,0.7)">
+                                                {format(new Date(trip.tripDate), 'h:mm a')} • {trip.mobilityRequirement}
+                                           </Typography>
+                                       </Box>
+                                       <Button size="small" variant="contained" color="error" onClick={() => approveTripMutation.mutate(trip.id)}>
+                                           Review
+                                       </Button>
+                                   </CardContent>
+                               </Card>
+                           ))}
+                        </Box>
+                    )}
+
+                    {/* Active/Upcoming Trips */}
+                    <Typography variant="overline" color="#8e8e93" fontWeight={800} sx={{ letterSpacing: 1, mb: 1, display: 'block' }}>
+                        SCHEDULED TRIPS
                     </Typography>
-                    <Typography variant="body1" color="text.secondary">
-                        {format(new Date(), 'EEEE, MMMM d, yyyy')}
+                    
+                    {trips.filter(t => t.status !== 'PENDING_APPROVAL').length === 0 ? (
+                        <Typography variant="body2" color="#666" fontStyle="italic">No scheduled trips today.</Typography>
+                    ) : (
+                        trips.filter(t => t.status !== 'PENDING_APPROVAL').map(trip => (
+                            <Card 
+                                key={trip.id} 
+                                sx={{ 
+                                    mb: 1.5, 
+                                    bgcolor: 'rgba(44, 44, 46, 0.6)', 
+                                    backdropFilter: 'blur(10px)',
+                                    borderRadius: 3, 
+                                    border: '1px solid rgba(255,255,255,0.05)',
+                                    transition: 'all 0.2s',
+                                    '&:hover': { bgcolor: 'rgba(44, 44, 46, 0.9)', transform: 'translateY(-2px)' }
+                                }}
+                            >
+                                <CardContent sx={{ p: 2 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                            <Typography variant="h6" fontWeight={700} color="white">
+                                                {format(new Date(trip.tripDate), 'h:mm a')}
+                                            </Typography>
+                                            <Chip label={trip.status} size="small" sx={{ height: 20, fontSize: '0.65rem', bgcolor: trip.status === 'IN_PROGRESS' ? '#30d158' : '#0a84ff', color: 'white', fontWeight: 700 }} />
+                                        </Box>
+                                        {!trip.assignedDriverId && (
+                                            <Button size="small" variant="outlined" color="warning" onClick={() => setDispatchTripId(trip.id)} sx={{ borderRadius: 4, height: 24, fontSize: '0.7rem' }}>
+                                                Dispatch
+                                            </Button>
+                                        )}
+                                    </Box>
+                                    
+                                    <Typography variant="body2" color="rgba(255,255,255,0.9)" fontWeight={500} noWrap>
+                                        {trip.stops?.find(s => s.stopType === 'PICKUP')?.address?.split(',')[0]} 
+                                    </Typography>
+                                    <Box sx={{ pl: 1, borderLeft: '2px solid #555', my: 0.5 }}>
+                                        <Typography variant="body2" color="rgba(255,255,255,0.7)" noWrap>
+                                            To: {trip.stops?.find(s => s.stopType === 'DROPOFF')?.address?.split(',')[0]}
+                                        </Typography>
+                                    </Box>
+
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1.5 }}>
+                                        <Avatar sx={{ width: 24, height: 24, fontSize: '0.7rem' }}>
+                                            {(trip.members?.[0]?.member?.firstName?.[0] || 'M')}
+                                        </Avatar>
+                                        <Typography variant="caption" color="rgba(255,255,255,0.6)">
+                                            {trip.members?.[0]?.member ? `${trip.members[0].member.firstName} ${trip.members[0].member.lastName}` : 'Guest'}
+                                        </Typography>
+                                        <IconButton size="small" sx={{ ml: 'auto', color: '#8e8e93' }} onClick={() => setExpandedTripId(expandedTripId === trip.id ? null : trip.id)}>
+                                            {expandedTripId === trip.id ? <ExpandLess /> : <ExpandMore />}
+                                        </IconButton>
+                                    </Box>
+
+                                    <Collapse in={expandedTripId === trip.id}>
+                                        <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                                            {/* Minimal Details for quick check */}
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                                <Typography variant="caption" color="#8e8e93">Vehicle</Typography>
+                                                <Typography variant="caption" color="white">{trip.assignedVehicleId ? 'Assigned' : 'None'}</Typography>
+                                            </Box>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                                <Typography variant="caption" color="#8e8e93">Driver</Typography>
+                                                <Typography variant="caption" color="white">{trip.assignedDriverId ? 'Assigned' : 'Unassigned'}</Typography>
+                                            </Box>
+                                            <Button fullWidth variant="outlined" size="small" onClick={() => tripApi.downloadReport(trip.id)} sx={{ mt: 1, color: '#0a84ff', borderColor: '#0a84ff' }}>
+                                                View PDF Report
+                                            </Button>
+                                        </Box>
+                                    </Collapse>
+                                </CardContent>
+                            </Card>
+                        ))
+                    )}
+                </Box>
+            </Paper>
+
+            {/* 3. Right Status Panel (Glassmorphism) */}
+            <Paper sx={{ 
+                position: 'absolute', 
+                top: 20, 
+                bottom: 20, 
+                right: 20, 
+                width: 320, 
+                bgcolor: 'rgba(28, 28, 30, 0.85)', 
+                backdropFilter: 'blur(20px)',
+                borderRadius: 4,
+                border: '1px solid rgba(255,255,255,0.1)',
+                display: 'flex', 
+                flexDirection: 'column', 
+                zIndex: 10
+            }}>
+                 <Box sx={{ p: 3, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                    <Typography variant="h6" fontWeight={800} sx={{ color: 'white', letterSpacing: -0.5 }}>
+                        FLEET STATUS
                     </Typography>
                 </Box>
-                {!driver && (
-                    <Button 
-                        startIcon={<Tune />} 
-                        variant="outlined" 
-                        onClick={() => setCustomizeOpen(true)}
-                        sx={{ borderRadius: 2 }}
-                    >
-                        Customize
-                    </Button>
-                )}
-            </Box>
-
-            {/* Driver Status Section */}
-            {driver && (
-                <Card sx={{ mb: 4, borderRadius: 2 }}>
-                    <CardContent>
-                        <DriverStatusToggle
-                            driverId={driver.id}
-                            initialStatus={driver.currentStatus}
-                            onChange={() => queryClient.invalidateQueries({ queryKey: ['driver-profile'] })}
-                        />
-                        {isOffDuty && (
-                            <Box sx={{ mt: 2, bgcolor: '#ffebee', p: 2, borderRadius: 1, color: '#c62828', display: 'flex', alignItems: 'center' }}>
-                                <ErrorOutline sx={{ mr: 1 }} />
-                                <Typography variant="body2" fontWeight={500}>
-                                    You are currently OFF DUTY. You will not receive new trip assignments.
-                                </Typography>
-                            </Box>
-                        )}
-                    </CardContent>
-                </Card>
-            )}
-
-
-            {/* Live Operations Section */}
-            {!driver && (
-                <Grid container spacing={3} sx={{ mb: 4, height: 500 }}>
-                    <Grid item xs={12} md={4} sx={{ height: '100%' }}>
-                        <UnassignedTripsList trips={trips} drivers={drivers} />
-                    </Grid>
-                    <Grid item xs={12} md={8} sx={{ height: '100%' }}>
-                        <Card sx={{ borderRadius: 2, height: '100%' }}>
-                            <CardContent sx={{ p: '0 !important', height: '100%' }}>
-                                <Box sx={{ p: 2, borderBottom: '1px solid #eee' }}>
-                                    <Typography variant="h6" fontWeight={600}>Live Fleet Map</Typography>
-                                </Box>
-                                <LiveMap drivers={drivers} height="calc(100% - 60px)" />
-                            </CardContent>
-                        </Card>
-                    </Grid>
-                </Grid>
-            )}
-
-
-            {/* Main Content Area: Stats/List Left, Activity Feed Right */}
-            <Grid container spacing={3}>
-                <Grid item xs={12} md={8} lg={9}>
-                    {/* Stats Grid */}
-                    <Grid container spacing={3} sx={{ mb: 4 }}>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <StatCard
-                                title="Active Trips"
-                                value={stats.active}
-                                icon={<DirectionsCar />}
-                                color="#FF9800"
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <StatCard
-                                title="Pending Approval"
-                                value={stats.pending}
-                                icon={<CheckCircle />}
-                                color="#F44336"
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <StatCard
-                                title="Scheduled"
-                                value={stats.scheduled}
-                                icon={<Schedule />}
-                                color="#0096D6"
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <StatCard
-                                title="Completed"
-                                value={stats.completed}
-                                icon={<CheckCircle />}
-                                color="#00C853"
-                            />
-                        </Grid>
-                    </Grid>
-
-                    {/* Upcoming Trips List */}
-                    <Card sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-                        <CardContent>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                                    Today's Trips
-                                </Typography>
-                                <Button
-                                    variant="contained"
-                                    startIcon={<Add />}
-                                    onClick={() => setIsCreateDialogOpen(true)}
-                                    sx={{
-                                        bgcolor: '#0096D6',
-                                        textTransform: 'none',
-                                        '&:hover': { bgcolor: '#0077B5' },
-                                    }}
-                                >
-                                    Create Trip
-                                </Button>
-                            </Box>
-
-                            {isLoading ? (
-                                <Typography>Loading...</Typography>
-                            ) : trips.length === 0 ? (
-                                <Box sx={{ textAlign: 'center', py: 6 }}>
-                                    <Typography variant="body1" color="text.secondary">
-                                        No trips scheduled for today
-                                    </Typography>
-                                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                                        Create a trip to get started
-                                    </Typography>
-                                </Box>
-                            ) : (
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 600, overflowY: 'auto', pr: 1 }}>
-                                    {(trips || []).map((trip) => (
-                                        <Card
-                                            key={trip.id}
-                                            variant="outlined"
-                                            sx={{
-                                                borderRadius: 2,
-                                                '&:hover': {
-                                                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                                },
-                                                borderColor: trip.status === 'PENDING_APPROVAL' ? '#ef5350' : undefined,
-                                                borderWidth: trip.status === 'PENDING_APPROVAL' ? 2 : 1,
-                                                width: '100%',
-                                                flexShrink: 0
-                                            }}
-                                        >
-                                            <CardContent>
-                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                                                    <Box>
-                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                                            <Typography variant="h6" sx={{ fontWeight: 500 }}>
-                                                                Trip #{trip.id.slice(0, 8)}
-                                                            </Typography>
-                                                            {trip.isCarpool && (
-                                                                <Chip
-                                                                    label={`${trip.memberCount} clients`}
-                                                                    size="small"
-                                                                    sx={{ bgcolor: '#E3F2FD', color: '#0096D6' }}
-                                                                />
-                                                            )}
-                                                            <Chip
-                                                                label={trip.mobilityRequirement}
-                                                                size="small"
-                                                                variant="outlined"
-                                                                sx={{
-                                                                    borderColor: trip.mobilityRequirement === 'AMBULATORY' ? '#9e9e9e' : '#ff9800',
-                                                                    color: trip.mobilityRequirement === 'AMBULATORY' ? '#616161' : '#ed6c02',
-                                                                    fontWeight: 500
-                                                                }}
-                                                            />
-                                                        </Box>
-                                                        <Typography variant="body2" color="text.secondary">
-                                                            {(trip.tripType || 'DROP_OFF').replace('_', ' ')} • {trip.stops?.length || 0} stops
-                                                        </Typography>
-                                                    </Box>
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                        <Box sx={{ textAlign: 'right', mr: 2 }}>
-                                                            <Chip
-                                                                label={trip.status}
-                                                                size="small"
-                                                                color={
-                                                                    trip.status === 'IN_PROGRESS' ? 'warning' :
-                                                                        trip.status === 'SCHEDULED' ? 'info' :
-                                                                            trip.status === 'PENDING_APPROVAL' ? 'error' :
-                                                                                'success'
-                                                                }
-                                                                sx={{ mb: 1 }}
-                                                            />
-                                                        </Box>
-
-                                                        {(trip.status === 'PENDING_APPROVAL' || trip.status === 'SCHEDULED') && (
-                                                            <Button
-                                                                variant="contained"
-                                                                size="small"
-                                                                color="primary"
-                                                                startIcon={<AssignmentInd />}
-                                                                onClick={() => setDispatchTripId(trip.id)}
-                                                                sx={{ mr: 1, textTransform: 'none' }}
-                                                            >
-                                                                Dispatch
-                                                            </Button>
-                                                        )}
-
-                                                        {trip.status === 'PENDING_APPROVAL' && (
-                                                            <Button
-                                                                variant="contained"
-                                                                size="small"
-                                                                color="success"
-                                                                startIcon={<CheckCircle />}
-                                                                onClick={() => approveTripMutation.mutate(trip.id)}
-                                                            >
-                                                                Approve
-                                                            </Button>
-                                                        )}
-
-                                                        <Button
-                                                            size="small"
-                                                            variant="outlined"
-                                                            onClick={() => tripApi.downloadReport(trip.id)}
-                                                            sx={{ textTransform: 'none' }}
-                                                        >
-                                                            PDF Report
-                                                        </Button>
-                                                        <IconButton
-                                                            size="small"
-                                                            onClick={() => setExpandedTripId(expandedTripId === trip.id ? null : trip.id)}
-                                                        >
-                                                            {expandedTripId === trip.id ? <ExpandLess /> : <ExpandMore />}
-                                                        </IconButton>
-                                                    </Box>
-                                                </Box>
-
-                                                <Collapse in={expandedTripId === trip.id} timeout="auto" unmountOnExit>
-                                                    <Box sx={{ mt: 3 }}>
-                                                        <Divider sx={{ mb: 2 }} />
-                                                        <Grid container spacing={3}>
-                                                            <Grid item xs={12} md={6}>
-                                                                <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, color: '#0096D6' }}>
-                                                                    <VerifiedUser fontSize="small" /> Member Compliance (Signatures)
-                                                                </Typography>
-                                                                <List disablePadding>
-                                                                    {(trip.members || []).map((tm: any) => (
-                                                                        <ListItem key={tm.id || Math.random()} disableGutters sx={{ py: 0.5 }}>
-                                                                            <ListItemIcon sx={{ minWidth: 32 }}>
-                                                                                {tm.memberSignatureBase64 ?
-                                                                                    <CheckCircle fontSize="small" sx={{ color: '#00C853' }} /> :
-                                                                                    <ErrorOutline fontSize="small" sx={{ color: '#F44336' }} />
-                                                                                }
-                                                                            </ListItemIcon>
-                                                                            <ListItemText
-                                                                                primary={tm.member ? `${tm.member.firstName} ${tm.member.lastName}` : 'Unknown Member'}
-                                                                                secondary={tm.memberSignatureBase64 ? 'Signature Captured' : 'Awaiting Signature'}
-                                                                                primaryTypographyProps={{ variant: 'body2' }}
-                                                                                secondaryTypographyProps={{ variant: 'caption' }}
-                                                                            />
-                                                                            {tm.memberSignatureBase64 && tm.member && (
-                                                                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                                                    {tm.isProxySignature && (
-                                                                                        <Chip
-                                                                                            label="Proxy"
-                                                                                            size="small"
-                                                                                            color="warning"
-                                                                                            variant="outlined"
-                                                                                            sx={{ height: 20, fontSize: '0.65rem', mr: 1 }}
-                                                                                        />
-                                                                                    )}
-                                                                                    <IconButton
-                                                                                        size="small"
-                                                                                        onClick={() => setPreviewSignature({
-                                                                                            name: `${tm.member.firstName} ${tm.member.lastName}`,
-                                                                                            data: tm.memberSignatureBase64,
-                                                                                            isProxy: tm.isProxySignature,
-                                                                                            proxySigner: tm.proxySignerName,
-                                                                                            proxyRelationship: tm.proxyRelationship,
-                                                                                            proxyReason: tm.proxyReason
-                                                                                        })}
-                                                                                    >
-                                                                                        <Visibility fontSize="small" />
-                                                                                    </IconButton>
-                                                                                </Box>
-                                                                            )}
-                                                                        </ListItem>
-                                                                    ))}
-                                                                </List>
-                                                            </Grid>
-                                                            <Grid item xs={12} md={6}>
-                                                                <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, color: '#FF9800' }}>
-                                                                    <GpsFixed fontSize="small" /> Stop Audit Log (GPS)
-                                                                </Typography>
-                                                                <List disablePadding>
-                                                                    {(trip.stops || []).map((stop: any, idx: number) => (
-                                                                        <ListItem key={stop.id || idx} disableGutters sx={{ py: 0.5 }}>
-                                                                            <ListItemIcon sx={{ minWidth: 32 }}>
-                                                                                <HistoryIcon fontSize="small" />
-                                                                            </ListItemIcon>
-                                                                            <ListItemText
-                                                                                primary={`${idx + 1}. ${(stop.stopType || 'STOP')}: ${(stop.address || '').split(',')[0]}`}
-                                                                                secondary={
-                                                                                    stop.actualArrivalTime ?
-                                                                                        `Arrived: ${new Date(stop.actualArrivalTime).toLocaleTimeString()} ${stop.gpsLatitude ? `@ ${Number(stop.gpsLatitude).toFixed(4)}, ${Number(stop.gpsLongitude).toFixed(4)}` : '(No GPS)'}` :
-                                                                                        'Pending'
-                                                                                }
-                                                                                primaryTypographyProps={{ variant: 'body2' }}
-                                                                                secondaryTypographyProps={{ variant: 'caption' }}
-                                                                            />
-                                                                        </ListItem>
-                                                                    ))}
-                                                                </List>
-                                                            </Grid>
-                                                        </Grid>
-                                                    </Box>
-                                                </Collapse>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
-                                </Box>
-                            )}
-                        </CardContent>
-                    </Card>
-                </Grid>
-
-                {/* Activity Feed Sidebar */}
-                <Grid item xs={12} md={4} lg={3} order={{ xs: 2, md: 2 }}>
-                    <Box sx={{ height: 600 }}>
-                        <ActivityFeed trips={trips} />
+                
+                {/* Mini Stats */}
+                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, p: 2 }}>
+                    <Box sx={{ bgcolor: 'rgba(48, 209, 88, 0.2)', p: 1.5, borderRadius: 2, textAlign: 'center' }}>
+                        <Typography variant="h4" fontWeight={700} color="#30d158">{stats.active}</Typography>
+                        <Typography variant="caption" color="rgba(255,255,255,0.7)" fontWeight={600}>ACTIVE</Typography>
                     </Box>
-                </Grid>
-            </Grid>
+                    <Box sx={{ bgcolor: 'rgba(10, 132, 255, 0.2)', p: 1.5, borderRadius: 2, textAlign: 'center' }}>
+                         <Typography variant="h4" fontWeight={700} color="#0a84ff">{stats.scheduled}</Typography>
+                         <Typography variant="caption" color="rgba(255,255,255,0.7)" fontWeight={600}>PENDING</Typography>
+                    </Box>
+                </Box>
 
+                <Box sx={{ flex: 1, overflowY: 'auto', p: 0, display: 'flex', flexDirection: 'column' }}>
+                    <Box sx={{ flexShrink: 0 }}>
+                        <Typography variant="overline" color="#8e8e93" fontWeight={800} sx={{ letterSpacing: 1, px: 3, mt: 2, display: 'block' }}>
+                            ACTIVE DRIVERS
+                        </Typography>
+                        <List>
+                            {drivers.map(driver => (
+                                <ListItem key={driver.id} sx={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <Badge
+                                        overlap="circular"
+                                        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                                        variant="dot"
+                                        sx={{ '& .MuiBadge-badge': { bgcolor: driver.currentStatus === 'AVAILABLE' ? '#30d158' : '#ff9f0a' } }}
+                                    >
+                                         <Avatar sx={{ bgcolor: '#3a3a3c', color: 'white' }}>{driver.firstName[0]}</Avatar>
+                                    </Badge>
+                                    <ListItemText 
+                                        primary={
+                                            <Typography color="white" fontWeight={600} variant="body2">{driver.firstName} {driver.lastName}</Typography>
+                                        }
+                                        secondary={
+                                            <Typography color="#8e8e93" variant="caption">{driver.currentStatus}</Typography>
+                                        }
+                                        sx={{ ml: 2 }}
+                                    />
+                                </ListItem>
+                            ))}
+                        </List>
+                    </Box>
+                    
+                    <Divider sx={{ my: 2, bgcolor: 'rgba(255,255,255,0.1)' }} />
+                    
+                    <Box sx={{ flex: 1, minHeight: 0 }}>
+                        <ActivityFeed theme="dark" />
+                    </Box>
+                </Box>
+            </Paper>
+
+            {/* Dialogs logic remains same */}
             <Dialog open={!!previewSignature} onClose={() => setPreviewSignature(null)} maxWidth="xs" fullWidth>
                 <DialogTitle sx={{ variant: 'subtitle1' }}>
                     Signature: {previewSignature?.name}
@@ -729,28 +609,7 @@ export default function DashboardPage() {
                     dispatchMutation.mutate({ tripId: dispatchTripId!, driverId, vehicleId });
                 }}
             />
-
-            <Dialog open={customizeOpen} onClose={() => setCustomizeOpen(false)}>
-                <DialogTitle>Dashboard Customization</DialogTitle>
-                <DialogContent>
-                    <Box sx={{ py: 2, textAlign: 'center' }}>
-                         <Tune sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
-                         <Typography variant="h6" gutterBottom>Coming Soon</Typography>
-                         <Typography variant="body2" color="text.secondary">
-                             We're building the ability to:
-                         </Typography>
-                         <Box sx={{ textAlign: 'left', mt: 2, display: 'inline-block' }}>
-                             <Typography variant="body2">• Toggle widgets on/off</Typography>
-                             <Typography variant="body2">• Drag & drop to reorder</Typography>
-                             <Typography variant="body2">• Switch layout modes</Typography>
-                         </Box>
-                    </Box>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setCustomizeOpen(false)}>Close</Button>
-                </DialogActions>
-            </Dialog>
-        </Container>
+        </Box>
     );
 }
 

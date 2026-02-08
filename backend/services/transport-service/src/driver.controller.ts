@@ -1,7 +1,10 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Headers, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Headers, UseInterceptors, UploadedFile, UseGuards } from '@nestjs/common';
 import { DriverService } from './driver.service';
 import { CreateDriverDto, UpdateDriverDto } from './dto/driver.dto';
 
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+
+@UseGuards(JwtAuthGuard)
 @Controller('drivers')
 export class DriverController {
     constructor(private readonly driverService: DriverService) { }

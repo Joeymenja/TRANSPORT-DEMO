@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ActiveTripCard from './ActiveTripCard';
 import { 
     Box, 
     Paper, 
@@ -84,13 +85,16 @@ export default function DesktopDriverDashboard() {
     const startDate = addDays(baseDate, 1);
     const endDate = addDays(startDate, 6);
     const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
+    
+    // Fetch Trips for 2 Weeks (Week 1 + Week 2)
+    const fetchEndDate = addDays(endDate, 7);
 
     // Fetch Trips for Week View
     const { data: trips = [], isLoading } = useQuery({
-        queryKey: ['trips-calendar', format(startDate, 'yyyy-MM-dd')],
+        queryKey: ['trips-calendar', format(startDate, 'yyyy-MM-dd'), format(fetchEndDate, 'yyyy-MM-dd')],
         queryFn: () => tripApi.getTrips({ 
             startDate: format(startDate, 'yyyy-MM-dd'), 
-            endDate: format(endDate, 'yyyy-MM-dd') 
+            endDate: format(fetchEndDate, 'yyyy-MM-dd') 
         })
     });
 
@@ -121,6 +125,27 @@ export default function DesktopDriverDashboard() {
             setSnackbarMessage(msg);
             setSnackbarSeverity('error');
             setSnackbarOpen(true);
+        }
+    });
+
+    // Claim Trip Mutation
+    const claimMutation = useMutation({
+        mutationFn: (tripId: string) => {
+            if (!user?.id) throw new Error('No user ID found');
+            return tripApi.updateTrip(tripId, { assignedDriverId: user.id, status: 'SCHEDULED' as any });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['trips-calendar'] });
+            setSelectedTrip(null);
+            setSnackbarMessage('Trip Claimed - Added to your schedule');
+            setSnackbarSeverity('success');
+            setSnackbarOpen(true);
+        },
+        onError: (err: any) => {
+             const msg = err.response?.data?.message || err.message || 'Failed to claim trip';
+             setSnackbarMessage(msg);
+             setSnackbarSeverity('error');
+             setSnackbarOpen(true);
         }
     });
 
@@ -202,97 +227,14 @@ export default function DesktopDriverDashboard() {
                                     const tripTime = new Date(trip.stops[0]?.scheduledTime);
                                     const isDone = trip.status === 'COMPLETED';
                                     return (
-                                        <Paper 
-                                            key={trip.id} 
-                                            elevation={0}
-                                            onClick={() => setSelectedTrip(trip)}
-                                            sx={{ 
-                                                p: 2, 
-                                                border: '1px solid #e2e8f0', 
-                                                borderRadius: 3, 
-                                                bgcolor: isDone ? '#f1f5f9' : 'white',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s',
-                                                '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', borderColor: '#cbd5e1' },
-                                                opacity: isDone ? 0.7 : 1
-                                            }}
-                                        >
-                                            <Box sx={{ mb: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                                <Typography variant="h5" fontWeight={800} color="#1e293b" sx={{ lineHeight: 1 }}>
-                                                    {format(tripTime, 'h:mm')} <span style={{ fontSize: '0.6em', color: '#64748b' }}>{format(tripTime, 'a')}</span>
-                                                </Typography>
-                                                <Stack direction="row" spacing={0.5}>
-                                                    <Chip 
-                                                        label={`#${trip.id.slice(-4)}`}
-                                                        size="small" 
-                                                        variant="outlined"
-                                                        sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, borderColor: '#e2e8f0', color: '#64748b' }}
-                                                    />
-                                                    <Chip 
-                                                        label={trip.tripType === 'ROUND_TRIP' ? 'Round Trip' : 'One Way'} 
-                                                        size="small" 
-                                                        sx={{ 
-                                                            height: 20, 
-                                                            fontSize: '0.65rem', 
-                                                            fontWeight: 700,
-                                                            bgcolor: trip.tripType === 'ROUND_TRIP' ? '#f0abfc' : '#bfdbfe',
-                                                            color: trip.tripType === 'ROUND_TRIP' ? '#86198f' : '#1e40af'
-                                                        }} 
-                                                    />
-                                                    <Chip 
-                                                        label={`${trip.stops?.length || 0} Stops`} 
-                                                        size="small" 
-                                                        sx={{ 
-                                                            height: 20, 
-                                                            fontSize: '0.65rem', 
-                                                            fontWeight: 700,
-                                                            bgcolor: '#e0f2fe',
-                                                            color: '#0369a1' 
-                                                        }} 
-                                                    />
-                                                </Stack>
-                                            </Box>
-                                            
-                                            <Stack direction="row" alignItems="center" gap={1} mb={1.5}>
-                                                <Avatar sx={{ width: 28, height: 28, fontSize: '0.8rem', bgcolor: isDone ? '#cbd5e1' : '#0f172a' }}>
-                                                    {trip.members[0]?.member?.firstName[0]}
-                                                </Avatar>
-                                                <Typography variant="body1" fontWeight={700}>
-                                                    {trip.members[0]?.member?.firstName} {trip.members[0]?.member?.lastName}
-                                                </Typography>
-                                            </Stack>
-
-                                            <Box sx={{ bgcolor: '#f8fafc', p: 1, borderRadius: 2, mb: isDone ? 1.5 : 0 }}>
-                                                <Typography variant="caption" color="text.secondary" display="block" gutterBottom>ROUTE</Typography>
-                                                <Stack spacing={0.5}>
-                                                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'primary.main', flexShrink: 0 }} />
-                                                        <Typography variant="caption" noWrap fontWeight={600}>{trip.stops[0]?.address?.split(',')[0]}</Typography>
-                                                    </Box>
-                                                    <Box sx={{ width: '1px', height: 8, borderLeft: '1px dashed #cbd5e1', ml: 0.5 }} />
-                                                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main', flexShrink: 0 }} />
-                                                        <Typography variant="caption" noWrap fontWeight={600}>{trip.stops[1]?.address?.split(',')[0]}</Typography>
-                                                    </Box>
-                                                </Stack>
-                                            </Box>
-
-                                            {isDone && (
-                                                <Button 
-                                                    fullWidth 
-                                                    variant="outlined" 
-                                                    size="small" 
-                                                    startIcon={<ReportIcon />}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        tripApi.downloadReport(trip.id);
-                                                    }}
-                                                    sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700, borderColor: '#e2e8f0' }}
-                                                >
-                                                    Download PDF
-                                                </Button>
-                                            )}
-                                        </Paper>
+                                        <ActiveTripCard
+                                            key={trip.id}
+                                            trip={trip}
+                                            onViewDetails={() => setSelectedTrip(trip)}
+                                            onStartTrip={trip.assignedDriverId === user?.id ? () => navigate(`/driver/trips/${trip.id}/execute`) : undefined}
+                                            onClaim={(!trip.assignedDriverId && trip.status !== 'COMPLETED' && trip.status !== 'CANCELLED') ? (id) => claimMutation.mutate(id) : undefined}
+                                            showActions={user?.role === 'DRIVER'}
+                                        />
                                     );
                                 })}
                         </Stack>

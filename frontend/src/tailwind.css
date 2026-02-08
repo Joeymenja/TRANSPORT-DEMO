@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+/* Stitch Design System Theme - Sky Blue */
+@theme {
+  /* Primary - Green Teal */
+  --color-primary: #14b8a6;
+  --color-primary-50: #f0fdfa;
+  --color-primary-100: #ccfbf1;
+  --color-primary-200: #99f6e4;
+  --color-primary-300: #5eead4;
+  --color-primary-400: #2dd4bf;
+  --color-primary-500: #14b8a6;
+  --color-primary-600: #0d9488;
+  --color-primary-700: #0f766e;
+  --color-primary-800: #115e59;
+  --color-primary-900: #134e4a;
+  
+  /* Secondary - Sky Blue */
+  --color-secondary: #0ea5e9;
+  
+  /* Accent - Amber */
+  --color-accent: #f59e0b;
+  
+  /* Font families */
+  --font-family-display: 'Inter', sans-serif;
+  
+  /* Border radius */
+  --radius-DEFAULT: 0.25rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
+  --radius-5xl: 2.5rem;
+  --radius-full: 9999px;
+}
+
+/* Base styles */
+@layer base {
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Stitch component classes */
+@layer components {
+  .stitch-card {
+    @apply bg-white rounded-[48px] border border-gray-100 shadow-sm p-8;
+  }
+  
+  .stitch-card-dark {
+    @apply bg-gray-900 rounded-[44px] border border-white/10 shadow-2xl p-6;
+  }
+  
+  .stitch-btn-primary {
+    @apply bg-gray-900 text-white font-black py-4 px-8 rounded-[28px] 
+           shadow-2xl hover:bg-teal-500 transition-colors active:scale-90;
+  }
+  
+  .stitch-btn-secondary {
+    @apply bg-teal-50 text-teal-500 font-black py-4 px-8 rounded-[28px] 
+           border border-teal-100 active:scale-95 transition-all;
+  }
+  
+  .stitch-input {
+    @apply w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 
+           text-gray-900 placeholder-gray-400 focus:outline-none 
+           focus:ring-2 focus:ring-teal-500 focus:border-transparent;
+  }
+  
+  .stitch-label {
+    @apply text-[10px] font-black text-gray-400 uppercase tracking-widest;
+  }
+  
+  .stitch-badge {
+    @apply px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest;
+  }
+  
+  .stitch-badge-active {
+    @apply bg-teal-50 text-teal-500 border border-teal-100;
+  }
+  
+  .stitch-badge-pending {
+    @apply bg-amber-50 text-amber-500 border border-amber-100;
+  }
+  
+  .stitch-status-dot {
+    @apply w-2.5 h-2.5 rounded-full;
+  }
+  
+  .stitch-status-online {
+    @apply bg-green-500 animate-pulse shadow-[0_0_12px_rgba(34,197,94,0.8)];
+  }
+  
+  .stitch-status-break {
+    @apply bg-amber-500;
+  }
+  
+  .stitch-status-offline {
+    @apply bg-gray-400;
+  }
+}
+
+/* Animations */
+@layer utilities {
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+}

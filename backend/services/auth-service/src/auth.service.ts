@@ -30,10 +30,11 @@ export class AuthService {
     }
 
     async login(loginDto: LoginDto): Promise<AuthResponseDto> {
-        console.log(`[DEBUG] Login attempt for email: "${loginDto.email}"`);
+        const email = loginDto.email.toLowerCase();
+        console.log(`[DEBUG] Login attempt for email: "${email}" (normalized from "${loginDto.email}")`);
         try {
             const user = await this.userRepository.findOne({
-                where: { email: loginDto.email, isActive: true },
+                where: { email, isActive: true },
                 relations: ['organization'],
             });
 
@@ -56,9 +57,6 @@ export class AuthService {
 
             if (!isPasswordValid) {
                 console.log(`[DEBUG] Password invalid for user ${user.email}`);
-                console.log(`[DEBUG] Testing with "password123"...`);
-                const testResult = await bcrypt.compare('password123', user.passwordHash);
-                console.log(`[DEBUG] Test result for "password123": ${testResult}`);
                 throw new UnauthorizedException('Invalid credentials');
             }
 

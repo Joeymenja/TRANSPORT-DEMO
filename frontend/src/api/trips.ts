@@ -72,6 +72,7 @@ export interface CreateTripData {
         gpsLatitude?: number;
         gpsLongitude?: number;
         scheduledTime?: Date;
+        odometerReading?: number;
     }[];
     mobilityRequirement?: 'AMBULATORY' | 'WHEELCHAIR' | 'STRETCHER' | 'CAR_SEAT' | 'BURIATRIC_WHEELCHAIR';
 }

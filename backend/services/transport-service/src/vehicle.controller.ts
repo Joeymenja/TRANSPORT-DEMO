@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Request, UseInterceptors, UploadedFile, Res } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Request, UseInterceptors, UploadedFile, Res, UseGuards } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { VehicleService, CreateVehicleDto, UpdateVehicleDto, CreateMaintenanceDto } from './vehicle.service';
 import { CreateVehicleDocumentDto } from './dto/vehicle-document.dto';
@@ -7,6 +7,9 @@ import { VehicleMaintenance } from './entities/maintenance.entity';
 import { VehicleDocument } from './entities/vehicle-document.entity';
 import { Response } from 'express';
 
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+
+@UseGuards(JwtAuthGuard)
 @Controller('vehicles')
 export class VehicleController {
     constructor(private readonly vehicleService: VehicleService) { }

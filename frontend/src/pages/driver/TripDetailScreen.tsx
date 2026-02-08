@@ -1,11 +1,27 @@
-import { Box, Button, Container, Paper, Typography, Chip, Card, CardContent, Divider, Avatar, IconButton, useMediaQuery, useTheme } from '@mui/material';
-import { Directions, AccessTime, Phone, PlayArrow, PlaceOutlined, PersonOutline, LocalTaxiOutlined, Edit, Description as ReportIcon, Download, Visibility } from '@mui/icons-material';
+
+import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { tripApi } from '../../api/trips';
 import { format } from 'date-fns';
 import { useAuthStore } from '../../store/auth';
-import MobileHeader from '../../components/layout/MobileHeader';
+import { 
+  ArrowLeft, 
+  MapPin, 
+  Clock, 
+  User, 
+  Phone, 
+  Play, 
+  Navigation, 
+  Download, 
+  ExternalLink,
+  ShieldCheck,
+  Calendar,
+  Zap,
+  ChevronRight,
+  Info
+} from 'lucide-react';
+import DriverMap from '../../components/dashboard/DriverMap';
 
 export default function TripDetailScreen() {
     const { tripId } = useParams();
@@ -18,223 +34,174 @@ export default function TripDetailScreen() {
         enabled: !!tripId,
     });
 
-    const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-
-    if (isLoading) return <Typography sx={{ p: 4 }}>Loading...</Typography>;
+    if (isLoading) return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-teal-500 border-t-transparent"></div>
+      </div>
+    );
 
     if (isError || !trip) {
         return (
-            <Box sx={{ bgcolor: '#fff', minHeight: '100vh', pb: 12 }}>
-                <MobileHeader title="Trip Details" backRoute="/driver" />
-                <Box sx={{ p: 4, textAlign: 'center' }}>
-                    <Typography color="error" gutterBottom variant="h6">Trip Not Found</Typography>
-                    <Typography color="text.secondary" paragraph>
-                        We couldn't load the details for this trip.
-                    </Typography>
-                    <Button variant="outlined" onClick={() => navigate('/driver')}>
-                        Back to Dashboard
-                    </Button>
-                </Box>
-            </Box>
+          <div className="p-8 text-center bg-white h-screen flex flex-col items-center justify-center">
+             <div className="w-20 h-20 bg-red-50 text-red-500 rounded-3xl flex items-center justify-center mb-6">
+                <Info size={40} />
+             </div>
+             <h3 className="text-2xl font-black text-gray-900 tracking-tight">Mission Not Found</h3>
+             <p className="text-gray-500 mt-2 mb-8">This mission record is either unavailable or has been archived.</p>
+             <button onClick={() => navigate('/driver/stitch')} className="bg-gray-900 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest">
+                Return to Hub
+             </button>
+          </div>
         );
     }
 
-    // Check if trip can be started (e.g., within window)
     const canStart = trip.status === 'SCHEDULED' || trip.status === 'IN_PROGRESS';
     const safeMembers = Array.isArray(trip.members) ? trip.members : [];
     const safeStops = Array.isArray(trip.stops) ? trip.stops : [];
-
-
+    const pickupStop = safeStops.find(s => s.stopType === 'PICKUP');
+    const dropoffStop = safeStops.find(s => s.stopType === 'DROPOFF');
 
     return (
-        <Box sx={{ bgcolor: '#fff', minHeight: '100vh', pb: 12 }}>
-            <MobileHeader 
-                title={`Trip #${(trip.id || '').slice(-4)}`} 
-                backRoute="/driver"
-                action={
-                    <IconButton onClick={() => navigate(`/driver/schedule-new?edit=${trip.id}&date=${format(new Date(trip.tripDate), 'yyyy-MM-dd')}`)}>
-                        <Edit />
-                    </IconButton>
-                }
-            />
+        <div className="min-h-screen bg-gray-50 flex flex-col font-sans pb-32">
+            
+            {/* Header HUD */}
+            <div className="bg-white px-8 py-8 border-b border-gray-100 shadow-sm flex items-center justify-between sticky top-0 z-50">
+               <div className="flex items-center gap-4">
+                  <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-gray-400 hover:text-gray-900 transition-colors">
+                     <ArrowLeft size={32}/>
+                  </button>
+                  <div>
+                    <h2 className="text-2xl font-black text-gray-900 tracking-tight">Mission Detail</h2>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-0.5">ID: {trip.id?.slice(-8).toUpperCase()}</p>
+                  </div>
+               </div>
+               <div className="w-10 h-10 bg-gray-50 text-gray-400 rounded-xl flex items-center justify-center">
+                  <ShieldCheck size={20} />
+               </div>
+            </div>
 
-            <Container maxWidth="sm" sx={{ pt: 2 }}>
+            <div className="p-6 space-y-8">
+               
+               {/* Map Card */}
+               <div className="bg-white rounded-[44px] overflow-hidden border border-gray-100 shadow-sm">
+                  <div className="h-48 relative grayscale">
+                     <DriverMap activeTrip={trip} />
+                     <div className="absolute inset-0 bg-teal-500/5 pointer-events-none" />
+                  </div>
+                  <div className="p-6 grid grid-cols-3 gap-4 bg-white border-t border-gray-50">
+                     <div className="text-center">
+                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Time</p>
+                        <p className="text-sm font-black text-gray-900 tracking-tight">~45m</p>
+                     </div>
+                     <div className="text-center border-x border-gray-50">
+                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Dist</p>
+                        <p className="text-sm font-black text-gray-900 tracking-tight">12.4mi</p>
+                     </div>
+                     <div className="text-center">
+                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Type</p>
+                        <p className="text-sm font-black text-teal-600 tracking-tight uppercase tracking-tighter">NEMT</p>
+                     </div>
+                  </div>
+               </div>
 
-                {/* 1. Map Preview Card */}
-                {/* ... existing map card ... */}  
-                <Card elevation={0} sx={{ mb: 3, borderRadius: 4, overflow: 'hidden', border: '1px solid #f0f0f0', position: 'relative' }}>
-                    <Box sx={{
-                        height: 200,
-                        bgcolor: '#f5f5f5',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundImage: 'url(https://maps.googleapis.com/maps/api/staticmap?center=Phoenix,AZ&zoom=11&size=600x300&key=YOUR_API_KEY_HERE)', // Mock URL
-                        backgroundSize: 'cover'
-                    }}>
-                        {/* Overlay Gradient */}
-                        <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: '40%', background: 'linear-gradient(to bottom, rgba(0,0,0,0.05), transparent)' }} />
-                    </Box>
+               {/* Passenger Card */}
+               <div className="space-y-4">
+                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.25em] ml-2">Assigned Passenger</h4>
+                  {safeMembers.map((tm: any) => (
+                    <div key={tm.id} className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm flex items-center justify-between">
+                       <div className="flex items-center gap-6">
+                          <div className="w-16 h-16 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center text-xl font-black border border-teal-100 shadow-sm">
+                             {tm.member?.firstName?.[0]}
+                          </div>
+                          <div>
+                             <h5 className="text-lg font-black text-gray-900 tracking-tight">{tm.member?.firstName} {tm.member?.lastName}</h5>
+                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-0.5">ID: {tm.member?.memberId}</p>
+                          </div>
+                       </div>
+                       <button className="p-3.5 bg-gray-50 text-gray-400 rounded-2xl border border-gray-100"><Phone size={20} /></button>
+                    </div>
+                  ))}
+               </div>
 
-                    {/* Quick Stats Row */}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-around', py: 2, bgcolor: 'white' }}>
-                        <Box sx={{ textAlign: 'center' }}>
-                            <Typography variant="caption" color="text.secondary" fontWeight={600}>EST. TIME</Typography>
-                            <Typography variant="body1" fontWeight={700}>45 min</Typography>
-                        </Box>
-                        <Divider orientation="vertical" flexItem />
-                        <Box sx={{ textAlign: 'center' }}>
-                            <Typography variant="caption" color="text.secondary" fontWeight={600}>DISTANCE</Typography>
-                            <Typography variant="body1" fontWeight={700}>12.4 mi</Typography>
-                        </Box>
-                        <Divider orientation="vertical" flexItem />
-                        <Box sx={{ textAlign: 'center' }}>
-                            <Typography variant="caption" color="text.secondary" fontWeight={600}>TYPE</Typography>
-                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
-                                <LocalTaxiOutlined sx={{ fontSize: 16, color: 'primary.main' }} />
-                                <Typography variant="body1" fontWeight={700}>{trip.tripType === 'CARPOOL' ? 'Carpool' : 'Standard'}</Typography>
-                            </Box>
-                        </Box>
-                    </Box>
-                </Card>
+               {/* Route Card */}
+               <div className="space-y-4">
+                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.25em] ml-2">Mission Route</h4>
+                  <div className="bg-white p-8 rounded-[44px] border border-gray-100 shadow-sm space-y-10 relative">
+                     {/* Connector Line */}
+                     <div className="absolute left-[59px] top-12 bottom-12 w-1 bg-gray-50" />
+                     
+                     {/* Pickup */}
+                     <div className="flex gap-6 relative z-10">
+                        <div className="w-14 h-14 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center border border-teal-100 shadow-sm">
+                           <MapPin size={24} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                           <div className="flex justify-between items-center mb-1">
+                              <span className="text-[10px] font-black text-teal-400 uppercase tracking-widest">Entry • {pickupStop?.scheduledTime ? format(new Date(pickupStop.scheduledTime), 'h:mm a') : 'TBD'}</span>
+                           </div>
+                           <h4 className="text-lg font-black text-gray-900 truncate tracking-tight mb-2">{pickupStop?.address?.split(',')[0]}</h4>
+                           <button onClick={() => navigate(`/driver/trips/${tripId}/navigate`)} className="bg-gray-50 text-[10px] font-black text-gray-500 uppercase tracking-widest px-4 py-2 rounded-lg border border-gray-100 flex items-center gap-2">
+                              Launch Nav <Navigation size={12} />
+                           </button>
+                        </div>
+                     </div>
 
-                {/* 2. Passenger Info */}
-                <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Passenger</Typography>
-                {safeMembers.map((tm: any) => (
-                    <Card key={tm.id} elevation={0} sx={{ mb: 3, borderRadius: 3, border: '1px solid #eee' }}>
-                        <CardContent sx={{ p: 2 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                <Avatar sx={{ width: 56, height: 56, bgcolor: '#e3f2fd', color: 'primary.main' }}>
-                                    {tm.member?.firstName?.[0]}
-                                </Avatar>
-                                <Box sx={{ flex: 1 }}>
-                                    <Typography variant="h6" fontWeight={600}>
-                                        {tm.member?.firstName} {tm.member?.lastName}
-                                    </Typography>
-                                    <Typography variant="body2" color="text.secondary">
-                                        ID: {tm.member?.memberId}
-                                    </Typography>
-                                </Box>
-                                <IconButton sx={{ border: '1px solid #eee' }}>
-                                    <Phone sx={{ color: '#666' }} />
-                                </IconButton>
-                            </Box>
-                        </CardContent>
-                    </Card>
-                ))}
+                     {/* Dropoff */}
+                     <div className="flex gap-6 relative z-10">
+                        <div className="w-14 h-14 bg-gray-50 text-gray-300 rounded-2xl flex items-center justify-center border border-gray-100">
+                           <MapPin size={24} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                           <div className="flex justify-between items-center mb-1">
+                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Exit • {dropoffStop?.scheduledTime ? format(new Date(dropoffStop.scheduledTime), 'h:mm a') : 'TBD'}</span>
+                           </div>
+                           <h4 className="text-lg font-black text-gray-900 truncate tracking-tight">{dropoffStop?.address?.split(',')[0]}</h4>
+                        </div>
+                     </div>
+                  </div>
+               </div>
 
-                {/* 3. Route / Stops */}
-                <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Route</Typography>
-                <Card elevation={0} sx={{ mb: 4, borderRadius: 3, border: '1px solid #eee' }}>
-                    <CardContent sx={{ p: 0 }}>
-                        {safeStops.map((stop: any, idx: number) => (
-                            <Box key={stop.id}>
-                                <Box sx={{ p: 2.5, display: 'flex', gap: 2 }}>
-                                    {/* Timeline Line */}
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pt: 0.5 }}>
-                                        <PlaceOutlined sx={{ color: stop.stopType === 'PICKUP' ? 'primary.main' : 'error.main', fontSize: 20 }} />
-                                        {idx < safeStops.length - 1 && <Box sx={{ width: 1, flex: 1, bgcolor: '#eee', my: 0.5 }} />}
-                                    </Box>
+               {/* Post-Mission Report */}
+               {(trip.status === 'COMPLETED' || trip.status === 'FINALIZED') && (
+                  <div className="space-y-4">
+                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.25em] ml-2">Archived Directives</h4>
+                     <div className="bg-teal-50 p-8 rounded-[44px] border border-teal-100 shadow-sm flex flex-col gap-6">
+                        <div className="flex items-center gap-4">
+                           <div className="p-3 bg-white text-teal-600 rounded-2xl shadow-sm">
+                              <ShieldCheck size={28} />
+                           </div>
+                           <div>
+                              <p className="text-sm font-black text-teal-900 tracking-tight">Mission Report Generated</p>
+                              <p className="text-[10px] font-black text-teal-600 uppercase tracking-widest">AHCCCS Compliance Verified</p>
+                           </div>
+                        </div>
+                        <div className="flex gap-3">
+                           <button onClick={() => tripApi.downloadReport(trip.id)} className="flex-1 bg-white text-teal-600 py-5 rounded-[24px] font-black text-xs uppercase tracking-widest shadow-sm flex items-center justify-center gap-2">
+                              <Download size={18} /> PDF
+                           </button>
+                           <button onClick={() => navigate(`/driver/report/${trip.id}`)} className="flex-1 bg-teal-600 text-white py-5 rounded-[24px] font-black text-xs uppercase tracking-widest shadow-xl shadow-teal-200 flex items-center justify-center gap-2">
+                              View Log
+                           </button>
+                        </div>
+                     </div>
+                  </div>
+               )}
 
-                                    <Box sx={{ flex: 1 }}>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                                            <Typography variant="subtitle1" fontWeight={600} color={stop.stopType === 'PICKUP' ? 'primary.main' : 'error.main'}>
-                                                {stop.stopType === 'PICKUP' ? 'Pick Up' : 'Drop Off'}
-                                            </Typography>
-                                            <Typography variant="body2" fontWeight={600} color="text.secondary">
-                                                {stop.scheduledTime ? format(new Date(stop.scheduledTime), 'h:mm a') : 'TBD'}
-                                            </Typography>
-                                        </Box>
-                                        <Typography variant="body1" sx={{ color: '#333' }}>
-                                            {stop.address?.split(',')[0]}
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                                            {stop.address?.split(',').slice(1).join(',')}
-                                        </Typography>
+            </div>
 
-                                        <Button
-                                            size="small"
-                                            variant="outlined"
-                                            startIcon={<Directions />}
-                                            sx={{ borderRadius: 20, textTransform: 'none', borderColor: '#e0e0e0', color: '#666' }}
-                                        >
-                                            Navigate
-                                        </Button>
-                                    </Box>
-                                </Box>
-                            </Box>
-                        ))}
-                    </CardContent>
-                </Card>
-
-                {/* 4. Trip Report Section */}
-                {(trip.status === 'COMPLETED' || trip.status === 'FINALIZED') && (
-                    <Box sx={{ mt: 2, mb: 4 }}>
-                        <Typography variant="h6" fontWeight={700} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <ReportIcon color="success" /> Trip Report
-                        </Typography>
-                        <Paper variant="outlined" sx={{ p: 2, borderRadius: 4, bgcolor: '#f0fdf4', borderColor: '#bcf0da' }}>
-                            <Typography variant="body2" sx={{ mb: 2, color: '#065f46' }}>
-                                The trip report has been generated and is ready for review.
-                            </Typography>
-                            <Box sx={{ display: 'flex', gap: 2 }}>
-                                <Button 
-                                    variant="contained" 
-                                    color="success" 
-                                    fullWidth
-                                    startIcon={<Download />}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        tripApi.downloadReport(trip.id);
-                                    }}
-                                    sx={{ borderRadius: 3, fontWeight: 700, textTransform: 'none' }}
-                                >
-                                    Download PDF
-                                </Button>
-                                <Button 
-                                    variant="outlined" 
-                                    color="success" 
-                                    fullWidth
-                                    startIcon={<Visibility />}
-                                    onClick={() => navigate(`/driver/report/${trip.id}`)}
-                                    sx={{ borderRadius: 3, fontWeight: 700, bgcolor: 'white', textTransform: 'none' }}
-                                >
-                                    View Report
-                                </Button>
-                            </Box>
-                        </Paper>
-                    </Box>
-                )}
-            </Container>
-
-            {/* Floating Action Bar - Driver Only (Mobile) */}
-            {isMobile && user?.role === 'DRIVER' && !['COMPLETED', 'FINALIZED', 'CANCELLED'].includes(trip.status) && (
-                <Box sx={{
-                    position: 'fixed', bottom: 0, left: 0, right: 0,
-                    p: 2, pb: 4, bgcolor: 'white',
-                    borderTop: '1px solid #f0f0f0'
-                }}>
-                    <Button
-                        variant="contained"
-                        fullWidth
-                        size="large"
-                        disabled={!canStart}
-                        startIcon={<PlayArrow />}
-                        onClick={() => navigate(`/driver/trips/${tripId}/execute`)}
-                        sx={{
-                            height: 54,
-                            fontSize: '1.1rem',
-                            fontWeight: 600,
-                            borderRadius: 27, // Pill shape
-                            boxShadow: 'none',
-                            bgcolor: 'primary.main'
-                        }}
-                    >
-                        {trip.status === 'IN_PROGRESS' ? 'Resume Trip' : 'Start Trip'}
-                    </Button>
-                </Box>
+            {/* Sticky Action Footer */}
+            {user?.role === 'DRIVER' && !['COMPLETED', 'FINALIZED', 'CANCELLED'].includes(trip.status) && (
+               <div className="fixed bottom-0 left-0 right-0 p-8 pt-4 bg-white/80 backdrop-blur-xl border-t border-gray-100 z-50">
+                  <button 
+                     disabled={!canStart}
+                     onClick={() => navigate(`/driver/trips/${tripId}/execute`)}
+                     className="w-full bg-gray-900 text-white rounded-[28px] py-6 font-black text-xs uppercase tracking-[0.3em] shadow-2xl flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-30 disabled:grayscale"
+                  >
+                    <Zap size={24} className="text-teal-400" />
+                    {trip.status === 'IN_PROGRESS' ? 'Resume Critical Path' : 'Initiate Mission'}
+                  </button>
+               </div>
             )}
-        </Box>
+        </div>
     );
 }

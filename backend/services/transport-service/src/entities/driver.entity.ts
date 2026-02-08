@@ -72,6 +72,9 @@ export class Driver {
     @Column({ name: 'last_status_update', type: 'timestamp', nullable: true })
     lastStatusUpdate: Date;
 
+    @Column({ name: 'saved_signature', type: 'text', nullable: true })
+    savedSignature: string;
+
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
 

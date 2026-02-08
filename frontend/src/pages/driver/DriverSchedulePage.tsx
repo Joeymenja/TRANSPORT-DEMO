@@ -35,7 +35,6 @@ export default function DriverSchedulePage() {
     useEffect(() => {
         if (trips.length > lastTripCount && lastTripCount > 0) {
             setShowNotification(true);
-            // Optionally play a sound here
         }
         setLastTripCount(trips.length);
     }, [trips.length]);
@@ -48,26 +47,26 @@ export default function DriverSchedulePage() {
     };
 
     if (isLoading && !trips.length) {
-        return <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>;
+        return <Box sx={{ display: 'flex', justifyContent: 'center', p: 4, bgcolor: 'black', minHeight: '100vh' }}><CircularProgress sx={{ color: 'white' }} /></Box>;
     }
 
     const renderTripList = (tripList: Trip[]) => (
         <List disablePadding>
             {tripList.length === 0 ? (
-                <Box sx={{ p: 4, textAlign: 'center', color: 'text.secondary' }}>
+                <Box sx={{ p: 4, textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>
                     <Typography>No trips found.</Typography>
                 </Box>
             ) : (
                 tripList.map((trip, i) => (
                     <Box key={trip.id}>
-                        <ListItem button onClick={() => navigate(`/driver/trips/${trip.id}`)} sx={{ py: 2 }}>
+                        <ListItem button onClick={() => navigate(`/driver/trips/${trip.id}`)} sx={{ py: 2, '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}>
                             <Box sx={{
-                                bgcolor: tabValue === 0 ? 'primary.light' : '#f5f5f5',
+                                bgcolor: tabValue === 0 ? 'rgba(10, 132, 255, 0.2)' : 'rgba(255,255,255,0.1)',
                                 width: 50, height: 50,
                                 borderRadius: 2,
                                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                                 mr: 2,
-                                color: tabValue === 0 ? 'primary.main' : 'text.secondary'
+                                color: tabValue === 0 ? '#0a84ff' : 'rgba(255,255,255,0.7)'
                             }}>
                                 <Typography variant="caption" fontWeight={700}>{format(new Date(trip.tripDate), 'MMM').toUpperCase()}</Typography>
                                 <Typography variant="h6" fontWeight={700} lineHeight={1}>{format(new Date(trip.tripDate), 'dd')}</Typography>
@@ -75,17 +74,22 @@ export default function DriverSchedulePage() {
                             <ListItemText
                                 primary={
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <Typography fontWeight={600}>
+                                        <Typography fontWeight={600} sx={{ color: 'white' }}>
                                             {format(new Date(trip.tripDate), 'h:mm a')}
                                         </Typography>
                                         {trip.status === 'COMPLETED' && <Chip label="Done" size="small" color="success" sx={{ height: 20, fontSize: '0.6rem' }} />}
+                                        {trip.status === 'CANCELLED' && <Chip label="Cancelled" size="small" color="error" sx={{ height: 20, fontSize: '0.6rem' }} />}
                                     </Box>
                                 }
-                                secondary={`${trip.stops.length} Stops • ${trip.tripType.replace('_', ' ')}`}
+                                secondary={
+                                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)' }}>
+                                        {trip.stops.length} Stops • {trip.tripType.replace('_', ' ')}
+                                    </Typography>
+                                }
                             />
-                            <ChevronRight color="action" />
+                            <ChevronRight sx={{ color: 'rgba(255,255,255,0.3)' }} />
                         </ListItem>
-                        {i < tripList.length - 1 && <Divider />}
+                        {i < tripList.length - 1 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />}
                     </Box>
                 ))
             )}
@@ -93,40 +97,43 @@ export default function DriverSchedulePage() {
     );
 
     return (
-        <Box sx={{ width: '100%' }}>
+        <Box sx={{ width: '100%', minHeight: '100vh', bgcolor: 'black' }}>
             {/* Secondary Header */}
             <Box sx={{ 
                 height: 60, 
                 display: 'flex', 
                 alignItems: 'center', 
                 px: 2, 
-                borderBottom: '1px solid #f0f0f0',
-                bgcolor: 'white',
-                position: 'relative'
+                borderBottom: '1px solid rgba(255,255,255,0.1)',
+                bgcolor: 'rgba(28, 28, 30, 0.85)',
+                backdropFilter: 'blur(20px)',
+                position: 'sticky',
+                top: 0,
+                zIndex: 10
             }}>
-                <IconButton size="small">
-                    <MenuIcon sx={{ color: '#333' }} />
+                <IconButton size="small" onClick={() => navigate('/driver')}>
+                    <MenuIcon sx={{ color: 'white' }} />
                 </IconButton>
                 <Typography sx={{ 
                     position: 'absolute', 
                     left: '50%', 
                     transform: 'translateX(-50%)',
                     fontWeight: 700,
-                    color: '#333',
+                    color: 'white',
                     fontSize: '1.1rem'
                 }}>
                     My Schedule
                 </Typography>
             </Box>
 
-            <Box sx={{ p: 4, maxWidth: 1100, mx: 'auto' }}>
-                <Paper elevation={0} sx={{ 
+            <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 1100, mx: 'auto' }}>
+                <Box sx={{ 
                     borderRadius: 4, 
-                    border: '1px solid #eee', 
+                    border: '1px solid rgba(255,255,255,0.1)', 
                     overflow: 'hidden',
-                    bgcolor: 'white'
+                    bgcolor: 'rgba(28, 28, 30, 0.5)'
                 }}>
-                    <Box sx={{ borderBottom: '1px solid #eee' }}>
+                    <Box sx={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                         <Tabs 
                             value={tabValue} 
                             onChange={handleTabChange} 
@@ -134,17 +141,18 @@ export default function DriverSchedulePage() {
                             sx={{
                                 '& .MuiTab-root': {
                                     py: 3,
-                                    color: '#999',
+                                    color: 'rgba(255,255,255,0.5)',
                                     fontWeight: 600,
                                     textTransform: 'uppercase',
                                     fontSize: '0.85rem'
                                 },
                                 '& .Mui-selected': {
-                                    color: '#0096D6 !important'
+                                    color: '#0a84ff !important'
                                 },
                                 '& .MuiTabs-indicator': {
-                                    backgroundColor: '#0096D6',
-                                    height: 3
+                                    backgroundColor: '#0a84ff',
+                                    height: 3,
+                                    boxShadow: '0 0 10px rgba(10, 132, 255, 0.5)'
                                 }
                             }}
                         >
@@ -153,47 +161,11 @@ export default function DriverSchedulePage() {
                         </Tabs>
                     </Box>
 
-                    <Box sx={{ p: 4 }}>
+                    <Box sx={{ p: 0 }}>
                         {tabValue === 0 && (
-                            <Paper 
-                                onClick={() => navigate('/driver/backfill')}
-                                sx={{ 
-                                    p: 2.5, 
-                                    mb: 4, 
-                                    bgcolor: 'white', 
-                                    border: '1px solid #eee', 
-                                    borderRadius: 4,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 2.5,
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                    '&:hover': { bgcolor: '#fbfbfb', border: '1px solid #0096D6' }
-                                }}
-                            >
-                                <Box sx={{ 
-                                    bgcolor: 'rgba(0,150,214,0.08)', 
-                                    color: '#0096D6', 
-                                    width: 44, 
-                                    height: 44, 
-                                    borderRadius: '50%', 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'center' 
-                                }}>
-                                    <Add />
-                                </Box>
-                                <Box>
-                                    <Typography fontWeight={700} color="#333" sx={{ fontSize: '1rem' }}>Log a Past Trip</Typography>
-                                    <Typography variant="body2" color="text.secondary">Create a report for a completed trip</Typography>
-                                </Box>
-                            </Paper>
-                        )}
-
-                        <Box>
-                            {tabValue === 0 ? (
-                                upcomingTrips.length === 0 ? (
-                                    <Box sx={{ py: 8, textAlign: 'center', color: 'text.secondary' }}>
+                             <Box sx={{ p: 2 }}>
+                                {upcomingTrips.length === 0 ? (
+                                    <Box sx={{ py: 8, textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>
                                         <Typography>No upcoming trips.</Typography>
                                     </Box>
                                 ) : (
@@ -205,13 +177,20 @@ export default function DriverSchedulePage() {
                                             compact={true}
                                             onViewDetails={() => navigate(`/driver/trips/${trip.id}`)}
                                             onStartTrip={() => navigate(`/driver/trips/${trip.id}/execute`)}
+                                            theme="dark"
                                         />
                                     ))
-                                )
-                            ) : renderTripList(pastTrips)}
-                        </Box>
+                                )}
+                            </Box>
+                        )}
+                        
+                        {tabValue === 1 && (
+                            <Box>
+                                {renderTripList(pastTrips)}
+                            </Box>
+                        )}
                     </Box>
-                </Paper>
+                </Box>
             </Box>
 
             <Snackbar

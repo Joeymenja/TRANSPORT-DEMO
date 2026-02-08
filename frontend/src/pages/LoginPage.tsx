@@ -12,9 +12,11 @@ import {
     IconButton,
     FormControlLabel,
     Checkbox,
-    Link
+    Link,
+    Stack,
+    Divider
 } from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
+import { Visibility, VisibilityOff, LocalTaxi } from '@mui/icons-material';
 import { useAuthStore } from '../store/auth';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 
@@ -37,178 +39,106 @@ export default function LoginPage() {
         }
     }, []);
 
-    const [emailError, setEmailError] = useState('');
-    const [passwordError, setPasswordError] = useState('');
-
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setError('');
-        setEmailError('');
-        setPasswordError('');
-        
-        // Custom Validation
-        let isValid = true;
-        if (!email) {
-            setEmailError('Please enter your email address');
-            isValid = false;
-        } else if (!/\S+@\S+\.\S+/.test(email)) {
-             setEmailError('Please enter a valid email address');
-             isValid = false;
+        if (!email || !password) {
+            setError('Please enter both email and password.');
+            return;
         }
-
-        if (!password) {
-            setPasswordError('Please enter your password');
-            isValid = false;
-        }
-
-        if (!isValid) return;
 
         setLoading(true);
-
         try {
             await login(email, password);
-
-            if (rememberMe) {
-                localStorage.setItem('rememberedEmail', email);
-            } else {
-                localStorage.removeItem('rememberedEmail');
-            }
-
+            if (rememberMe) localStorage.setItem('rememberedEmail', email);
+            else localStorage.removeItem('rememberedEmail');
+            
             const user = useAuthStore.getState().user;
-            if (user?.role === 'DRIVER' && (user.onboardingStep || 0) < 6) {
-                navigate('/driver/welcome');
+            // Route based on role
+            if (user?.role === 'DRIVER') {
+                 navigate('/driver/gvbh'); // GVBH Mobile Driver App
             } else {
-                navigate('/dashboard');
+                 navigate('/dashboard');
             }
         } catch (err: any) {
-            setError(err.response?.data?.message || err.message || 'Login failed. Please check console.');
-            console.error('Login Error Details:', err);
+            setError(err.response?.data?.message || 'Login failed.');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <Box
-            sx={{
-                minHeight: '100vh',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                bgcolor: '#f0f4f8',
-                background: 'linear-gradient(135deg, #f0f4f8 0%, #dbeafe 100%)'
-            }}
-        >
+        <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#F5F7FA'}}>
             <Container maxWidth="xs">
-                <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
-                    <img
-                        src="/logo.png"
-                        alt="GVBH Transportation"
-                        style={{ height: 80, objectFit: 'contain' }}
-                        onError={(e) => {
-                            e.currentTarget.style.display = 'none'; // Fallback logic
-                        }}
-                    />
+                
+                {/* Brand Header */}
+                <Box sx={{ textAlign: 'center', mb: 4 }}>
+                    <Box sx={{ 
+                        width: 64, 
+                        height: 64, 
+                        bgcolor: '#14B8A6', 
+                        borderRadius: 2, 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        mx: 'auto',
+                        mb: 2,
+                        boxShadow: '0 10px 25px rgba(20, 184, 166, 0.3)'
+                    }}>
+                        <LocalTaxi sx={{ fontSize: 36, color: 'white' }} />
+                    </Box>
+                    <Typography variant="h4" fontWeight={800} color="text.primary" letterSpacing={-0.5}>
+                        NEMT Access
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                        Driver & Manager Portal
+                    </Typography>
                 </Box>
 
-                <Card
-                    sx={{
-                        borderRadius: 3,
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-                    }}
-                >
+                <Card sx={{ borderRadius: 1, boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid #eee' }}>
                     <CardContent sx={{ p: 4 }}>
-                        <Typography
-                            variant="h5"
-                            component="h1"
-                            align="center"
-                            gutterBottom
-                            sx={{ fontWeight: 600, color: '#1e293b', mb: 1 }}
-                        >
-                            Welcome Back
+                        <Typography variant="h6" fontWeight={700} gutterBottom>
+                            Sign In
                         </Typography>
-
-                        <Typography
-                            variant="body2"
-                            align="center"
-                            color="text.secondary"
-                            sx={{ mb: 3 }}
-                        >
-                            Sign in to your GVBH account
-                        </Typography>
-
+                        
                         {error && (
-                            <Alert severity="error" sx={{ mb: 3 }}>
-                                {error}
-                            </Alert>
+                            <Alert severity="error" sx={{ mb: 3, borderRadius: 1 }}>{error}</Alert>
                         )}
 
-                        <form onSubmit={handleSubmit} noValidate>
-                            <TextField
-                                fullWidth
-                                label="Email"
-                                type="email"
-                                value={email}
-                                onChange={(e) => {
-                                    setEmail(e.target.value);
-                                    if (emailError) setEmailError('');
-                                }}
-                                error={!!emailError}
-                                helperText={emailError}
-                                sx={{ mb: 2 }}
-                                autoComplete="email"
-                                placeholder="Enter your email"
-                            />
-
-                            <TextField
-                                fullWidth
-                                label="Password"
-                                type={showPassword ? 'text' : 'password'}
-                                value={password}
-                                onChange={(e) => {
-                                    setPassword(e.target.value);
-                                    if (passwordError) setPasswordError('');
-                                }}
-                                error={!!passwordError}
-                                helperText={passwordError}
-                                sx={{ mb: 1 }}
-                                autoComplete="current-password"
-                                InputProps={{
-                                    endAdornment: (
-                                        <InputAdornment position="end">
-                                            <IconButton
-                                                aria-label="toggle password visibility"
-                                                onClick={() => setShowPassword(!showPassword)}
-                                                onMouseDown={(e) => e.preventDefault()}
-                                                edge="end"
-                                            >
-                                                {showPassword ? <VisibilityOff /> : <Visibility />}
-                                            </IconButton>
-                                        </InputAdornment>
-                                    ),
-                                }}
-                            />
-
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                                <FormControlLabel
-                                    control={
-                                        <Checkbox
-                                            checked={rememberMe}
-                                            onChange={(e) => setRememberMe(e.target.checked)}
-                                            color="primary"
-                                            size="small"
-                                        />
-                                    }
-                                    label={<Typography variant="body2" color="text.secondary">Remember Me</Typography>}
+                        <form onSubmit={handleSubmit}>
+                            <Stack spacing={3}>
+                                <TextField
+                                    label="Email Address"
+                                    fullWidth
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    InputProps={{ sx: { borderRadius: 1 } }}
                                 />
-                                <Link
-                                    component={RouterLink}
-                                    to="/forgot-password"
-                                    variant="body2"
-                                    underline="hover"
-                                    sx={{ fontWeight: 500 }}
-                                >
+                                <TextField
+                                    label="Password"
+                                    type={showPassword ? 'text' : 'password'}
+                                    fullWidth
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    InputProps={{
+                                        sx: { borderRadius: 1 },
+                                        endAdornment: (
+                                            <InputAdornment position="end">
+                                                <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                                                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                                                </IconButton>
+                                            </InputAdornment>
+                                        )
+                                    }}
+                                />
+                            </Stack>
+
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 3 }}>
+                                <FormControlLabel
+                                    control={<Checkbox checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} size="small" />}
+                                    label={<Typography variant="body2">Remember me</Typography>}
+                                />
+                                <Link component={RouterLink} to="/forgot-password" variant="body2" fontWeight={600} underline="hover" color="primary">
                                     Forgot Password?
                                 </Link>
                             </Box>
@@ -220,38 +150,27 @@ export default function LoginPage() {
                                 size="large"
                                 disabled={loading}
                                 sx={{
-                                    py: 1.5,
-                                    bgcolor: '#0096D6',
-                                    '&:hover': { bgcolor: '#0077B5' },
-                                    textTransform: 'none',
-                                    fontSize: 16,
-                                    fontWeight: 600,
-                                    boxShadow: '0 4px 6px rgba(0, 150, 214, 0.25)'
+                                    height: 50,
+                                    borderRadius: 1,
+                                    fontWeight: 700,
+                                    fontSize: '1rem',
+                                    bgcolor: '#14B8A6',
+                                    boxShadow: '0 4px 12px rgba(20, 184, 166, 0.3)',
+                                    '&:hover': { bgcolor: '#0D9488' }
                                 }}
                             >
-                                {loading ? 'Signing in...' : 'Sign In'}
+                                {loading ? 'Authenticating...' : 'Secure Login'}
                             </Button>
                         </form>
-
-                        <Box sx={{ mt: 3, textAlign: 'center', pt: 3, borderTop: '1px solid #f1f5f9' }}>
-                            <Typography variant="body2" color="text.secondary">
-                                New to GVBH?{' '}
-                                <Link
-                                    component={RouterLink}
-                                    to="/register-driver"
-                                    underline="hover"
-                                    sx={{ fontWeight: 600, color: '#0096D6' }}
-                                >
-                                    Create Account
-                                </Link>
-                            </Typography>
-                        </Box>
                     </CardContent>
                 </Card>
 
-                <Typography variant="caption" display="block" align="center" sx={{ mt: 4, color: '#94a3b8' }}>
-                    GVBH Transportation App v1.0.0
-                </Typography>
+                <Box sx={{ textAlign: 'center', mt: 4 }}>
+                    <Typography variant="caption" color="text.secondary">
+                        By signing in, you agree to our <Link>Terms of Service</Link> and <Link>Privacy Policy</Link>.
+                    </Typography>
+                </Box>
+
             </Container>
         </Box>
     );
