@@ -30,7 +30,11 @@ async function produceFinalPdf() {
         providerInfo: `AHCCCS ID: 181294\nNAME: GREAT VALUES TRANSPORTATION\nADDRESS: 5723 W. PUEBLO AVE PHOENIX 85043-6404\nPHONE: 480-678-9426`,
         driverSig: 'John Doe (Driver)',
         memberSig: 'Jane Smith (Member)',
-        additionalInfo: 'Refactored version using PdfReportService.js'
+        additionalInfo: 'Refactored version using PdfReportService.js',
+        page: '1',
+        of: '2',
+        page_2: '2',
+        of_2: '2'
     };
 
     // 1. Fill Header

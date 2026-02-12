@@ -85,8 +85,12 @@ class PdfReportService {
         this.enableTopAlignment(namePu);
         this.enableTopAlignment(nameDo);
 
-        this.setText(namePu, t.pu, 9, TextAlignment.Center);
-        this.setText(nameDo, t.do, 9, TextAlignment.Center);
+        // Nudge Trip 3 (index 2) lower to match others visually
+        const valPu = (id === 3) ? `\n${t.pu}` : t.pu;
+        const valDo = (id === 3) ? `\n${t.do}` : t.do;
+
+        this.setText(namePu, valPu, 9, TextAlignment.Center);
+        this.setText(nameDo, valDo, 9, TextAlignment.Center);
 
         const getField = (base, idx) => idx === 1 ? base : `${base}_${idx}`;
         this.setText(getField('PickUp Odometerampm', id), t.puOdo);
@@ -119,6 +123,10 @@ class PdfReportService {
         this.setText('Date_2', date);
         this.setText('page', page);
         this.setText('of', of);
+
+        // Page 2 specific numbering
+        this.setText('page_2', data.page_2 || '2');
+        this.setText('of_2', data.of_2 || '2');
 
         this.setText('Member Name_2', memberName);
         this.setText('AHCCCS_2', ahcccsId);
