@@ -20,11 +20,11 @@ async function bootstrap() {
         origin: (origin, callback) => {
             if (!origin) return callback(null, true);
             if (configService.get('NODE_ENV') === 'development') {
-                 return callback(null, true);
+                return callback(null, true);
             }
             const allowedOrigins = configService.get('CORS_ORIGIN').split(',');
             if (allowedOrigins.indexOf(origin) !== -1 || configService.get('CORS_ORIGIN') === '*') {
-                 return callback(null, true);
+                return callback(null, true);
             }
             return callback(new Error('Not allowed by CORS'));
         },
@@ -39,12 +39,12 @@ async function bootstrap() {
             transform: true,
         }),
     );
-    
+
     // Global Exception Filter
     app.useGlobalFilters(new AllExceptionsFilter());
 
     const port = configService.get('PORT') || 8082;
-    await app.listen(port);
+    await app.listen(port, '0.0.0.0');
 
     console.log(`🚀 Transport Service is running on: http://localhost:${port}`);
     console.log(`📚 API: http://localhost:${port}/trips`);

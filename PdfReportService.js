@@ -82,33 +82,12 @@ class PdfReportService {
         const namePu = `AMPM${index * 2 + 1}`;
         const nameDo = `AMPM${index * 2 + 2}`;
 
-        // Calculate font size dynamically based on height to match the "perfect" look of Trip 5
-        // Trip 5 height is 24.62, font was 8.5 (or slightly smaller for better fit)
-        const calculateFontSize = (name) => {
-            try {
-                const tf = this.form.getTextField(name);
-                const widget = tf.acroField.getWidgets()[0];
-                const rect = widget.getRectangle();
-                // User liked Trip 5 (24.62). Let's use a slightly smaller ratio for perfect centering.
-                const ratio = 8.4 / 24.62;
-                return Math.round(rect.height * ratio * 2) / 2; // Round to nearest 0.5
-            } catch (e) {
-                return 8.5; // Fallback
-            }
-        };
+        this.enableTopAlignment(namePu);
+        this.enableTopAlignment(nameDo);
 
-        const fontSizePu = calculateFontSize(namePu);
-        const fontSizeDo = calculateFontSize(nameDo);
-
-        // Disabling multiline allows the PDF viewer to center text vertically by default 
-        // if the font size is well-proportioned to the box height.
-        try {
-            this.form.getTextField(namePu).disableMultiline();
-            this.form.getTextField(nameDo).disableMultiline();
-        } catch (e) { }
-
-        this.setText(namePu, t.pu, fontSizePu, TextAlignment.Center);
-        this.setText(nameDo, t.do, fontSizeDo, TextAlignment.Center);
+        // Reverting to the 8.5pt multiline state which the user liked for Trip 5
+        this.setText(namePu, t.pu, 8.5, TextAlignment.Center);
+        this.setText(nameDo, t.do, 8.5, TextAlignment.Center);
 
         const getField = (base, idx) => idx === 1 ? base : `${base}_${idx}`;
         this.setText(getField('PickUp Odometerampm', id), t.puOdo);

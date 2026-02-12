@@ -7,11 +7,11 @@ import { AllExceptionsFilter } from './all-exceptions.filter';
 async function bootstrap() {
     const app = await NestFactory.create(AuthModule);
     const configService = app.get(ConfigService);
-    
+
     // Critical Environment Validation
     const requiredEnv = ['JWT_SECRET', 'DB_PASSWORD', 'DB_HOST', 'DB_DATABASE'];
     const missingEnv = requiredEnv.filter(env => !configService.get(env));
-    
+
     if (missingEnv.length > 0) {
         console.error('----------------------------------------');
         console.error('CRITICAL ERROR: Missing Environment Variables');
@@ -26,7 +26,7 @@ async function bootstrap() {
     console.log('HOST:', configService.get('DB_HOST'));
     console.log('DATABASE:', configService.get('DB_DATABASE'));
     console.log('USERNAME:', configService.get('DB_USERNAME'));
-    
+
     const jwtSecret = configService.get('JWT_SECRET');
     console.log('JWT SECRET (Masked):', jwtSecret ? `${jwtSecret.substring(0, 5)}...` : 'NOT SET');
     console.log('----------------------------------------');
@@ -37,15 +37,15 @@ async function bootstrap() {
         origin: (origin, callback) => {
             // Allow requests with no origin (like mobile apps or curl requests)
             if (!origin) return callback(null, true);
-            
+
             // In development, refrain from strict origin checks to allow local network access (e.g. phone)
             if (configService.get('NODE_ENV') === 'development') {
-                 return callback(null, true);
+                return callback(null, true);
             }
-            
+
             const allowedOrigins = configService.get('CORS_ORIGIN').split(',');
             if (allowedOrigins.indexOf(origin) !== -1 || configService.get('CORS_ORIGIN') === '*') {
-                 return callback(null, true);
+                return callback(null, true);
             }
             return callback(new Error('Not allowed by CORS'));
         },
@@ -65,7 +65,7 @@ async function bootstrap() {
     app.useGlobalFilters(new AllExceptionsFilter());
 
     const port = configService.get('PORT') || 8081;
-    await app.listen(port);
+    await app.listen(port, '0.0.0.0');
 
     console.log(`🚀 Auth Service is running on: http://localhost:${port}`);
     console.log(`📚 API: http://localhost:${port}/auth`);

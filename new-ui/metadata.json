@@ -1,0 +1,10 @@
+
+{
+  "name": "GVBH Transportation Driver App",
+  "description": "A comprehensive healthcare transportation management system for NEMT drivers, featuring trip lifecycle management, AHCCCS compliance, real-time tracking, and integrated documentation.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation",
+    "microphone"
+  ]
+}
