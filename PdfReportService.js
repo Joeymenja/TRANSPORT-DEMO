@@ -85,12 +85,10 @@ class PdfReportService {
         this.enableTopAlignment(namePu);
         this.enableTopAlignment(nameDo);
 
-        // Nudge Trip 3 (index 2) lower to match others visually
-        const valPu = (id === 3) ? `\n${t.pu}` : t.pu;
-        const valDo = (id === 3) ? `\n${t.do}` : t.do;
-
-        this.setText(namePu, valPu, 9, TextAlignment.Center);
-        this.setText(nameDo, valDo, 9, TextAlignment.Center);
+        // Reverting the newline nudge as it was too low. 
+        // Using standard value but keeping multiline enabled which often defaults to a better vertical position.
+        this.setText(namePu, t.pu, 9, TextAlignment.Center);
+        this.setText(nameDo, t.do, 9, TextAlignment.Center);
 
         const getField = (base, idx) => idx === 1 ? base : `${base}_${idx}`;
         this.setText(getField('PickUp Odometerampm', id), t.puOdo);
