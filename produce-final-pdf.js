@@ -4,7 +4,7 @@ const path = require('path');
 const PdfReportService = require('./PdfReportService');
 
 async function produceFinalPdf() {
-    const inputPath = path.join(process.cwd(), 'frontend/public/AHCCCSDailyTripReportFinal NEW more updated.pdf');
+    const inputPath = path.join(process.cwd(), 'AHCCCS_BLANK_TEMPLATE.pdf');
     const outputPath = path.join(process.cwd(), 'FINAL_FILLED_REPORT.pdf');
 
     console.log(`Loading PDF from: ${inputPath}`);
