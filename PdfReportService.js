@@ -85,10 +85,10 @@ class PdfReportService {
         this.enableTopAlignment(namePu);
         this.enableTopAlignment(nameDo);
 
-        // Reverting the newline nudge as it was too low. 
-        // Using standard value but keeping multiline enabled which often defaults to a better vertical position.
-        this.setText(namePu, t.pu, 9, TextAlignment.Center);
-        this.setText(nameDo, t.do, 9, TextAlignment.Center);
+        // Standardizing to 8.5pt for all time fields to match the "perfect" alignment of Trip 5
+        // This gives slightly more top padding in multiline mode.
+        this.setText(namePu, t.pu, 8.5, TextAlignment.Center);
+        this.setText(nameDo, t.do, 8.5, TextAlignment.Center);
 
         const getField = (base, idx) => idx === 1 ? base : `${base}_${idx}`;
         this.setText(getField('PickUp Odometerampm', id), t.puOdo);
