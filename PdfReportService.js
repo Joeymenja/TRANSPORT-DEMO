@@ -136,6 +136,14 @@ class PdfReportService {
         const allFields = this.form.getFields();
         allFields.forEach(field => {
             const name = field.getName();
+
+            // EXCLUSIONS: Skip odometer-related fields to avoid clutter next to real values
+            // These fields often exist as empty shells next to the 'ampm' versions we use.
+            if (name.includes('Odometer') && !name.includes('ampm')) return;
+            if (name.includes('Trip Miles') && !name.includes('ampm')) return;
+            if (name.includes('PickUp Odometer') && !name.includes('ampm')) return;
+            if (name.includes('DropOff Odometer') && !name.includes('ampm')) return;
+
             try {
                 if (field.constructor.name === 'PDFCheckBox') {
                     field.check();
@@ -143,7 +151,7 @@ class PdfReportService {
                     const tf = this.form.getTextField(name);
                     if (!tf.getText()) {
                         tf.setText('X');
-                        tf.setFontSize(18); // Larger size for better fit in standard boxes
+                        tf.setFontSize(18);
                         tf.setAlignment(TextAlignment.Center);
                     }
                 }
@@ -151,6 +159,11 @@ class PdfReportService {
                 // Ignore errors
             }
         });
+
+        // Ensure fingerprint and unable-to-sign fields are checked if not already
+        // Some forms have these as checkboxes or text fields.
+        this.setText('Member Fingerprint', 'X', 18, TextAlignment.Center);
+        this.setText('Member is unable to sign Identify the person signing for the member or include members fingerprint', 'X', 18, TextAlignment.Center);
     }
 }
 
