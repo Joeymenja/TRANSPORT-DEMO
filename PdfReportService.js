@@ -1,0 +1,149 @@
+const { TextAlignment } = require('pdf-lib');
+
+/**
+ * PdfReportService
+ * Encapsulates all logic for filling the AHCCCS Daily Trip Report PDF.
+ */
+class PdfReportService {
+    /**
+     * @param {import('pdf-lib').PDFForm} form - The AcroForm from pdf-lib
+     */
+    constructor(form) {
+        this.form = form;
+    }
+
+    /**
+     * Standard Fill Helper
+     */
+    setText(name, value, fontSize = 10, alignment = null) {
+        try {
+            const field = this.form.getField(name);
+            if (field.constructor.name === 'PDFCheckBox') {
+                if (value === true || value === 'X' || value === '   X') field.check();
+                else field.uncheck();
+            } else {
+                const tf = this.form.getTextField(name);
+                tf.setFontSize(fontSize);
+                if (alignment) tf.setAlignment(alignment);
+                tf.setText(String(value));
+            }
+            // console.log(`Filled '${name}'`);
+        } catch (e) {
+            // console.log(`Field not found or error: ${name}`);
+        }
+    }
+
+    /**
+     * Enables multiline for a text field to force top-alignment.
+     */
+    enableTopAlignment(fieldName) {
+        try {
+            const tf = this.form.getTextField(fieldName);
+            tf.enableMultiline();
+        } catch (e) {
+            // console.log(`Could not enable multiline for ${fieldName}`);
+        }
+    }
+
+    /**
+     * Fills the Header section
+     */
+    fillHeader(data) {
+        const { date, driverName, vehicleId, vehicleInfo, memberName, ahcccsId, dob, address, providerInfo } = data;
+
+        this.setText('Drivers Name', driverName);
+        this.setText('Date', date);
+        this.setText('Vehicle LicenseFleet ID', vehicleId);
+        this.setText('Vehicle Make  Color', vehicleInfo);
+        this.setText('AHCCCS', ahcccsId);
+        this.setText('Date of Birth', dob);
+        this.setText('Member Name', memberName);
+        this.setText('Mailing Address', address);
+
+        if (providerInfo) {
+            this.setText('Vehicle Type', providerInfo, 9);
+        }
+    }
+
+    /**
+     * Fills a specific trip row (1-6)
+     */
+    fillTrip(index, t) {
+        const id = index + 1;
+        const suffix = id === 1 ? '' : `_${id}`;
+
+        const namePu = `AMPM${index * 2 + 1}`;
+        const nameDo = `AMPM${index * 2 + 2}`;
+
+        this.enableTopAlignment(namePu);
+        this.enableTopAlignment(nameDo);
+
+        this.setText(namePu, t.pu, 9, TextAlignment.Center);
+        this.setText(nameDo, t.do, 9, TextAlignment.Center);
+
+        const getField = (base, idx) => idx === 1 ? base : `${base}_${idx}`;
+        this.setText(getField('PickUp Odometerampm', id), t.puOdo);
+        this.setText(getField('DropOff Odometerampm', id), t.doOdo);
+        this.setText(getField('Trip Milesampm', id), t.miles);
+
+        const ordinals = ["1st", "2nd", "3rd", "4th", "5th", "6th"];
+        const ordinal = ordinals[index];
+        this.setText(`${ordinal} PickUp Location Physical Address City  Zip Code or Geographical CoordinatesLandmark if No Address AvailableRow1`, t.puAddr);
+        this.setText(`${ordinal} DropOff Location Physical Address City  Zip Code or Geographical CoordinatesLandmark if No Address AvailableRow1`, t.doAddr);
+
+        this.setText(getField('Reason for Visit', id), t.reason);
+        this.setText(getField('Name of Escort', id), t.escort || 'N/A');
+        this.setText(getField('Relationship', id), t.relationship || 'N/A');
+
+        // Trip Type Checkboxes
+        if (t.type === 'One Way') this.setText(`One Way${suffix}`, 'X', 18, TextAlignment.Center);
+        if (t.type === 'Round Trip') this.setText(`Type of Trip Round Trip${suffix}`, 'X', 18, TextAlignment.Center);
+        if (t.type === 'Multiple Stops') this.setText(`Multiple Stops${suffix}`, 'X', 18, TextAlignment.Center);
+    }
+
+    /**
+     * Fills Signatures and Footer
+     */
+    fillFooter(data) {
+        const { date, memberName, ahcccsId, dob, driverSig, memberSig, page = '1', of = '1' } = data;
+
+        this.setText('Signature2_es_:signer:signature', driverSig);
+        this.setText('Signature1_es_:signer:signature', memberSig);
+        this.setText('Date_2', date);
+        this.setText('page', page);
+        this.setText('of', of);
+
+        this.setText('Member Name_2', memberName);
+        this.setText('AHCCCS_2', ahcccsId);
+        this.setText('Date of Birth_2', dob);
+
+        if (data.additionalInfo) {
+            this.setText('Additional Information', data.additionalInfo);
+        }
+    }
+
+    /**
+     * Stress test: Fill all checkboxes and empty text fields with 'X'
+     */
+    stressTestX() {
+        const allFields = this.form.getFields();
+        allFields.forEach(field => {
+            const name = field.getName();
+            try {
+                if (field.constructor.name === 'PDFCheckBox') {
+                    field.check();
+                } else if (field.constructor.name === 'PDFTextField') {
+                    const tf = this.form.getTextField(name);
+                    if (!tf.getText()) {
+                        tf.setText('X');
+                        tf.setFontSize(10);
+                    }
+                }
+            } catch (e) {
+                // Ignore errors
+            }
+        });
+    }
+}
+
+module.exports = PdfReportService;
