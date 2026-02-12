@@ -152,6 +152,9 @@ class PdfReportService {
             if (name.includes('PickUp Odometer') && !name.includes('ampm')) return;
             if (name.includes('DropOff Odometer') && !name.includes('ampm')) return;
 
+            // User specifically requested NO X IN MEMBER FINGERPRINT
+            if (name.includes('Member Fingerprint')) return;
+
             try {
                 if (field.constructor.name === 'PDFCheckBox') {
                     field.check();
@@ -168,9 +171,8 @@ class PdfReportService {
             }
         });
 
-        // Ensure fingerprint and unable-to-sign fields are checked if not already
+        // Ensure unable-to-sign fields are checked if not already
         // Some forms have these as checkboxes or text fields.
-        this.setText('Member Fingerprint', 'X', 18, TextAlignment.Center);
         this.setText('Member is unable to sign Identify the person signing for the member or include members fingerprint', 'X', 18, TextAlignment.Center);
     }
 }
