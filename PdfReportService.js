@@ -24,7 +24,14 @@ class PdfReportService {
             } else {
                 const tf = this.form.getTextField(name);
                 tf.setFontSize(fontSize);
-                if (alignment) tf.setAlignment(alignment);
+
+                // If the value is 'X', ensure it's centered to fit the box well
+                if (value === 'X' || value === '   X') {
+                    tf.setAlignment(alignment || TextAlignment.Center);
+                } else if (alignment) {
+                    tf.setAlignment(alignment);
+                }
+
                 tf.setText(String(value));
             }
             // console.log(`Filled '${name}'`);
@@ -136,7 +143,8 @@ class PdfReportService {
                     const tf = this.form.getTextField(name);
                     if (!tf.getText()) {
                         tf.setText('X');
-                        tf.setFontSize(10);
+                        tf.setFontSize(18); // Larger size for better fit in standard boxes
+                        tf.setAlignment(TextAlignment.Center);
                     }
                 }
             } catch (e) {
